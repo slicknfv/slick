@@ -3,11 +3,23 @@ MiddleSox Code
 lib:
     Systen required libraries the are required to be installed before.
 
-dns:
-    has code for dns packet handling.
+dns-dpi:
+    has code for dns packet handling exaqmple, which works separately from the shim code.
 
 p0f:
-    has code for p0f based traffic lookup
+    code for p0f based traffic lookup
 
 comm:
     Provide the utiltiy functions to talk with the controller.
+
+
+shim:
+    This folder has the shim layer code/
+        shim.py is responsbile for getting the packets and calling respective process_pkt() for the function.
+        mb_api.py is responsioble for the interface to the controller.
+
+controller:
+    This folder has the copntroller side code, There are three main files in this:
+        pyswitch.py  It acts as the controller for the applications.
+        msmessageproc.py This has the application classes
+        networkmaps.py has flow to function mapping. It also has function and machine maps.
