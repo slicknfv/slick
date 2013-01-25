@@ -1,0 +1,779 @@
+# Copyright 2008 (C) Nicira, Inc.
+# 
+# This file is part of NOX.
+# 
+# NOX is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# NOX is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with NOX.  If not, see <http://www.gnu.org/licenses/>.
+# Python L2 learning switch 
+#
+# ----------------------------------------------------------------------
+#
+# This app functions as the control logic of an L2 learning switch for
+# all switches in the network. On each new switch join, it creates 
+# an L2 MAC cache for that switch. 
+#
+# In addition to learning, flows are set up in the switch for learned
+# destination MAC addresses.  Therefore, in the absence of flow-timeout,
+# pyswitch should only see one packet per flow (where flows are
+# considered to be unidirectional)
+#
+
+from nox.lib.core     import *
+
+from nox.lib.packet.ethernet     import ethernet
+from nox.lib.packet.ipv4 import ipv4
+from nox.lib.packet import dns #importing from the dns class.
+from nox.lib.packet.packet_utils import mac_to_str, mac_to_int,ipstr_to_int,ip_to_str
+from nox.lib.netinet.netinet import datapathid
+from nox.lib.netinet import netinet
+
+#Need this routing module
+from nox.netapps.authenticator.pyflowutil import Flow_in_event
+from nox.netapps.routing import pyrouting
+
+from twisted.python import log
+
+import logging
+from time import time
+from socket import htons
+from struct import unpack
+
+from collections import defaultdict
+
+logger = logging.getLogger('nox.coreapps.examples.pyswitch')
+
+# Global pyswitch instance 
+inst = None
+
+# Timeout for cached MAC entries
+CACHE_TIMEOUT = 5
+
+# Prerequisite:
+# 	Middleboxes are IP Addressable and can establish a connection with the controller. 
+
+
+#Module 1 that populates the function_map.json file. # For now its only file reading and lets keep it that way.
+#Module 2 that provides the flow iformation so that we know where does the packet need to go from point A to point B.
+# Example1: Take the access-list file from the OIT.
+# 		Using these rules Take three actions:
+#		0- Setup paths from the controller -> switch -> firewall to send middlebox rule installation packets. 
+# 		1- install rule on the firewall{Each middlebox needs its own drivers} Do not categorize as one middlebox can have multiple functions.
+#		1.5- Install rule on the middlebox whose location is closest to the IP address that we are protecting. [Its not optimized]
+#		2- Install two rules on the openFlow switch.
+# There should not be anything installed on the firewall that installs the rule.
+
+#Rule Installation Flow:
+# 0- Install rule on the switch and the middlebox attached to it.
+
+"""
+util functions
+"""
+# Copied
+
+"""
+	This class provides the function map for each dpid
+	What functions are connected with which dpid
+"""
+class FunctionMap():
+	def __init__(self,function_map_file):
+		self.function_map_file = function_map_file
+		self.function_map = defaultdict(dict)
+
+	def read_json(self):
+		print self.function_map_file
+		json_data = open(self.function_map_file);
+		json_data_dict = json.load(json_data)
+		json_data.close() # Close the file and return
+		self.function_map = json_data_dict
+		return self.function_map
+
+	# Return the list of connected ports.
+	def get_connected_ports(self,dpid):
+		if(self.function_map.has_key(str(dpid))):
+			return self.function_map.keys() 
+
+	# Add a newly discovered function on the switch's port.
+	def add_port(self,dpid,port,function):
+		if(self.function_map.has_key(str(dpid))):
+			if not self.function_map[dpid].has_key(port):
+				self.function_map[dpid][port] = function
+			else:
+				raise Exception("Switch ",dpid," and port ",port," has an existing function")
+		else:
+			raise Exception("Switch ",dpid," does not have any middlebox attached to it")
+
+	# Remove a function from the port
+	def del_port(self,dpid,port):
+		if(self.function_map.has_key(str(dpid))):
+			if (self.function_map[dpid].has_key(port)):
+				del self.function_map[dpid][port] 
+			else:
+				raise Exception("Switch ",dpid," and port ",port," has NO existing function")
+		else:
+			raise Exception("Switch ",dpid," does not have any middlebox attached to it")
+
+	def replace_port(self,dpid,port,function):
+		pass
+"""
+# Tell which machines are hanging to which switches.
+# This is not the topology.
+"""
+class MachineMap():
+	def __init__(self):
+		self.machine_ip_map = defaultdict(dict) # key=dpid:value=IP address 
+		self.machine_mac_map = defaultdict(dict) # key=dpid:value=mac address of the machine.
+
+	# Load the machine map from a file or from another module that 
+	# is responsible for routing the packets.
+	def _load_map(self,file_name):
+		if(file_name != None):
+			json_data = open(file_name)
+			machine_map = json.load(json_data)
+			json_data.close() # Close the file and return
+		return machine_map # heavy 
+
+	# Returnt the machine map for the whole network.
+	def get_machine_map(self):
+		self.machine_ip_map = self._load_map("/home/openflow/noxcore/src/nox/coreapps/examples/tutorial/machine_map.json")
+		if(len(self.machine_ip_map) > 0):
+			return self.machine_ip_map
+		else:
+			raise Exception("Machine Map not present")
+
+	# Given the MAC/IP address return the dpid of the machine.
+	def get_machine_dpid(self,mac_addr,ip_addr):
+		if(mac_addr):
+			return '1'
+		if(ip_addr):
+			return '1'
+
+	# Return the list IP addresses attached to the machines.
+	def get_machine_ips(self,dpid):
+		machine_ips = []
+		if(dpid):
+			for port,ip in self.machine_ip_map[dpid].iteritems():
+				# Copied http://stackoverflow.com/questions/6291238/how-can-i-find-the-ips-in-network-in-python
+				ip_addr = reduce(lambda x,y: (x<<8) + y, [ int(x) for x in ip.split('.') ])
+				machine_ips.append(ip_addr)
+			return machine_ips		 
+
+    	# @args:datapath ID and Destination addr
+    	# Return the port # for the desintation addr.
+    	def get_dest_addr_port(self,dpid,addr):
+		switch_addr_list =  self.get_machine_ips(str(dpid))
+		if(addr in switch_addr_list):
+			ip_str = "%d.%d.%d.%d" % (addr >> 24,(addr & 0xffffff) >> 16,(addr & 0xffff) >> 8,(addr & 0xff))
+			for port,ip in self.machine_ip_map[dpid].iteritems():
+				if(ip == ip_str):
+					return int(port)
+
+
+"""
+	Class for the setup of control path from controller->switch->middlebox.
+	1- This control path is used to install rule on the middlebox.
+	2- Manage the joining and departure of the middleboxes from the network. // assuming that we have a list of middleboxes available in the network.
+"""
+class MiddleboxControlPath():
+	def __init__(self,switch_function_map):
+		self.switch_function_map = switch_function_map
+
+	def load_middlebox_ips(self):
+		pass
+
+	def install_first_rules(self):
+		pass 
+
+	# This channel establishment is dependent on the middlebox 
+	# and can be different from middlebox to middlebox.
+	# Create comm class objects based on the middlebox type.
+	def establish_control_channel(self):
+		pass
+
+"""
+	Description: 
+		Keeps a flow to function mapping.
+"""
+class Policy():
+	def __init__(self,policy_filename):
+		self.policy_file_name = policy_filename
+		self.FlowTuple = namedtuple("FlowTuple",["in_port","dl_src","dl_dst","dl_vlan","dl_vlan_pcp","dl_type","nw_src","nw_dst","nw_proto","tp_src","tp_dst"])
+		self.flow_to_function_mapping = defaultdict(dict) # key:FlowTuple value:[functions]
+		attr = {}
+
+	# Given a in_port,flow and dictionary of functions{key=number:value=function_name}
+	def add_flow(self,in_port,flow,functions):
+		""" Debug
+		for k,v in flow.iteritems():
+			print k,v
+		"""
+		# TypeError: unhashable type: 'array.array'
+		src_mac = mac_to_int(flow['dl_src'])
+		dst_mac = mac_to_int(flow['dl_dst'])
+		f = self.FlowTuple(in_port=in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
+		if not self.flow_to_function_mapping.has_key(f):
+			self.flow_to_function_mapping[f] = functions
+			print self.flow_to_function_mapping
+			return True
+		else:
+			return False
+
+	# Given a in_port,flow and dictionary of functions{key=number:value=function_name}
+	def del_flow(self,in_port,flow,functions):
+		src_mac = mac_to_int(flow['dl_src'])
+		dst_mac = mac_to_int(flow['dl_dst'])
+		f = self.FlowTuple(in_port=in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
+		if (self.flow_to_function_mapping.has_key(f)):
+			del self.flow_to_function_mapping[f]
+			return True
+		else:
+			return False
+
+	def modify_functions(self,in_port,flow,functions):
+		src_mac = mac_to_int(flow['dl_src'])
+		dst_mac = mac_to_int(flow['dl_dst'])
+		f = self.FlowTuple(in_port=in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
+		if (self.flow_to_function_mapping.has_key(f)):
+			del self.flow_to_function_mapping[f]
+			return True
+		else:
+			return False
+
+	# A function for initializing tuples.
+	# TODO: read from the configuration file.
+	def init_tuples(self):
+		f = self.FlowTuple(in_port=1,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src=167772162,nw_dst=167772163,nw_proto=None,tp_src=None,tp_dst=None)
+		self.flow_to_function_mapping[f] = {1:"NAT"}
+		"""KISS
+		f = self.FlowTuple(in_port=2,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src=167772163,nw_dst=167772162,nw_proto=None,tp_src=None,tp_dst=None)
+		self.flow_to_function_mapping[f] = {1:"Firewall",2:"RateLimit",3:"IDS"}
+		"""
+		print self.flow_to_function_mapping
+
+	# Dummy matching function returns True if the first wild card entry matches.
+	def _lookup_flow(self,ft):
+		for item in self.flow_to_function_mapping:
+			item_match = False
+			if(item.in_port!=None):#If its not a don't care.
+				if(item.in_port == ft.in_port):
+					item_match = True 
+				else: 
+					continue
+			if(item.dl_src!=None):#If its not a don't care.
+				if(item.dl_src == ft.dl_src):
+					item_match = True 
+				else:# If its not a don't care and we have not matched then its not what we are looking for. 
+					continue
+			if(item.dl_dst!=None):
+				if(item.dl_dst == ft.dl_dst):
+					item_match = True 
+				else:
+					continue
+			if(item.dl_vlan!=None):
+				if(item.dl_vlan == ft.dl_vlan):
+					item_match = True 
+				else:
+					continue
+			if(item.dl_vlan_pcp!=None):
+				if(item.dl_vlan_pcp == ft.dl_vlan_pcp):
+					item_match = True 
+				else:
+					continue
+			if(item.dl_type!=None):
+				if(item.dl_type == ft.dl_type):
+					item_match = True 
+				else:
+					continue
+			if(item.nw_src!=None):
+				if(item.nw_src == ft.nw_src):
+					item_match = True 
+				else:
+					continue
+			if(item.nw_dst!=None):
+				if(item.nw_dst == ft.nw_dst):
+					item_match = True 
+				else:
+					continue
+			if(item.nw_proto!=None):
+				if(item.nw_proto == ft.nw_proto):
+					item_match = True 
+				else:
+					continue
+			if(item.tp_src!=None):
+				if(item.tp_src == ft.tp_src):
+					item_match = True 
+				else:
+					continue
+			if(item.tp_dst!=None):
+				if(item.tp_dst == ft.tp_dst):
+					item_match = True 
+				else:
+					continue
+
+			if(item_match == True):
+				return self.flow_to_function_mapping[item]
+		return []
+
+
+	# Function that returns the corresponding functions dict to the flow.
+	def get_functions(self,inport,flow):
+		# Based on the flow figure out the functions and then return a list of functipons available on the port.
+		src_mac = mac_to_int(flow['dl_src'])
+		dst_mac = mac_to_int(flow['dl_dst'])
+		f = self.FlowTuple(in_port=inport,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
+		print f
+		function_dict = self._lookup_flow(f)
+		ret_list = []
+		if(len(function_dict) > 0):
+			print "There is a match"
+			""" The order of this list is important as it tells in what order functions should be applied"""
+			for k,v in function_dict.iteritems():
+				ret_list.append(v)
+			return ret_list
+		else:
+			#print "There is not a match.XXXXXXXXXXXXXXXXXXXXXXXXXX"
+			return ret_list
+
+
+
+######################### Routing Algorithm ##########################################	
+
+
+
+class pyswitch(Component):
+    	def __init__(self, ctxt):
+        	global inst
+        	Component.__init__(self, ctxt)
+        	self.st = {}
+        	inst = self
+
+		# Object to handle the topology
+		discovery = self.resolve("nox.netapps.discovery.discovery.discovery")
+		topology = self.resolve("nox.netapps.topology.pytopoloy.pytopology")
+		print discovery
+		print topology
+		print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+		self.topo = Topology(discovery,topology)
+		#DNS Handler class
+		self.dns_handler = DNSHandler() 
+		# Use this module to redirect the traffic.
+        	routing = self.resolve(pyrouting.PyRouting)
+		self.route_compiler =  RouteCompiler(routing)
+		# Detect OS
+		self.detect_os = DetectOS()
+	# --
+	# Packet entry method.
+	# Drop LLDP packets (or we get confused) and attempt learning and
+	# forwarding
+	# --
+	def packet_in_callback(self,dpid, inport, reason, len, bufid, packet):
+		if not packet.parsed:
+			log.msg('Ignoring incomplete packet',system='pyswitch')
+		if not inst.st.has_key(dpid):
+			log.msg('registering new switch %x' % dpid,system='pyswitch')
+			inst.st[dpid] = {}
+
+		# don't forward lldp packets    
+		if packet.type == ethernet.LLDP_TYPE:
+			return CONTINUE
+		# learn MAC on incoming port
+		self.do_l2_learning(dpid, inport, packet)
+		#self.forward_l2_packet(dpid, inport, packet, packet.arr, bufid)
+		return CONTINUE
+	# --
+	# Given a packet, learn the source and peg to a switch/inport 
+	# --
+	def do_l2_learning(self,dpid, inport, packet):
+		global inst 
+	
+	    	# learn MAC on incoming port
+	    	srcaddr = packet.src.tostring()
+	    	if ord(srcaddr[0]) & 1:
+	        	return
+	    	if inst.st[dpid].has_key(srcaddr):
+	        	dst = inst.st[dpid][srcaddr]
+	        	if dst[0] != inport:
+	            		log.msg('MAC has moved from '+str(dst)+'to'+str(inport), system='pyswitch')
+	        	else:
+	            		return
+	    	else:
+	        	log.msg('learned MAC '+mac_to_str(packet.src)+' on %d %d'% (dpid,inport), system="pyswitch")
+	
+	    	# learn or update timestamp of entry
+	    	inst.st[dpid][srcaddr] = (inport, time(), packet)
+	
+	    	# Replace any old entry for (switch,mac).
+	    	mac = mac_to_int(packet.src)
+	
+	# --
+	# If we've learned the destination MAC set up a flow and
+	# send only out of its inport.  Else, flood.
+	# --
+	def forward_l2_packet(self,dpid, inport, packet, buf, bufid):    
+	    dstaddr = packet.dst.tostring()
+	    if not ord(dstaddr[0]) & 1 and inst.st[dpid].has_key(dstaddr):
+	        prt = inst.st[dpid][dstaddr]
+	        if  prt[0] == inport:
+	            log.err('**warning** learned port = inport', system="pyswitch")
+	            inst.send_openflow(dpid, bufid, buf, openflow.OFPP_FLOOD, inport)
+	        else:
+	            # We know the outport, set up a flow
+	            log.msg('installing flow for ' + str(packet), system="pyswitch")
+	            flow = extract_flow(packet)
+	            flow[core.IN_PORT] = inport
+	            actions = [[openflow.OFPAT_OUTPUT, [0, prt[0]]]]
+	            inst.install_datapath_flow(dp_id=dpid, attrs=flow, idle_timeout=CACHE_TIMEOUT, 
+	                                       hard_timeout=openflow.OFP_FLOW_PERMANENT, actions=actions,
+	                                       #buffer_id = bufid, priority = 0x8000,#openflow.OFP_DEFAULT_PRIORITY,
+	                                       priority = 1,#openflow.OFP_DEFAULT_PRIORITY,
+	                                       inport = inport, packet=buf)
+	    else:    
+	        # haven't learned destination MAC. Flood 
+	        inst.send_openflow(dpid, bufid, buf, openflow.OFPP_FLOOD, inport)
+	# --
+	# Responsible for timing out cache entries.
+	# Is called every 1 second.
+	# --
+	def timer_callback(self):
+		global inst
+		curtime  = time()
+		for dpid in inst.st.keys():
+	    	    for entry in inst.st[dpid].keys():
+	    	        if (curtime - inst.st[dpid][entry][1]) > CACHE_TIMEOUT:
+	    	            log.msg('timing out entry'+mac_to_str(entry)+str(inst.st[dpid][entry])+' on switch %x' % dpid, system='pyswitch')
+	    	            inst.st[dpid].pop(entry)
+	
+	    	inst.post_callback(1, self.timer_callback)
+	    	return True
+	
+	def datapath_leave_callback(self,dpid):
+	    logger.info('Switch %x has left the network' % dpid)
+	    if inst.st.has_key(dpid):
+	        del inst.st[dpid]
+	
+	def datapath_join_callback(self,dpid, stats):
+		logger.info('Switch %x has joined the network' % dpid)
+		# Make sure we get the full DNS packet at the Controller
+		self.install_datapath_flow(dp_id=dpid, 
+				attrs = { core.DL_TYPE : ethernet.IP_TYPE,
+                                     core.NW_PROTO : ipv4.UDP_PROTOCOL,
+                                     core.TP_SRC : 53 },
+                                   idle_timeout = openflow.OFP_FLOW_PERMANENT, hard_timeout = openflow.OFP_FLOW_PERMANENT,priority=0xffff,
+                                   actions = [[openflow.OFPAT_OUTPUT, [9000, openflow.OFPP_CONTROLLER]]])
+		return CONTINUE
+
+    	def install(self):
+        	inst.register_for_packet_in(self.packet_in_callback)
+        	inst.register_for_datapath_leave(self.datapath_leave_callback)
+        	inst.register_for_datapath_join(self.datapath_join_callback)
+        	inst.post_callback(1, self.timer_callback)
+		# Registering for Req/Response, UDP Limited
+		# DNSHandler
+        	match_response = { core.DL_TYPE: ethernet.IP_TYPE,
+				core.NW_PROTO : ipv4.UDP_PROTOCOL,
+				core.TP_SRC : 53}
+		self.register_for_packet_match(self.dns_handler.handle_dns_response, 0xffff, match_response)
+        	match_request = { core.DL_TYPE: ethernet.IP_TYPE,
+				core.NW_PROTO : ipv4.UDP_PROTOCOL,
+				core.TP_DST : 53}
+		self.register_for_packet_match(self.dns_handler.handle_dns_request, 0xffff, match_request)
+		#routing
+        	self.register_handler(Flow_in_event.static_get_name(),
+                              self.route_compiler.handle_flow_in)              
+        	self.register_for_barrier_reply(self.route_compiler.handle_barrier_reply)     
+		# DetectOS 
+		print "XXXXXXXXXXXXXXXX",Flow_in_event.static_get_name()
+        	self.register_handler(Flow_in_event.static_get_name(),
+                              self.detect_os.handle_flow_in)              
+    
+
+    	def getInterface(self):
+        	return str(pyswitch)
+
+def getFactory():
+    class Factory:
+        def instance(self, ctxt):
+            return pyswitch(ctxt)
+
+    return Factory()
+
+
+"""		
+This class should be used to get the topology of the switches.
+"""
+class Topology():
+	def __init__(self,discovery,topology):
+		self.switch_dict = {}
+		self.switch_table = defaultdict(list) # {key=dpid,value=[(dpid1,port1),(dpid2,port2)] 
+		self._discovery = discovery
+		self._topology = topology#pytopology
+		print self._topology
+
+	def update_dpid(self,dpid,join):
+		if(join==True): #dpid is joining
+			if not self.switch_dict.has_key(dpid):
+				self.switch_dict[dpid] = time()
+				
+		else: #dpid is leaving
+			if self.switch_list.has_key(dpid):
+				del self.switch_list[dpid]
+			else:
+				raise Exception("Switch ",dpid," was not registered.")
+			pass
+		self._update_topology(dpid)
+
+	def _get_dp_ports(self,dpid):
+		return 48 # read them from the properties.
+
+	def _update_topology(self,dpid):
+		for dpid in self.switch_dict:
+			for port in range(1,self._get_dp_ports(dpid)+1): # get the 
+				if(self._discovery.is_switch_only_port(dpid,port)):
+					print dpid, " is conneted with another switch on port: ",port
+			pass
+		print "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+		for k,v in self._discovery.adjacency_list.iteritems():
+			print "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+			print k,v
+
+
+	def display_topology(self):
+		self.switch_dict = self._topology.get_datapaths()
+		print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
+		print self.switch_dict
+		#for switch,neighbor_switches in self.switch_table.iteritems():
+		#	print switch," is connected with: ",neighbor_switches 
+import glob
+class LoadCache:
+	"""LoadCache for laoding the blocked domain names."""
+	def __init__(self):
+		DNS_BLOCK_LIST_DIR = "/home/openflow/noxcore/src/nox/coreapps/examples/tutorial/blacklists"
+		self.data = defaultdict(list) # A dictionary with Domain Name as key and IP address list as resolved addresses.
+		self.block_dir = DNS_BLOCK_LIST_DIR
+		self.block_domain_dict = {}
+
+	def _list_files(self):
+		file_list = [] 
+		for infile in glob.glob(self.block_dir+"/*/domains"):
+			file_list.append(infile)
+		if (len(file_list) == 0 ):
+			raise Exception,"ERROR: Could not find the domain names to block"
+		return file_list
+
+    	# This function loads the blacklists file.
+	def load_files(self):
+		for item in self._list_files():
+			f = open(item,'r')
+			for domain in f.readlines():
+				self.block_domain_dict[domain.rstrip()] = True
+			pass
+		pass
+		#print "Length of domain names: " ,len(self.block_domain_dict)
+
+	def is_blocked_domain(self,domain_name):
+		#print "Looking up: ",domain_name
+		if(self.block_domain_dict.has_key(domain_name)):
+			return True
+		else:
+			return False
+
+# Correlate DNS information based on application ID.
+# Use TTL to keep the record and then expire it. later on
+# TODO: Handle the case where you should block all forms 
+# domain.com and www.domain.com and xyz.domain.com
+class DNSHandler():
+	def __init__(self):
+		self.ip_dns = defaultdict(list) # ip to dns
+		self.dns_ip = defaultdict(list) # dns to ip 
+		self.cname = defaultdict(list)
+		self.domain_ips = defaultdict(list) # all the ips against the domain name.
+		# Key is IP addr and DNS Transaction ID. Tuple  and value is the dpid where first packet came.
+		self.request_cache = {} 
+		# Block domains list
+		self.load_cache = LoadCache()
+		self.load_cache.load_files()
+		self.DNS_BLOCK_TIMEOUT = 0xffff
+
+	def _has_been_requested(self,dnsh,ipv4h):
+		ip_trans_id_tuple = (ipv4h.dstip,dnsh.id)
+		if(self.request_cache.has_key(ip_trans_id_tuple)):
+			#print "Reply for blocked domain with id:",dnsh.id ," and blcoked domain reply is going to this IP: ",ipv4h.dstip
+			return True
+
+	# Given the reply headers find the switch which was responsible for the reply.
+	# @returns:
+	#       dpid
+	def _get_dpid(self,dnsh,ipv4h):
+		ip_trans_id_tuple = (ipv4h.dstip,dnsh.id)
+		if(self.request_cache.has_key(ip_trans_id_tuple)):
+			return self.request_cache[ip_trans_id_tuple]
+		else:
+			return None
+	
+	def _block_ip_tuples(self,src_dpid,src_dst_ip_block_list):
+        	global inst
+		for item in src_dst_ip_block_list:
+			src_ip = item[0]
+			dst_ip = ipstr_to_int(item[1])
+			print src_ip,dst_ip
+			## Make sure we get the full DNS packet at the Controller
+			actions = []
+			inst.install_datapath_flow(src_dpid, 
+				{ core.DL_TYPE : ethernet.IP_TYPE,
+				    core.NW_SRC : src_ip,
+				   core.NW_DST:dst_ip },
+                                   self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, # 10 sec. soft timeout and hard timeout.
+                                   actions,buffer_id = None, priority=0xffff)
+
+    	def handle_dns_response(self, dpid, inport, ofp_reason, total_frame_len, buffer_id, packet):
+		print "S"*500, type(packet), packet
+        	dnsh = packet.find('dns')
+		ipv4h = packet.find('ipv4')
+        	if not dnsh:
+        	    log.err('received invalid DNS packet',system='pyswitch')
+        	    return CONTINUE
+		#list of tuples
+		src_dst_ip_block_list = []
+		if(self._has_been_requested(dnsh,ipv4h)): #Handle replies for requested domain names only.
+        		for answer in dnsh.answers:
+            			if answer.qtype == dns.dns.rr.A_TYPE:
+                			val = self.ip_dns[answer.rddata]
+                			if answer.name not in val:
+                	    			val.insert(0, answer.name)
+					val1 = self.dns_ip[answer.name]
+					if answer.rddata not in val1:
+						val1.insert(0,answer.rddata)
+					# Since this is a DNS reply.
+					src_ip = ipv4h.dstip
+					dst_ip = answer.rddata
+					src_dst_tuple = (src_ip,dst_ip)
+					if(src_dst_tuple not in src_dst_ip_block_list):
+						src_dst_ip_block_list.append(src_dst_tuple) 
+					
+
+        			if answer.qtype == dns.dns.rr.CNAME_TYPE:
+    					val = self.cname[answer.name]
+					cname = answer.rddata
+    					if cname not in val:
+      						val.insert(0, cname)
+
+        		for addition in dnsh.additional:
+            			if addition.qtype == dns.dns.rr.A_TYPE: 
+                			val = self.ip_dns[addition.rddata]
+                			if addition.name not in val:
+                	    			val.insert(0, addition.name)
+					val1 = self.dns_ip[addition.name]
+					if addition.rddata not in val1:
+						val1.insert(0,addition.rddata)
+					# Since this is a DNS reply.
+					src_ip = ipv4h.dstip
+					dst_ip = answer.rddata
+					src_dst_tuple = (src_ip,dst_ip)
+					if(src_dst_tuple not in src_dst_ip_block_list):
+						src_dst_ip_block_list.append(src_dst_tuple) 
+					pass
+				pass
+        			if addition.qtype == dns.dns.rr.CNAME_TYPE:
+    					val = self.cname[addition.name]
+					cname = addition.rddata
+    					if cname not in val:
+      						val.insert(0, cname)
+					pass
+				pass
+
+			src_dpid = self._get_dpid(dnsh,ipv4h)
+			# Function to install the block rules.
+			self._block_ip_tuples(src_dpid,src_dst_ip_block_list)
+		else:
+			#Handle the PTR records and TODO:Handle the possible DoS vector
+			pass
+
+        	return CONTINUE
+
+    	def handle_dns_request(self, dpid, inport, ofp_reason, total_frame_len, buffer_id, packet):
+        	dnsh = packet.find('dns')
+		ipv4h = packet.find('ipv4')
+        	if not dnsh:
+        	    log.err('received invalid DNS packet',system='pyswitch')
+        	    return CONTINUE
+        	for question in dnsh.questions:
+			if(self.load_cache.is_blocked_domain(question.name)):
+				print "This domain name is blocked.",question.name,dnsh.id ," and blcoked domain is accessed from this IP: ",ipv4h.srcip
+				self.domain_ips[question.name] = []
+				if not (self.request_cache.has_key((ipv4h.srcip,dnsh.id))):
+					self.request_cache[(ipv4h.srcip,dnsh.id)] = dpid
+				pass
+			pass
+		pass
+
+	def _sanitize_domain_lookups(self,domain_name):
+		print domain_name
+
+class DetectOS():
+	def __init__(self):
+		self.ip_os_map = defaultdict(list) # src_ip addr to operating system mapping.
+
+	def query_ip_address(self,src_ip_addr):
+		pass
+
+	#Use for  flow_in_event for now and then later may be used packet in if needed.	
+	def handle_flow_in(self,event):
+        	if not event.active:
+        	    return CONTINUE
+        	indatapath = netinet.create_datapathid_from_host(event.datapath_id)
+		#print "Y"*50, indatapath
+		src_ip = event.flow.nw_src
+		if not self.ip_os_map.has_key(src_ip):
+			self.ip_os_map[src_ip] = []
+			# we can batch these IP queries
+			# as synchronous TCP is bottleneck.
+			self.query_ip_address(src_ip)
+			
+        	return CONTINUE
+
+
+# Get source and destination of the flow.
+# lookup the policy
+# apply policy
+
+class RouteCompiler():
+	def __init__(self,_routing):
+		self.routing = _routing
+		print self.routing
+
+	def handle_flow_in(self,event):
+        	if not event.active:
+        	    return CONTINUE
+        	indatapath = netinet.create_datapathid_from_host(event.datapath_id)
+        	route = pyrouting.Route()
+        	sloc = event.route_source
+		if sloc == None:
+			sloc = event.src_location['sw']['dp']
+			route.id.src = netinet.create_datapathid_from_host(sloc)
+			inport = event.src_location['port']
+			sloc = sloc | (inport << 48)
+        	else:
+        	    	route.id.src = netinet.create_datapathid_from_host(sloc & DP_MASK)
+        	    	inport = (sloc >> 48) & PORT_MASK
+        	if len(event.route_destinations) > 0:
+        	    	dstlist = event.route_destinations
+        	else:
+        	    	dstlist = event.dst_locations
+		#print "X"*50,sloc
+		#print "Y"*50,dstlist
+        	return CONTINUE
+
+      	def handle_barrier_reply(self):
+        	return CONTINUE
+
+
+

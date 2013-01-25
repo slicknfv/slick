@@ -1,0 +1,5 @@
+[2013/01/10 18:58:36] mod=syn|cli=192.168.56.1/51714|srv=192.168.56.101/22|subj=cli|os=Linux 3.x|dist=0|params=none|raw_sig=4:64+0:0:1460:mss*10,4:mss,sok,ts,nop,ws:df,id+:0
+[2013/01/10 18:58:36] mod=mtu|cli=192.168.56.1/51714|srv=192.168.56.101/22|subj=cli|link=Ethernet or modem|raw_mtu=1500
+[2013/01/10 18:58:36] mod=syn+ack|cli=192.168.56.1/51714|srv=192.168.56.101/22|subj=srv|os=Linux 3.x|dist=0|params=none|raw_sig=4:64+0:0:1460:mss*10,9:mss,sok,ts,nop,ws:df:0
+[2013/01/10 18:58:36] mod=mtu|cli=192.168.56.1/51714|srv=192.168.56.101/22|subj=srv|link=Ethernet or modem|raw_mtu=1500
+[2013/01/10 18:58:36] mod=uptime|cli=192.168.56.1/51714|srv=192.168.56.101/22|subj=srv|uptime=18 days 3 hrs 31 min (modulo 198 days)|raw_freq=250.00 Hz

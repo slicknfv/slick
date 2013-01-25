@@ -1,0 +1,1 @@
+src_ip=143.215.0.0/16 functions=Firewall,RateLimit,IDS # This is an example where we need stateless firewall.

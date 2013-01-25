@@ -1,0 +1,18 @@
+{
+    "components": [
+        {
+            "name": "tutorial",
+            "library": "tutorial", 
+            "dependencies": [
+                "pytopology"
+            ]
+        },
+        {
+            "name": "pytutorial",
+            "dependencies": [
+                "pytopology"
+            ],
+            "python": "nox.coreapps.examples.tutorial.pytutorial" 
+        }
+    ]
+}

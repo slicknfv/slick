@@ -1,0 +1,7 @@
+{
+    machine : "x86",
+    os  : "Linux",
+    os_flavor : "Ubuntu",
+    software : "python",
+    dns_flows_per_second : "100"
+}

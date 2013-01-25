@@ -1,0 +1,68 @@
+{
+    "components": [
+        {
+            "name": "monitor" ,
+            "dependencies": [
+                "python"
+            ],
+            "python": "nox.coreapps.examples.monitor" 
+        },
+        {
+            "name": "countdown" ,
+            "dependencies": [
+                "python"
+            ],
+            "python": "nox.coreapps.examples.countdown" 
+        },
+        {
+            "name": "packetdump" ,
+            "dependencies": [
+                "python"
+            ],
+            "python": "nox.coreapps.examples.packetdump" 
+        },
+        {
+            "name": "pyloop" ,
+            "dependencies": [
+                "python"
+            ],
+            "python": "nox.coreapps.examples.pyloop" 
+        },
+        {
+            "name": "pyswitch" ,
+            "dependencies": [
+                "pyrouting",
+                "python"
+            ],
+            "python": "nox.coreapps.examples.pyswitch" 
+        },
+        {
+            "name": "msmessageproc" ,
+            "dependencies": [
+                "python"
+            ],
+            "python": "nox.coreapps.examples.msmessageproc" 
+        },
+        {
+            "name": "networkmaps" ,
+            "dependencies": [
+                "python"
+            ],
+            "python": "nox.coreapps.examples.networkmaps" 
+        },
+        {
+            "name": "dnshandlers",
+            "dependencies": [
+                "python"
+            ],
+            "python": "nox.coreapps.examples.dnshandlers" 
+        },
+        {
+            "name": "dnsspy" ,
+            "dependencies": [
+                "python"
+            ],
+            "python": "nox.coreapps.examples.dnsspy" 
+        }
+    ]
+}

@@ -1,0 +1,13 @@
+MiddleSox Code
+
+lib:
+    Systen required libraries the are required to be installed before.
+
+dns:
+    has code for dns packet handling.
+
+p0f:
+    has code for p0f based traffic lookup
+
+comm:
+    Provide the utiltiy functions to talk with the controller.
