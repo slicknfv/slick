@@ -1,0 +1,113 @@
+Methods Exposed by Controller to Application:
+----------------------------------------------
+1- apply_func()
+input: flow,function_name,parameters,application_handle
+output: function_descriptor
+state_updates/description: 
+        i- Update machine to function_descriptor mapping. 
+        ii- Update flow to function descriptor mapping 
+        iii-Update function descriptor to application handle 
+        iv- send install message towards the machine.
+
+2- configure()
+input: application_configuration_parameters,function_descriptor,config-command
+output: SUCCESS/FAILURE
+state_updates/description: 
+        Lookup machine for the provided function_descriptor and send application_configuration_parameters.
+
+3- remove_func()
+input: function_descriptor
+output: SUCCESS/FAILURE
+state_updates/description: 
+    Rollback state update in apply_func()
+
+
+
+Methods Exposed by Application to Controller:
+----------------------------------------------
+1- handle_trigger()
+input: function_descriptor,Trigger message from Controller.
+output: None
+state_updates/description: Depends on the application.
+
+2- init()
+input: User speicifed parameters [As application will provide its init parameters]
+output: None
+state_updates/description: Update application install status i.e, installed/not-installed. Update function descriptor for the application.
+
+
+
+
+Methods Exposed by Function to Shim:
+------------------------------------
+1- init()
+input: flow,function_descriptor,function_name,parameters
+output: SUCCESS/FAILURE
+state_updates/description: 
+    install and run the function.  
+    the shim performs the install, this function just initializes
+
+
+2- configure()
+input: parameters
+output: SUCCESS/FAILURE
+state_updates: 
+    Updates function state.
+
+3- process_pkt()
+input: packet
+output: None
+state_updates: 
+    Function state is updated.
+    Passing flow to process_pkt() does not break the process_pkt but it adds an overhead to each packet passed to the application.
+
+
+4- shutdown()
+input: parameters
+output: SUCCESS/FAILURE
+state_updates: Function is killed.
+
+
+Methods Exposed by Shim to Function:
+------------------------------------
+1- raise_trigger()
+input: trigger_message
+output: None
+state_updates: None
+
+
+Methods Exposed by Shim to Controller:
+--------------------------------------
+1- install()
+input: install_message[fd,flow,function_name,params]
+output: SUCCESS/FAILURE
+state_updates: 
+    Based on success of function installation. 
+    i- update flow to function descriptor map(maintained at shim).
+    ii- update function descriptor to function object map.
+
+
+2- configure()
+input: configure_message[fd,config-name,params]
+output: SUCCESS/FAILURE
+state_updates: 
+    Based on fd, looks up the function object and calls the function's configure.
+
+
+3- stop()
+input: stop_message[fd]
+output: SUCCESS/FAILURE
+state_updates: 
+    Based on fd, looks up the function object and calls the function's shutdown.
+
+
+Methods Exposed by Controller to Shim:
+--------------------------------------
+raise_trigger()
+input: function_descriptor, whatever inputs were in the raise_trigger() it exported to the function
+output: success/failure (whether or not the controller has that function descriptor in its internal state)
+state/whatever: just an RPC call at the controller.  The controller's raise_trigger() method:
+   - checks whether or not it has that fd in its fd-to-app mapping
+   - if not, returns FAILURE
+   - otherwise, it returns SUCCESS and then calls fd_to_app[fd].handle_trigger(inputs)
+
