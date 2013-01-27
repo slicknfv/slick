@@ -109,21 +109,41 @@ class FunctionMap():
 
 
     # IP address should be a string and function_desc is an integer.
-    def update_function_desc(self,ip_addr,machine_mac,function_desc):
-        if(function_desc == None):
+    def update_function_machine(self,ip_addr,machine_mac,function_desc):
+        if((function_desc != None) and (ip_addr !=None)):
+            print "BNNNNNNNNNNNNNNNNNNNNNNNNNNNNNXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+            print function_desc
             self.fd_map[ip_addr].append(function_desc)
-        else:
+            print "fd_map",self.fd_map
+        elif(ip_addr !=None):
             self.fd_map[ip_addr] = []
 
+    def del_function_desc(self,function_desc):
+        if(function_desc != None):
+            if(function_desc in self.fd_map[ip_addr]):
+                self.fd_map[ip_addr].remove(function_desc)
+                return True
+            else:
+                print "Function descriptor does not exist:",function_desc
+                return False
+    # Given the function desc. return the ip address [used by configure function]
+    def get_ip_addr_from_func_desc(self,func_desc):
+        print "fd_map",self.fd_map
+        for ip_addr in self.fd_map:
+            if(func_desc in self.fd_map[ip_addr]):
+                return ip_addr
 
     # Returns the shim machine with the ip _addr
-    def add_function_desc(self,ip_addr,machine_mac,function_desc):
-        if(ip_addr == None):
-            for item in self.fd_map[ip_addr]:
-                if (len(self.fd_map[ip_addr]) == 0):
-                    # TODO: Add optimization algorithm here.
-                    self.fd_map[ip_addr].append(function_desc) # add the function on the first empty machine
+    def get_machine_for_function(self):
+        print "fd_map",self.fd_map
+        for ip_addr in self.fd_map:
+            #print "CNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+            if(ip_addr != None):
+                # TODO: Add optimization algorithm here.
+                if (len(self.fd_map[ip_addr]) <10): # 10 functions can be added per machine.
                     return ip_addr
+        return None
+
 
 """
 # Tell which machines are hanging to which switches.
@@ -211,7 +231,8 @@ class Policy():
     def __init__(self,policy_filename):
         self.policy_file_name = policy_filename
         self.FlowTuple = namedtuple("FlowTuple",["in_port","dl_src","dl_dst","dl_vlan","dl_vlan_pcp","dl_type","nw_src","nw_dst","nw_proto","tp_src","tp_dst"])
-        self.flow_to_function_mapping = defaultdict(dict) # key:FlowTuple value:[functions]
+        self.flow_to_function_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
+        self.flow_to_fd_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
         self.init_tuples()
     
     """
@@ -227,12 +248,28 @@ class Policy():
 			print k,v
 		"""
 		# TypeError: unhashable type: 'array.array'
-		src_mac = mac_to_int(flow['dl_src'])
-		dst_mac = mac_to_int(flow['dl_dst'])
+                #print flow['dl_src'],flow['dl_dst']
+                src_mac =None
+                dst_mac = None
+                if(flow['dl_src'] != None):
+		    src_mac = mac_to_int(flow['dl_src'])
+                if(flow['dl_dst'] != None):
+		    dst_mac = mac_to_int(flow['dl_dst'])
 		f = self.FlowTuple(in_port=in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
 		if not self.flow_to_function_mapping.has_key(f):
 			self.flow_to_function_mapping[f] = functions
 			print self.flow_to_function_mapping
+			return True
+		else:
+			return False
+
+    def add_flow_desc(self,flow,fd):
+		src_mac = mac_to_int(flow['dl_src'])
+		dst_mac = mac_to_int(flow['dl_dst'])
+		f = self.FlowTuple(in_port=in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
+		if not self.flow_to_fd_mapping.has_key(f):
+			self.flow_to_fd_mapping[f].append(fd)
+			print self.flow_to_fd_mapping
 			return True
 		else:
 			return False

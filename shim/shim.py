@@ -6,6 +6,8 @@ import sys
 import pcap
 import getopt
 
+import select
+
 import re # Need this regular expression to search through 
 import time
 import datetime
@@ -19,10 +21,13 @@ from time import gmtime, strftime
 import string
 from uuid import getnode as get_mac
 
+import json
+
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir) 
 from comm.clientcomm import ClientComm
 from mb_api import ClientService
+from shim_table import ShimTable
 
 
 IN_PORT    = "in_port"
@@ -58,12 +63,13 @@ class Shim:
         # These are needed to maintain the state.
         self.fuction_code_map = {} # dictionary which keeps track what code is downloaded on the machine hard disk and what is not present.
         self.fd_to_object_map = {}
-        self.client_service = ClientService()
+
+        inst = self
+        self.client_service = ClientService(inst)
 
 
     def register_machine(self):
         register_msg = {"type":"register","machine_mac":self.mac,"machine_ip":self.mb_ip}
-        print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",register_msg
         self.client.send_data_basic(register_msg)
 
     # --
@@ -132,6 +138,25 @@ class Shim:
             print '%d packets dropped by kernel' % ndrop
             
     
+    def decode_msg_and_call(self,data):
+        message_list = data.split('\n')
+        for index,m in enumerate(message_list):
+            if(index < len(message_list)-1):
+                msg = json.loads(m)
+                #print "XXXXXXXXXXXXXXX",m
+                #print "YYYYYYYYYYYYYYY",msg
+                #print len(message_list)
+                if(msg["type"] == "install"):
+                    #if (self.client_service.fd_to_object_map.has_key(fd)):
+                    #    print "ERROR: We re trying to install a function with fd which is already being used."
+                    #else:
+                    #    self.client_service.exposed_install_function(flow,fd,function_name,params_dict)
+                    self.client_service.exposed_install_function(msg)
+                if(msg["type"] == "configure"):
+                    self.client_service.exposed_configure_function(msg)
+                if(msg["type"] == "stop"):
+                    self.client_service.exposed_stop_function(msg)
+                
 
 
     # --
@@ -139,11 +164,13 @@ class Shim:
     #   pc: pcap stream of packets
     # --
     def decode(self,pc):
-        if(self.client):
-            #msg = self.client.recv_data_basic()
-            #print "YYYYYYYYYYYYYYYYYYYYYYYYYYYYY",msg
-            pass
         for ts, buf in pc:
+            if(self.client):
+                msg = self.client.recv_data_basic()
+                if(msg):
+                    self.decode_msg_and_call(msg)
+                    print "YYYYYYYYYYYYYYYYYYYYYYYYYYYYY",msg
+                pass
             eth = dpkt.ethernet.Ethernet(buf)
             self.demux(eth)
 
@@ -164,25 +191,17 @@ class Shim:
             print "NOT USING IT"
         else:
             #print "This is a data packet"
-            func_handle = self.get_function_handle_from_flow(flow)
+            #print flow
+            func_handle = self.client_service.get_function_handle_from_flow(flow)
+            #print func_handle
             if(func_handle):
                 # Based on the function_hadle 
-                func_handle.process_packet(packet)
+                func_handle.process_pkt(packet)
             else:
                 pass
                 #print "WARNING: We don't have a handler for the packet"
 
 
-    # --
-    # get_function_handle_from_flow
-    # --
-    def get_function_handle_from_flow(self,flow):
-        #fd = self.client_service.flow_to_fd_map[flow]
-        fd = 1
-        if not (self.client_service.fd_to_object_map.has_key(fd)):
-            return None
-        else:
-            return self.client_service.fd_to_object_map[fd]
 
     # use this to extract openflow flow.
     def extract_flow(self,ethernet):

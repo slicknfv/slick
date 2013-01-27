@@ -6,9 +6,11 @@ import json
 import jsonpickle
 import constants
 
+import select
+
 import ast
 
-LOCAL_DBG = True
+LOCAL_DBG = False
 
 class ClientComm():
     def __init__(self):
@@ -24,7 +26,7 @@ class ClientComm():
         print "Connecting with the Server: ",self.host," on port: ",self.port
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            #self.sock.settimeout(timeout)
+            #self.sock.settimeout(0)
         except socket.error,msg:
             print "Socket creation failed"
             self.sock = None
@@ -84,7 +86,15 @@ class ClientComm():
     def recv_data_basic(self):
         recvd_data = None
         if(self.sock):
-            recvd_data = self.sock.recv(self.size)
+            ready = select.select([self.sock], [], [], 0)
+            #print ready
+            if(ready[0]):
+                recvd_data = self.sock.recv(self.size)
             if(LOCAL_DBG):
                 print "Recevied this data: ",recvd_data
-        return recvd_data
+        if (recvd_data != None):
+            #print recvd_data
+            data = recvd_data#json.loads(recvd_data)
+            return data
+        else: 
+            return None

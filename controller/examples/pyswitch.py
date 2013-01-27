@@ -77,43 +77,46 @@ CACHE_TIMEOUT = 5
 # Responsible for timing out cache entries.
 # Is called every 1 second.
 # --
-def timer_callback():
-    global inst
-
-    curtime  = time()
-    for dpid in inst.st.keys():
-        for entry in inst.st[dpid].keys():
-            if (curtime - inst.st[dpid][entry][1]) > CACHE_TIMEOUT:
-                log.msg('timing out entry'+mac_to_str(entry)+str(inst.st[dpid][entry])+' on switch %x' % dpid, system='pyswitch')
-                inst.st[dpid].pop(entry)
-
-    inst.post_callback(1, timer_callback)
-    return True
+#def timer_callback():
+#    global inst
+#
+#    curtime  = time()
+#    for dpid in inst.st.keys():
+#        for entry in inst.st[dpid].keys():
+#            if (curtime - inst.st[dpid][entry][1]) > CACHE_TIMEOUT:
+#                log.msg('timing out entry'+mac_to_str(entry)+str(inst.st[dpid][entry])+' on switch %x' % dpid, system='pyswitch')
+#                inst.st[dpid].pop(entry)
+#
+#    inst.post_callback(1, timer_callback)
+#    return True
 
 class pyswitch(Component):
-
     def __init__(self, ctxt):
         global inst
         Component.__init__(self, ctxt)
         self.st = {}
 
         inst = self
+        self.function_descriptor = int(1)
+        self.prev_time = 0
+        #routing
+        self.route_compiler =  RouteCompiler(inst)
         # JSON Messenger Handlers
         self.json_msg_events = {}
         self.ms_msg_proc = MSMessageProcessor(inst)
+        self.app_initialized = False
 	# Use this module for routing.
         #routing = self.resolve(pyrouting.PyRouting)
 	#self.route_compiler =  RouteCompiler(routing)
         #pyauth
         #self.auth = self.resolve(pyauth.PyAuth)
-        #routing
-        self.route_compiler =  RouteCompiler(inst)
 
     def install(self):
         inst.register_for_packet_in(self.packet_in_callback)
         inst.register_for_datapath_leave(self.datapath_leave_callback)
         inst.register_for_datapath_join(self.datapath_join_callback)
-        inst.post_callback(1, timer_callback)
+        inst.post_callback(1, self.timer_callback)
+        print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 	self.app_installations()
 
     def app_installations(self):
@@ -124,6 +127,24 @@ class pyswitch(Component):
         #routing
         self.register_handler(Flow_in_event.static_get_name(),self.route_compiler.handle_flow_in)              
         self.register_for_barrier_reply(self.route_compiler.handle_barrier_reply)     
+
+    def timer_callback(self):
+        global inst
+        curtime  = time()
+
+        # initialize the applications.
+        for app in self.ms_msg_proc.app_handles:
+            if not (app.installed):
+                app.init()
+                print app
+
+        #Configure
+        for fd in self.route_compiler.application_handles:
+            self.route_compiler.application_handles[fd].configure()
+            if (curtime - self.prev_time > CACHE_TIMEOUT):
+                self.prev_time = curtime
+        inst.post_callback(5, self.timer_callback)
+        return True
 
     def json_message_handler(self,pyevent):
         rcvd_msg = json.loads(pyevent.jsonstring)
@@ -154,11 +175,40 @@ class pyswitch(Component):
 	return CONTINUE
 
 
-    def duplicate_flow(self,dpid,inport,flow,reason,len,bufid,packet):
-        pass
+    """
+    Controller to Application Functions
+    """
+    # return function descriptor.
+    def apply_func(self, flow, function_name,parameters,application_object):
+        self.function_descriptor +=1
+        ip_addr = self.route_compiler.fmap.get_machine_for_function()
+        if(ip_addr == None): # There is no machine registerd for function installation.
+            print "Could not find the Middlebox"
+            return -1
+        msg_dst = ip_addr
+        self.route_compiler.fmap.update_function_machine(ip_addr,None,self.function_descriptor)
+        self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name})
+        self.route_compiler.update_application_handles(self.function_descriptor,application_object)
+        #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
+        if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,msg_dst)):
+            print "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+            return self.function_descriptor
+        else:
+            return -1
 
-    def redirect_flow(self,dpid,inport,flow,reason,len,bufid,packet):
-        pass
+    def configure_func(self,fd,application_conf_params):
+        msg_dst = self.route_compiler.fmap.get_ip_addr_from_func_desc(fd)
+        app_handle = self.route_compiler.get_application_handle(fd) # not requied by additional check 
+        print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",str(msg_dst)
+        if((msg_dst != None) and (app_handle != None)):
+            self.ms_msg_proc.send_configure_msg(fd,application_conf_params,msg_dst)
+    #TODO:
+    def remove_func(self,fd):
+        # roll back
+        #self.route_compiler.fmap.update_function_machine(ip_addr,None,self.function_descriptor)
+        desc_removed = self.route_compiler.fmap.del_function_desc(fd)
+        #self.route_compiler.policy.del_flow(None,flow,{self.function_descriptor:function_name})
+        #self.route_compiler.update_application_handles(self.function_descriptor,application_object)
 
     def datapath_leave_callback(self,dpid):
 	logger.info('Switch %x has left the network' % dpid)
@@ -199,7 +249,7 @@ class RouteCompiler():
         self.fmap = FunctionMap(None)
         self.policy = Policy(None)
         self.mmap = MachineMap()
-        self.function_descriptor = int(1)
+        self.application_handles = {}
 
     # dumb function.
     def __convert_flow(self,event):
@@ -240,6 +290,20 @@ class RouteCompiler():
         #flow = self.__convert_flow(event.flow)
         inport = event.src_location['port']
 
+
+        functions_descriptors = self.policy.get_flow_functions(inport,flow) # Find the function descriptors.
+        for func_desc,function_name in functions_descriptors.iteritems():
+            print func_desc,function_name
+            if(self.application_handles.has_key[function_desc]):
+                application_handle = self.application_handles[function_desc]
+                # Call the respective configure function on incoming traffic.
+                #application_handle.configure()
+            else:
+                print "ERROR: There is not handler for the provided function-desc"
+            
+            
+        # REWRITE
+        """
         # We have a flow what functions should we apply on it.
         functions_dict = self.policy.get_flow_functions(inport,flow) # For the given flow find the policy
         sorted(functions_dict, key=lambda key: functions_dict[key])
@@ -264,17 +328,28 @@ class RouteCompiler():
                         pass
                     pass
                 func_loc = (location_dpid,location_port)
-                """
-                # install the route from flow source to func_loc for sending the copy.
-                """
                 #self.install_route(event,func_loc)
                 self.copy_flow(event,func_loc) 
                 pass
             pass
         pass
         self.install_route(event,None)
+        """
         print "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
 
+    def update_application_handles(self,fd,application_object):
+        if not (self.application_handles.has_key(fd)):
+            self.application_handles[fd]= application_object
+        else:
+            print "ERROR: This should not happen"
+
+    # Given a function descriptor return the application handle.
+    def get_application_handle(self,fd):
+        if (self.application_handles.has_key(fd)):
+            return self.application_handles[fd]
+        else:
+            print "ERROR: There is no application for the function descriptor:",fd
+            return None
 
     def handle_flow_in(self, event):
         if not event.active:
@@ -303,13 +378,6 @@ class RouteCompiler():
 	                           inport = inport, packet=event.buf)
         
 
-
-    # return function descriptor.
-    def apply_func(self, flow, function_name, application_object):
-        self.policy.add_flow(None,flow,function_name)
-        self.function_descriptor +=1
-        self.add_function_desc(self,None,None,self.function_descriptor)
-        return self.function_descriptor
 
     # Use the func_loc to provide as a location for middlebox function.
     def install_route(self,event,func_loc):
