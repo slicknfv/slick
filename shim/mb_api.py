@@ -45,6 +45,9 @@ class ClientService(rpyc.Service):
         if(function_name == "Logger"):
             function_handle = Logger(self.shim)#start the function but pass the shim reference to invoke trigger.
             function_handle.init(fd,params_dict)# init invoked on the application.
+        if(function_name == "TriggerAll"):
+            function_handle = TriggerAll(self.shim)#start the function
+            function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "DNS-DPI"):
             #function_handle = DNS-DPI()#start the function
             #function_handle.init(fd,params_dict)# init invoked on the application.

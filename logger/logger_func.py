@@ -40,11 +40,11 @@ class Logger():
         self.file_handle.write(str(flow))
         self.file_handle.write('\n')
         self.count +=1
-        if(self.count >= self.count_thresh):
-            #print "RAISE_TRIGGER",self.function_desc,flow
-            trigger = {"fd":self.function_desc,"thresh":self.count_thresh}
-            self.shim.client_service.raise_trigger(trigger)
-            self.count = 0
+        #if(self.count >= self.count_thresh):
+        #    #print "RAISE_TRIGGER",self.function_desc,flow
+        #    trigger = {"fd":self.function_desc,"thresh":self.count_thresh}
+        #    self.shim.client_service.raise_trigger(trigger)
+        #    self.count = 0
 
     def shutdown(self):
         print "Shutting down function with function descriptor:",self.fd

@@ -1,7 +1,7 @@
 Methods Exposed by Controller to Application:
 ----------------------------------------------
 1.1- apply_func()
-input: flow,function_name,parameters,application_handle
+input: application_descriptor,flow,function_name,parameters,application_handle
 output: function_descriptor,application_descriptor
 state_updates/description: 
         i- Update machine to function_descriptor mapping. 
@@ -35,7 +35,7 @@ output: None
 state_updates/description: Depends on the application.
 
 2.2- init()
-input: arbitrary parameters
+input: application_descriptor,arbitrary parameters
 output: SUCCESS/FAILURE (if it was good enough for functions, good enough for apps)
 state_updates/description:
 	initialize the application,
