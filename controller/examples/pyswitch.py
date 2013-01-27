@@ -98,6 +98,7 @@ class pyswitch(Component):
 
         inst = self
         self.function_descriptor = int(1)
+        #self.application_descriptor = int(1)
         self.prev_time = 0
         #routing
         self.route_compiler =  RouteCompiler(inst)
@@ -140,7 +141,8 @@ class pyswitch(Component):
 
         #Configure
         for fd in self.route_compiler.application_handles:
-            self.route_compiler.application_handles[fd].configure()
+            app_handle = self.route_compiler.get_application_handle(fd)
+            app_handle.configure_user_params()
             if (curtime - self.prev_time > CACHE_TIMEOUT):
                 self.prev_time = curtime
         inst.post_callback(5, self.timer_callback)
@@ -150,7 +152,7 @@ class pyswitch(Component):
         rcvd_msg = json.loads(pyevent.jsonstring)
         reply = self.ms_msg_proc.process_msg(pyevent,rcvd_msg)#Takes a dict  and reference to pyswitch object and returns dict
         if(reply):
-            print "YYYYYYYYYYYYYYYY",reply
+            #print "YYYYYYYYYYYYYYYY",reply
             if(reply.has_key("dummy")): # Discard this reply to keep the connection up.
                 return STOP
             pyevent.reply(json.dumps(reply))
@@ -179,8 +181,11 @@ class pyswitch(Component):
     Controller to Application Functions
     """
     # return function descriptor.
-    def apply_func(self, flow, function_name,parameters,application_object):
-        self.function_descriptor +=1
+    def apply_func(self, app_desc,flow, function_name,parameters,application_object):
+        self.function_descriptor += 1
+        #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
+        if(self.route_compiler.is_installed(app_desc)):# We have the application installed
+            print "Creating another function for application: ",app_desc
         ip_addr = self.route_compiler.fmap.get_machine_for_function()
         if(ip_addr == None): # There is no machine registerd for function installation.
             print "Could not find the Middlebox"
@@ -188,7 +193,7 @@ class pyswitch(Component):
         msg_dst = ip_addr
         self.route_compiler.fmap.update_function_machine(ip_addr,None,self.function_descriptor)
         self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name})
-        self.route_compiler.update_application_handles(self.function_descriptor,application_object)
+        self.route_compiler.update_application_handles(self.function_descriptor,application_object,app_desc)
         #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
         if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,msg_dst)):
             print "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
@@ -196,19 +201,23 @@ class pyswitch(Component):
         else:
             return -1
 
-    def configure_func(self,fd,application_conf_params):
-        msg_dst = self.route_compiler.fmap.get_ip_addr_from_func_desc(fd)
-        app_handle = self.route_compiler.get_application_handle(fd) # not requied by additional check 
-        print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",str(msg_dst)
-        if((msg_dst != None) and (app_handle != None)):
-            self.ms_msg_proc.send_configure_msg(fd,application_conf_params,msg_dst)
+
+    def configure_func(self,app_desc,fd,application_conf_params):
+        if(self.route_compiler.application_handles.has_key(fd)):
+            if(self.route_compiler.is_allowed(app_desc,fd)):
+                msg_dst = self.route_compiler.fmap.get_ip_addr_from_func_desc(fd)
+                app_handle = self.route_compiler.get_application_handle(fd) # not requied by additional check 
+                print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",str(msg_dst)
+                if((msg_dst != None) and (app_handle != None)):
+                    self.ms_msg_proc.send_configure_msg(fd,application_conf_params,msg_dst)
+
     #TODO:
-    def remove_func(self,fd):
+    def remove_func(self,app_desc,fd):
         # roll back
         #self.route_compiler.fmap.update_function_machine(ip_addr,None,self.function_descriptor)
         desc_removed = self.route_compiler.fmap.del_function_desc(fd)
         #self.route_compiler.policy.del_flow(None,flow,{self.function_descriptor:function_name})
-        #self.route_compiler.update_application_handles(self.function_descriptor,application_object)
+        #self.route_compiler.update_application_handles(self.function_descriptor,application_object,self.application_descriptor)
 
     def datapath_leave_callback(self,dpid):
 	logger.info('Switch %x has left the network' % dpid)
@@ -295,7 +304,7 @@ class RouteCompiler():
         for func_desc,function_name in functions_descriptors.iteritems():
             print func_desc,function_name
             if(self.application_handles.has_key[function_desc]):
-                application_handle = self.application_handles[function_desc]
+                application_handle = self.application_handles[function_desc][0]
                 # Call the respective configure function on incoming traffic.
                 #application_handle.configure()
             else:
@@ -337,19 +346,41 @@ class RouteCompiler():
         """
         print "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
 
-    def update_application_handles(self,fd,application_object):
+    def update_application_handles(self,fd,application_object,app_desc):
         if not (self.application_handles.has_key(fd)):
-            self.application_handles[fd]= application_object
+            self.application_handles[fd]= (application_object,app_desc) 
         else:
             print "ERROR: This should not happen"
 
     # Given a function descriptor return the application handle.
     def get_application_handle(self,fd):
         if (self.application_handles.has_key(fd)):
-            return self.application_handles[fd]
+            return self.application_handles[fd][0] 
         else:
             print "ERROR: There is no application for the function descriptor:",fd
             return None
+
+    # Given a function descriptor return the application descriptor
+    def get_application_descriptor(self,fd):
+        if (self.application_handles.has_key(fd)):
+            return self.application_handles[fd][1]
+        else:
+            print "ERROR: There is no application for the function descriptor:",fd
+            return None
+    # return True if app_desc is registered as application for fd
+    def is_allowed(self,app_desc,fd):
+        temp_app_desc = self.get_application_descriptor(fd)
+        if(temp_app_desc == app_desc):
+            return True
+        else:
+            return False
+
+    # return True if app_desc is registered as application.
+    def is_installed(self,app_desc):
+        for fd,app in self.application_handles.iteritems():
+            if(app[1] == app_desc):
+                return True
+        return False
 
     def handle_flow_in(self, event):
         if not event.active:

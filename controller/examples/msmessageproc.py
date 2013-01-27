@@ -15,13 +15,18 @@ class MSMessageProcessor():
         # These are the pplication initializations.
         self.dns_handlers = DNSHandlers(self.cntxt)
         self.p0f_handlers = P0fHandlers(self.cntxt)
-        self.logger_handler1 = LoggerHandler(self.cntxt,"/tmp/dns_log",100,self.user_params1())
-        self.logger_handler2 = LoggerHandler(self.cntxt,"/tmp/http_log",1000,self.user_params2())
+
+        self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,self.user_params1()) # AD,file_name,threshold,user parameters
+        self.logger_unit2 = LoggerUnitTest(self.cntxt,101,"/tmp/http_log",1000,self.user_params2())
+
+        self.trigger_all_test = TriggerAllUnitTest(self.cntxt)
+
         self.app_handles = []
         #self.app_handles.append(self.dns_handlers)
         #self.app_handles.append(self.p0f_handlers)
-        self.app_handles.append(self.logger_handler1)
-        self.app_handles.append(self.logger_handler2)
+        #self.app_handles.append(self.logger_unit1)
+        #self.app_handles.append(self.logger_unit2)
+        self.app_handles.append(self.trigger_all_test)
 
 
     def user_params1(self):
@@ -59,7 +64,7 @@ class MSMessageProcessor():
     # --
     def process_msg(self,pyevent,msg):
         reply = {}
-        print self.cntxt
+        #print self.cntxt
         if(msg.has_key("type")):
             if(msg["type"] == "connect"):
                 reply["dummy"]="connected"
@@ -82,7 +87,7 @@ class MSMessageProcessor():
                 fd = msg["fd"]
                 if(type(fd) == int):
                     application_handle = self.cntxt.route_compiler.get_application_handle(fd)
-                    application_handle.handle_trigger(msg)
+                    application_handle.handle_trigger(fd,msg)
                 reply["dummy"]="connected"
                 return reply
 
@@ -198,10 +203,10 @@ class DNSHandlers(Triggers):
 
 
 
-class LoggerHandler():
-    def __init__(self,inst,file_name,count_thresh,flow):
+class LoggerUnitTest():
+    def __init__(self,inst,AD,file_name,count_thresh,flow):
         self.cntxt = inst
-        self.app_id = None
+        self.app_d = AD
         self.installed = False # To check if the app is installed
         self.conf = False # Set this to true to update the configure
         #Configuration specified parameters
@@ -212,11 +217,11 @@ class LoggerHandler():
         self.fd =None # Its the list of function descriptors used by the application.
 
 
-    def configure(self):
+    def configure_user_params(self):
         if not self.conf:
             print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
             params = {"file_name":self.file_name,"count_thresh":self.count_thresh}
-            self.cntxt.configure_func(self.fd,params)
+            self.cntxt.configure_func(self.app_d,self.fd,params)
             self.conf = True
 
 #    def configure(self):
@@ -230,21 +235,89 @@ class LoggerHandler():
 #                self.cntxt.ms_msg_proc.send_configure_msg(self.fd,params_dict,msg_dst)
 #                self.conf = True
 
-    def handle_trigger(self,msg):
+    def handle_trigger(self,fd,msg):
+        print "Logger handle_trigger function descriptor",fd
         print "Logger handle_trigger called",msg
 
     def init(self):
         # read this from policy file.
         file_name = self.file_name
         parameters = {"file_name":file_name}
-        fd = self.cntxt.apply_func(self.flow,"Logger",parameters,self) #sending the object 
+        #Incrementing app_d since we'll create 2 applications 
+        fd= self.cntxt.apply_func(self.app_d,self.flow,"Logger",parameters,self) 
         print fd
-        if(fd >0):#=> we have sucess
+        if((fd >0)):#=> we have sucess
             #self.func_descs.append(fd)
             self.fd = fd
             self.installed = True
             print "Logger Installed."
+"""
+# ############################################################################################################################################
+# One Apllication with Two TriggerAll Functions
+# Creates two function instances with one application. Based on the flow to function descriptor mapping, shim should handle packet to the
+# right function instance. And correct function instance should raise an event.
+# ############################################################################################################################################
+"""
+class TriggerAllUnitTest():
+    def __init__(self,inst):
+        self.cntxt = inst
+        self.app_d = 100
+        self.fd =[]# Its the list of function descriptors used by the application.
+        self.installed = False # To check if the app is installed
+        self.conf = 0 # Set this to true to update the configure
+        self.flows = []
+        flow1 = {}
+        #Function hard coded taken from policy 
+        flow1["dl_src"] = None
+        flow1["dl_dst"] = None
+        flow1['dl_vlan'] = None
+        flow1['dl_vlan_pcp'] = None
+        flow1['dl_type'] = None
+        flow1['nw_src'] = None
+        flow1['nw_dst'] = None
+        flow1['nw_proto'] = None 
+        flow1['tp_src'] = None
+        flow1['tp_dst'] = 53
+        self.flows.append(flow1)
 
+        flow2 = {}
+        flow2["dl_src"] = None
+        flow2["dl_dst"] = None
+        flow2['dl_vlan'] = None
+        flow2['dl_vlan_pcp'] = None
+        flow2['dl_type'] = None
+        flow2['nw_src'] = None
+        flow2['nw_dst'] = None
+        flow2['nw_proto'] = None 
+        flow2['tp_src'] = None
+        flow2['tp_dst'] = 80
+        self.flows.append(flow2)
+
+    def configure_user_params(self):
+        if (self.conf < 2): # Need to call configure_func twice since this application has two functions instantiated
+            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+            params = {}
+            self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) # Call connfigure_func with same app if and different function descriptors.
+            self.conf +=1
+
+    # This handle Trigger will be called twice for 2 functions.
+    def handle_trigger(self,fd,msg):
+        if(fd == self.fd[0]):
+            print "TriggerAll handle_trigger function descriptor",fd
+            print "TriggerAll handle_trigger called",msg
+        if(fd == self.fd[1]):
+            print "TriggerAll handle_trigger function descriptor",fd
+            print "TriggerAll handle_trigger called",msg
+
+    def init(self):
+        for flow_item in self.flows:
+            parameters = {}
+            fd = self.cntxt.apply_func(self.app_d,flow_item,"TriggerAll",parameters,self) #sending the object 
+            if((fd >0)):#=> we have sucess
+                #self.func_descs.append(fd)
+                self.fd.append(fd)
+                self.installed = True
+                print "TriggerAll Installed with FD", fd
 
 class P0fHandlers():
     def __init__(self,inst):
