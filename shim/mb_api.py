@@ -8,6 +8,7 @@ from shim_table import ShimTable
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir) 
 from logger.logger_func import Logger
+from trigger.trigger_all import TriggerAll
 #from dns_handler import DHSHandler
 
 """
@@ -46,6 +47,7 @@ class ClientService(rpyc.Service):
             function_handle = Logger(self.shim)#start the function but pass the shim reference to invoke trigger.
             function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "TriggerAll"):
+            print "TRIGGER INSTALLED"
             function_handle = TriggerAll(self.shim)#start the function
             function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "DNS-DPI"):
@@ -62,7 +64,7 @@ class ClientService(rpyc.Service):
             self.fd_to_object_map[fd] =function_handle
         except Exception:
             print "WARNING: Unable to create handle for the function", function_name ,"with function descriptor", fd
-            del self.fd_to_object_ma[fd]
+            del self.fd_to_object_map[fd]
             del self.flow_to_fd_map[flow]
             return False
         return True
