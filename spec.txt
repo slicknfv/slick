@@ -1,15 +1,15 @@
 Methods Exposed by Controller to Application:
 ----------------------------------------------
 1.1- apply_func()
-input: application_descriptor,flow,function_name,parameters,application_handle
-output: function_descriptor
+input: flow,function_name,parameters,application_handle
+output: function_descriptor,application_descriptor
 state_updates/description: 
         i- Update machine to function_descriptor mapping. 
         ii- Update flow to function descriptor mapping 
         iii-Update function descriptor to AD mapping 
         iv- call shim's install method with parameters and FD
 
-1.2- configure()
+1.2- configure_func()
 input: application_descriptor, function descriptor, config command, arbitrary parameters
 output: E_NO_SUCH_FUNCTION if AD not installed
         E_NOT_YOUR_FUNCTION if FD is not mapped to AD
@@ -35,7 +35,7 @@ output: None
 state_updates/description: Depends on the application.
 
 2.2- init()
-input: application_descriptor, arbitrary parameters
+input: arbitrary parameters
 output: SUCCESS/FAILURE (if it was good enough for functions, good enough for apps)
 state_updates/description:
 	initialize the application,
