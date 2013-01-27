@@ -7,10 +7,10 @@ state_updates/description:
         i- Update machine to function_descriptor mapping. 
         ii- Update flow to function descriptor mapping 
         iii-Update function descriptor to application handle 
-        iv- send install message towards the machine.
+        iv- call shim's install method with parameters and FD
 
 1.2- configure()
-input: application_configuration_parameters,function_descriptor,config-command
+input: function descriptor, config command, arbitrary parameters
 output: E_NO_SUCH_FUNCTION if fd not installed
         Otherwise it returns what Shim.configure returns
 state_updates/description: 
@@ -28,15 +28,14 @@ state_updates/description:
 Methods Exposed by Application to Controller:
 ----------------------------------------------
 2.1- handle_trigger()
-input: function_descriptor,Trigger message from Controller.
+input: function_descriptor,the parameters the Shim provided to Controller.raise_trigger (which the Function originally provided to Shim.raise_trigger)
 output: None
 state_updates/description: Depends on the application.
 
 2.2- init()
-input: User speicifed parameters [As application will provide its init parameters]
+input: arbitrary parameters
 output: SUCCESS/FAILURE (if it was good enough for functions, good enough for apps)
-state_updates/description: Update application install status i.e, installed/not-installed. Update function descriptor for the application.
-
+state_updates/description: initialize the application
 
 
 
@@ -81,7 +80,7 @@ state_updates: None
 Methods Exposed by Shim to Controller:
 --------------------------------------
 5.1- install()
-input: install_message[fd,flow,function_name,params]
+input: install_message[fd,flow,function_name,params that the application provided in Controller.apply_func]
 output: E_ALREADY_INSTALLED if already installed
         E_CANNOT_GET_FUNCTION if it can't download the function
         Otherwise it returns whatever Function.init() returns
@@ -89,6 +88,7 @@ state_updates:
     Based on success of function installation. 
     i- update flow to function descriptor map(maintained at shim).
     ii- update function descriptor to function object map.
+    iii - create a Function instance and call that instance's init() with the provided params
 
 
 5.2- configure()
