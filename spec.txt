@@ -43,7 +43,7 @@ state_updates/description: Update application install status i.e, installed/not-
 Methods Exposed by Function to Shim:
 ------------------------------------
 3.1- init()
-input: flow,function_descriptor,function_name,parameters
+input: arbitrary parameters
 output: SUCCESS/FAILURE
 state_updates/description: 
     install and run the function.  
@@ -51,7 +51,7 @@ state_updates/description:
 
 
 3.2- configure()
-input: parameters
+input: arbitrary parameters
 output: SUCCESS/FAILURE
 state_updates: 
     Updates function state.
@@ -65,7 +65,7 @@ state_updates:
 
 
 3.4- shutdown()
-input: parameters
+input: arbitrary parameters
 output: SUCCESS/FAILURE
 state_updates: Function is killed.
 
@@ -73,7 +73,7 @@ state_updates: Function is killed.
 Methods Exposed by Shim to Function:
 ------------------------------------
 4.1- raise_trigger()
-input: trigger_message
+input: arbitrary parameters
 output: None
 state_updates: None
 
