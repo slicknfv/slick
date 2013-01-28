@@ -1,5 +1,6 @@
 # This class is used to implement a simple log function.
 import os.path
+import dpkt
 
 class Logger():
     def __init__(self,shim):
@@ -30,16 +31,19 @@ class Logger():
         print self.count_thresh
 
     # For DNS print fd and flow but for all other only print fd
-    def process_pkt(self, packet):
+    def process_pkt(self, buf):
+        print "INSIDE process_pkt"
         """
             NOTE: Calling extract_flow(packet) from shim, but it can easily be implemented in the Function.
             And it should be. 
             flow = self.extract_flow(packet)
         """
+        packet = dpkt.ethernet.Ethernet(buf)
         flow = self.shim.extract_flow(packet)
         self.file_handle.write(str(flow))
         self.file_handle.write('\n')
         self.count +=1
+        self.shim.client_service.fwd_pkt(buf)
         #if(self.count >= self.count_thresh):
         #    #print "RAISE_TRIGGER",self.function_desc,flow
         #    trigger = {"fd":self.function_desc,"thresh":self.count_thresh}
