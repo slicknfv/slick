@@ -118,8 +118,8 @@ class Shim:
         # sniffing on "any" causes the packets to be received in cooked form
         # which looses the Ethernet frame information but gives rest of the information
         # For further details: http://wiki.wireshark.org/SLL or man page of packet 7
-        #pc = pcap.pcap(self.iface)
-        pc = pcap.pcap("eth0")
+        pc = pcap.pcap(self.iface)
+        #pc = pcap.pcap("eth0")
         print 'Listening on %s: With filter %s' % (pc.name, pc.filter)
         try:
             decode = {  pcap.DLT_LOOP:dpkt.loopback.Loopback,
