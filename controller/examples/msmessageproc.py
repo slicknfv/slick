@@ -35,21 +35,21 @@ class MSMessageProcessor():
         file_names = ["/tmp/dns_dst.txt","/tmp/dns_src.txt"]
         flows = []
         flows.append(flow1);flows.append(flow2);
-        print flows
+        #print flows
         self.logger2_obj1 = LoggerUnitTest2(self.cntxt,1001,file_names,flows)
         file_names = ["/tmp/http_dst.txt","/tmp/http_src.txt"]
         flows1 = []
         flows1.append(flow3);flows1.append(flow4);
-        print flows1
+        #print flows1
         self.logger2_obj2 = LoggerUnitTest2(self.cntxt,1002,file_names,flows1)
 
         #self.app_handles.append(self.dns_handlers)
         #self.app_handles.append(self.p0f_handlers)
-        #self.app_handles.append(self.logger_unit1)
-        #self.app_handles.append(self.logger_unit2)
+        self.app_handles.append(self.logger_unit1)
+        self.app_handles.append(self.logger_unit2)
         #self.app_handles.append(self.trigger_all_test)
-        self.app_handles.append(self.logger2_obj1)
-        self.app_handles.append(self.logger2_obj2)
+        #self.app_handles.append(self.logger2_obj1)
+        #self.app_handles.append(self.logger2_obj2)
 
     # --
     # Function processes the JSON messages and returns a reply.
@@ -69,6 +69,7 @@ class MSMessageProcessor():
             if(msg["type"] == "register"): # This machine has the shim installed
                 machine_ip = socket.inet_aton(msg["machine_ip"]) 
                 machine_mac = msg["machine_mac"]
+                print "MAAAAAAAAAAAAAAAAAAAAAAAC",machine_ip,machine_mac
                 self.json_msg_events[machine_ip] = pyevent # To keep the connection open
                 #self.send_msg(machine_ip,msg)
                 self.cntxt.route_compiler.fmap.update_function_machine(machine_ip,machine_mac,None) # Simply add the record of the shim.
@@ -347,9 +348,9 @@ class LoggerUnitTest2():
             # read this from policy file.
             #file_name = self.file_name
             parameters = {"file_name":self.file_names[index]}
-            print self.flows[index],parameters
+            #print self.flows[index],parameters
             fd= self.cntxt.apply_func(self.app_d,self.flows[index],"Logger",parameters,self) 
-            print fd
+            #print fd
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
                 self.installed = True

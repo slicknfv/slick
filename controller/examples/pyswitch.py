@@ -45,7 +45,7 @@ from nox.lib.packet.ipv4 import ipv4
 from nox.netapps.authenticator.pyflowutil import Flow_in_event
 from nox.netapps.routing import pyrouting
 #Need this for locations.
-#from nox.netapps.authenticator import pyauth
+from nox.netapps.authenticator import pyauth
 
 from nox.coreapps.messenger.pyjsonmsgevent import JSONMsg_event
 #from nox.coreapps.messenger.pymsgevent import Msg_event
@@ -109,8 +109,8 @@ class pyswitch(Component):
 	# Use this module for routing.
         #routing = self.resolve(pyrouting.PyRouting)
 	#self.route_compiler =  RouteCompiler(routing)
-        #pyauth
-        #self.auth = self.resolve(pyauth.PyAuth)
+        pyauth
+        self.auth = self.resolve(pyauth.PyAuth)
 
     def install(self):
         inst.register_for_packet_in(self.packet_in_callback)
@@ -192,7 +192,7 @@ class pyswitch(Component):
             return -1
         msg_dst = ip_addr
         self.route_compiler.fmap.update_function_machine(ip_addr,None,self.function_descriptor)
-        self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name})
+        self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name}) #Function descriptor 
         self.route_compiler.update_application_handles(self.function_descriptor,application_object,app_desc)
         #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
         if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,msg_dst)):
@@ -293,24 +293,23 @@ class RouteCompiler():
             logger.error('Incomplete Ethernet header')
         flow = extract_flow(packet)
         #update ip to dpid mapping.
-        print "BILAL"*50,self.mmap.ip_dpid
+        #print "BILAL"*50,self.mmap.ip_dpid
         self.mmap.update_ip_dpid_mapping(dpid,flow)
         print flow
         #flow = self.__convert_flow(event.flow)
         inport = event.src_location['port']
 
 
-        functions_descriptors = self.policy.get_flow_functions(inport,flow) # Find the function descriptors.
-        for func_desc,function_name in functions_descriptors.iteritems():
+        function_descriptors = self.policy.get_flow_functions(inport,flow) # Find the function descriptors.
+        print "XXXXXXXXXXXXXXXXXXXXXX",function_descriptors
+        for func_desc,function_name in function_descriptors.iteritems():
             print func_desc,function_name
-            if(self.application_handles.has_key[function_desc]):
-                application_handle = self.application_handles[function_desc][0]
-                # Call the respective configure function on incoming traffic.
-                #application_handle.configure()
-            else:
-                print "ERROR: There is not handler for the provided function-desc"
-            
-            
+            # This gives us function location
+            #print "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",self.auth.get_authed_locations(dl_addr,nw_addr)
+            print event.datapath_id
+            func_loc = (event.datapath_id,2)#self.fmap.get_closest_location(event.datapath_id,function_name)
+            self.copy_flow(event,func_loc) 
+
         # REWRITE
         """
         # We have a flow what functions should we apply on it.
@@ -342,8 +341,8 @@ class RouteCompiler():
                 pass
             pass
         pass
-        self.install_route(event,None)
         """
+        self.install_route(event,None)
         print "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
 
     def update_application_handles(self,fd,application_object,app_desc):
@@ -500,6 +499,7 @@ class RouteCompiler():
                             
                     print "SETTING UP Route:",route
                     print "ROUTING",route.id.src,route.id.dst,inport,outport
+                    print type(inport),type(outport),inport,outport
                     self.routing.setup_route(event.flow, route, inport, \
                                     outport, FLOW_TIMEOUT, [], True)
                                     

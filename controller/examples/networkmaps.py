@@ -407,7 +407,6 @@ class Policy():
         function_dict = self.lookup_flow(f)
         if(len(function_dict) > 0):
         	print "There is a match"
-        	""" The order of this list is important as it tells in what order functions should be applied"""
         	return function_dict
         else:
         	return function_dict
