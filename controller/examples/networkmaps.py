@@ -4,7 +4,8 @@ from socket import htons
 from struct import unpack
 from collections import defaultdict
 from collections import namedtuple
-# NOX 
+
+# NOX
 from nox.lib.core     import *
 from nox.lib.packet.packet_utils import mac_to_str, mac_to_int,ipstr_to_int,ip_to_str
 """
@@ -155,6 +156,7 @@ class MachineMap():
     def __init__(self):
         self.machine_ip_map = defaultdict(dict) # key=dpid:value=IP address 
         self.ip_dpid = {} #keeps a record of the location of IP address. key:ip value: dpid
+        self.ip_port = {} #keeps a record of the location of IP address. key:ip value: port
         #TODO: Add machine specs ability to read the files.
         self.machine_specs = {} # key:ip_address and value:machine spec json file.
 
@@ -198,11 +200,13 @@ class MachineMap():
 	        if(ip == ip_str):
 		    return int(port)
 
-    def update_ip_dpid_mapping(self,dpid,flow):
+    def update_ip_dpid_mapping(self,dpid,port, flow):
         #flow = extract_flow(packet)
         src_ip = flow[core.NW_SRC]
         if not (self.ip_dpid.has_key(src_ip)):
             self.ip_dpid[src_ip] = dpid
+            #theo you also need to store the port --- or else you wouldn't be able to retrieve it.
+            self.ip_port[src_ip] = port
         else:
             if(self.ip_dpid[src_ip] != dpid):
                 print src_ip, " changed the location, from:",self.ip_dpid[src_ip] ," to:",dpid
@@ -215,7 +219,12 @@ class MachineMap():
         else:
             return -1
 
-    
+    def get_port(self,ip_addr):
+        #debug
+        if(self.ip_port.has_key(ip_addr)):
+            return self.ip_port[ip_addr]
+        else:
+            return -1
     # Given a dictionary of machine specs, return a list of IP addresses machine with that spec.
     def get_machines(self,machine_specs_dict):
         return []
