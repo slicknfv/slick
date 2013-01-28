@@ -8,7 +8,7 @@ from shim_table import ShimTable
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir) 
 from logger.logger_func import Logger
-from trigger.trigger_all import TriggerAll
+from trigger_all.trigger_all import TriggerAll
 #from dns_handler import DHSHandler
 
 """
