@@ -13,50 +13,44 @@ class MSMessageProcessor():
         # JSON Messenger Handlers
         self.json_msg_events = {}
         # These are the pplication initializations.
+        self.app_handles = []
+        #self._run_unit_tests()
+        #def _run_unit_tests(self):
+        flow1 = {}
+        flow1["dl_src"] = None; flow1["dl_dst"] = None; flow1['dl_vlan'] = None; flow1['dl_vlan_pcp'] = None; flow1['dl_type'] = None; flow1['nw_src'] = None; flow1['nw_dst'] = None;flow1['nw_proto'] = None ;flow1['tp_src'] = None;flow1['tp_dst'] = 53
+        flow2 = {}
+        flow2["dl_src"] = None;flow2["dl_dst"] = None;flow2['dl_vlan'] = None;flow2['dl_vlan_pcp'] = None;flow2['dl_type'] = None;flow2['nw_src'] = None;flow2['nw_dst'] = None;flow2['nw_proto'] = None ;flow2['tp_src'] = 53;flow2['tp_dst'] = None
+        flow3 = {}
+        flow3["dl_src"] = None;flow3["dl_dst"] = None;flow3['dl_vlan'] = None;flow3['dl_vlan_pcp'] = None;flow3['dl_type'] = None;flow3['nw_src'] = None;flow3['nw_dst'] = None;flow3['nw_proto'] = None ;flow3['tp_src'] = None;flow3['tp_dst'] = 80
+        flow4 = {}
+        flow4["dl_src"] = None;flow4["dl_dst"] = None;flow4['dl_vlan'] = None;flow4['dl_vlan_pcp'] = None;flow4['dl_type'] = None;flow4['nw_src'] = None;flow4['nw_dst'] = None;flow4['nw_proto'] = None ;flow4['tp_src'] = 80;flow4['tp_dst'] = None
         self.dns_handlers = DNSHandlers(self.cntxt)
         self.p0f_handlers = P0fHandlers(self.cntxt)
 
-        self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,self.user_params1()) # AD,file_name,threshold,user parameters
-        self.logger_unit2 = LoggerUnitTest(self.cntxt,101,"/tmp/http_log",1000,self.user_params2())
+        self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow1) # AD,file_name,threshold,user parameters
+        self.logger_unit2 = LoggerUnitTest(self.cntxt,101,"/tmp/http_log",1000,flow3)
 
         self.trigger_all_test = TriggerAllUnitTest(self.cntxt)
 
-        self.app_handles = []
+        file_names = ["/tmp/dns_dst.txt","/tmp/dns_src.txt"]
+        flows = []
+        flows.append(flow1);flows.append(flow2);
+        print flows
+        self.logger2_obj1 = LoggerUnitTest2(self.cntxt,1001,file_names,flows)
+        file_names = ["/tmp/http_dst.txt","/tmp/http_src.txt"]
+        flows1 = []
+        flows1.append(flow3);flows1.append(flow4);
+        print flows1
+        self.logger2_obj2 = LoggerUnitTest2(self.cntxt,1002,file_names,flows1)
+
         #self.app_handles.append(self.dns_handlers)
         #self.app_handles.append(self.p0f_handlers)
         #self.app_handles.append(self.logger_unit1)
         #self.app_handles.append(self.logger_unit2)
-        self.app_handles.append(self.trigger_all_test)
+        #self.app_handles.append(self.trigger_all_test)
+        self.app_handles.append(self.logger2_obj1)
+        self.app_handles.append(self.logger2_obj2)
 
-
-    def user_params1(self):
-        flow1 = {}
-        #Function hard coded taken from policy 
-        flow1["dl_src"] = None
-        flow1["dl_dst"] = None
-        flow1['dl_vlan'] = None
-        flow1['dl_vlan_pcp'] = None
-        flow1['dl_type'] = None
-        flow1['nw_src'] = None
-        flow1['nw_dst'] = None
-        flow1['nw_proto'] = None 
-        flow1['tp_src'] = None
-        flow1['tp_dst'] = 53
-        return flow1
-
-    def user_params2(self):
-        flow2 = {}
-        flow2["dl_src"] = None
-        flow2["dl_dst"] = None
-        flow2['dl_vlan'] = None
-        flow2['dl_vlan_pcp'] = None
-        flow2['dl_type'] = None
-        flow2['nw_src'] = None
-        flow2['nw_dst'] = None
-        flow2['nw_proto'] = None 
-        flow2['tp_src'] = None
-        flow2['tp_dst'] = 80
-        return flow2
     # --
     # Function processes the JSON messages and returns a reply.
     # @args;
@@ -202,7 +196,10 @@ class DNSHandlers(Triggers):
 
 
 
-
+"""
+    LoggerUnitTest One Application One Function Instance.
+    We use this application to create two instances of the same application and two function instances.
+"""
 class LoggerUnitTest():
     def __init__(self,inst,AD,file_name,count_thresh,flow):
         self.cntxt = inst
@@ -223,22 +220,9 @@ class LoggerUnitTest():
             params = {"file_name":self.file_name,"count_thresh":self.count_thresh}
             self.cntxt.configure_func(self.app_d,self.fd,params)
             self.conf = True
-
-#    def configure(self):
-#        if not self.conf:
-#            # Can be used to read from a file/sock to read configurations
-#            print "Inside Configure Function"
-#            params_dict = {"file_name":self.file_name}
-#            msg_dst = self.cntxt.route_compiler.fmap.get_function_desc(self.fd)
-#            print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",str(msg_dst)
-#            if(msg_dst != None):
-#                self.cntxt.ms_msg_proc.send_configure_msg(self.fd,params_dict,msg_dst)
-#                self.conf = True
-
     def handle_trigger(self,fd,msg):
         print "Logger handle_trigger function descriptor",fd
         print "Logger handle_trigger called",msg
-
     def init(self):
         # read this from policy file.
         file_name = self.file_name
@@ -324,3 +308,50 @@ class P0fHandlers():
         self.cntxt = inst
         self.installed = False
         pass
+
+
+"""
+# --
+# This application creates two instances of the same function with different flows and dumps those flows in two diffrent applications
+# --
+"""
+class LoggerUnitTest2():
+    def __init__(self,inst,AD,file_names,flows): # These are user defined parameters.
+        self.cntxt = inst
+        self.app_d = AD
+        self.installed = False # To check if the app is installed
+        self.conf = 0 # Set this to 0 and increment for each call of configure_func
+        #Configuration specified parameters
+        self.flows = flows # Its a list.
+        # Conf parameters
+        self.file_names = file_names
+        #self.count_thresh = count_thresh
+        self.fd =[] # Its the list of function descriptors used by the application.
+        self.num_functions = 2 # How many functions this one app instantiates.
+
+
+    def configure_user_params(self):
+        if (self.conf < self.num_functions): # Need to call configure_func twice since this application has two functions instantiated
+            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+            params = {"file_name":self.file_names[self.conf]}
+            self.cntxt.configure_func(self.app_d,self.fd[self.conf],params)
+            self.conf +=1
+
+
+    def handle_trigger(self,fd,msg):
+        print "Logger handle_trigger function descriptor",fd
+        print "Logger handle_trigger called",msg
+
+    def init(self):
+        for index in range(0,self.num_functions): # If the flows are same then it will overwrite the flow to function descriptor
+            # read this from policy file.
+            #file_name = self.file_name
+            parameters = {"file_name":self.file_names[index]}
+            print self.flows[index],parameters
+            fd= self.cntxt.apply_func(self.app_d,self.flows[index],"Logger",parameters,self) 
+            print fd
+            if((fd >0)):#=> we have sucess
+                self.fd.append(fd)
+                self.installed = True
+                print "Logger Installed."
+            
