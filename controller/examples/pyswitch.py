@@ -407,7 +407,72 @@ class RouteCompiler():
 	                           priority = openflow.OFP_DEFAULT_PRIORITY,
 	                           inport = inport, packet=event.buf)
         
-
+    def install_route_helper(self,indatapath src, inport, dst, outport):
+        route = pyrouting.Route()
+        route.id.src = src
+        route.id.dst = dst
+        if self.routing.get_route(route):
+            checked = True
+            if self.routing.check_route(route, inport, outport):
+                logger.debug('Found route %s.' % hex(route.id.src.as_host())+\
+                             ':'+str(inport)+' to '+hex(route.id.dst.as_host())+\
+                             ':'+str(outport))
+                if route.id.src == route.id.dst:
+                    firstoutport = outport
+                else:
+                    firstoutport = route.path[0].outport
+                
+                p = []
+                if route.id.src == route.id.dst:
+                    #print "ROUTING222",route.id.src,route.id.dst,inport,indatapath,firstoutport
+                    p.append(str(inport))
+                    p.append(str(indatapath))
+                    p.append(str(firstoutport))
+                else:
+                    s2s_links = len(route.path)
+                    p.append(str(inport))
+                    p.append(str(indatapath))
+                    for i in range(0,s2s_links):
+                        p.append(str(route.path[i].dst))
+                    p.append(str(outport))
+                
+                print "SETTING UP Route:",route
+                print "ROUTING",route.id.src,route.id.dst,inport,outport
+                print type(inport),type(outport),inport,outport
+                self.routing.setup_route(event.flow, route, inport, \
+                                         outport, FLOW_TIMEOUT, [], True)
+                
+                # Send Barriers
+                pending_route = []
+                #log.debug("Sending BARRIER to switches:")
+                # Add barrier xids
+                for dpid in p[1:len(p)-1]:
+                    logger.debug("Sending barrier to %s", dpid)
+                    pending_route.append(self.cntxt.send_barrier(int(dpid,16)))
+                # Add packetout info
+                pending_route.append([indatapath, inport, event])
+                # Store new pending_route (waiting for barrier replies)
+                self.pending_routes.append(pending_route)
+                
+                
+                # Send packet out (do it after receiving barrier(s))
+                if indatapath == route.id.src or \
+                    pyrouting.dp_on_route(indatapath, route):
+                    pass
+                #self.routing.send_packet(indatapath, inport, \
+                #    openflow.OFPP_TABLE,event.buffer_id,event.buf,"", \
+                #    False, event.flow)
+                else:
+                    logger.debug("Packet not on route - dropping.")
+                return CONTINUE
+            else:
+                logger.debug("Invalid route between %s." \
+                             % hex(route.id.src.as_host())+':'+str(inport)+' to '+\
+                             hex(route.id.dst.as_host())+':'+str(outport))
+        else:
+            logger.debug("No route between %s and %s." % \
+                (hex(route.id.src.as_host()), hex(route.id.dst.as_host())))
+    return CONTINUE
 
     # Use the func_loc to provide as a location for middlebox function.
     def install_route(self,event,func_loc):
@@ -472,67 +537,9 @@ class RouteCompiler():
             """
             if dloc == 0:
                 continue
-            if self.routing.get_route(route):
-                checked = True
-                if self.routing.check_route(route, inport, outport):
-                    logger.debug('Found route %s.' % hex(route.id.src.as_host())+\
-                            ':'+str(inport)+' to '+hex(route.id.dst.as_host())+\
-                            ':'+str(outport))
-                    if route.id.src == route.id.dst:
-                        firstoutport = outport
-                    else:
-                        firstoutport = route.path[0].outport
-                    
-                    p = []
-                    if route.id.src == route.id.dst:
-                        #print "ROUTING222",route.id.src,route.id.dst,inport,indatapath,firstoutport
-                        p.append(str(inport))
-                        p.append(str(indatapath))
-                        p.append(str(firstoutport))
-                    else:
-                        s2s_links = len(route.path)
-                        p.append(str(inport))
-                        p.append(str(indatapath))
-                        for i in range(0,s2s_links):
-                            p.append(str(route.path[i].dst))
-                        p.append(str(outport))
-                            
-                    print "SETTING UP Route:",route
-                    print "ROUTING",route.id.src,route.id.dst,inport,outport
-                    print type(inport),type(outport),inport,outport
-                    self.routing.setup_route(event.flow, route, inport, \
-                                    outport, FLOW_TIMEOUT, [], True)
-                                    
-                    # Send Barriers                
-                    pending_route = []
-                    #log.debug("Sending BARRIER to switches:")
-                    # Add barrier xids
-                    for dpid in p[1:len(p)-1]:
-                        logger.debug("Sending barrier to %s", dpid)
-                        pending_route.append(self.cntxt.send_barrier(int(dpid,16)))
-                    # Add packetout info
-                    pending_route.append([indatapath, inport, event])
-                    # Store new pending_route (waiting for barrier replies)
-                    self.pending_routes.append(pending_route)
-                           
-                    
-                    # Send packet out (do it after receiving barrier(s))
-                    if indatapath == route.id.src or \
-                        pyrouting.dp_on_route(indatapath, route):
-                        pass
-                        #self.routing.send_packet(indatapath, inport, \
-                        #    openflow.OFPP_TABLE,event.buffer_id,event.buf,"", \
-                        #    False, event.flow)
-                    else:
-                        logger.debug("Packet not on route - dropping.")
-                    return CONTINUE
-                else:
-                    logger.debug("Invalid route between %s." \
-                        % hex(route.id.src.as_host())+':'+str(inport)+' to '+\
-                        hex(route.id.dst.as_host())+':'+str(outport))
-            else:
-                logger.debug("No route between %s and %s." % \
-                    (hex(route.id.src.as_host()), hex(route.id.dst.as_host())))
+            ##THEO: call the helper function here
+            install_route_helper(indatapath,src,inport, mb,mb_port)
+            install_route_helper(indatapath,mb,mb_port,dst,outport)
         if not checked:
             if event.flow.dl_dst.is_broadcast():
                 logger.debug("Setting up FLOOD flow on %s", str(indatapath))
