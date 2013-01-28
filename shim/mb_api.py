@@ -108,6 +108,9 @@ class ClientService(rpyc.Service):
         trigger_message["type"]= "trigger" #Adding flag for the controller to identify the trigger message
         self.shim.client.send_data_basic(trigger_message)
 
+    def fwd_pkt(self,packet):
+        print "Forwarding Packet............."
+        self.shim.forward_data_sock.send(packet)
     # --
     # get_function_handle_from_flow
     # Return the object for the flow

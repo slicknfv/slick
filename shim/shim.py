@@ -28,6 +28,8 @@ sys.path.insert(0,parentdir)
 from comm.clientcomm import ClientComm
 from mb_api import ClientService
 from shim_table import ShimTable
+#import socket, AF_PACKET, SOCK_RAW
+
 
 
 IN_PORT    = "in_port"
@@ -48,8 +50,10 @@ TP_DST     = "tp_dst"
 DEBUG_COLLECTION = False
 
 class Shim:
-    def __init__(self,iface,filename):
+    def __init__(self,iface,oface,filename):
         self.iface = iface
+        self.oface = oface
+        print self.iface
         self.filename = filename # Name of the file where to read pcap data
         self.pcap_file = ""
         self.start_time = datetime.datetime.now()
@@ -63,9 +67,14 @@ class Shim:
         # These are needed to maintain the state.
         self.fuction_code_map = {} # dictionary which keeps track what code is downloaded on the machine hard disk and what is not present.
         self.fd_to_object_map = {}
-
         inst = self
         self.client_service = ClientService(inst)
+        self.forward_data_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
+        #self.send_data_sock.bind(("eth0", 0))
+        if(self.oface != None):
+            self.forward_data_sock.bind((self.oface, 0))
+        else:
+            self.forward_data_sock.bind(("eth1", 0))
 
 
     def register_machine(self):
@@ -77,9 +86,10 @@ class Shim:
     # --
     def loadpcap(self):
         print self.filename
-        f = open(self.filename)
-        self.pcap_file = dpkt.pcap.Reader(f)
-        self.decode(self.pcap_file)
+        if(self.filename):
+            f = open(self.filename)
+            self.pcap_file = dpkt.pcap.Reader(f)
+            self.decode(self.pcap_file)
     
 
     # --
@@ -171,8 +181,7 @@ class Shim:
                     self.decode_msg_and_call(msg)
                     print "YYYYYYYYYYYYYYYYYYYYYYYYYYYYY",msg
                 pass
-            eth = dpkt.ethernet.Ethernet(buf)
-            self.demux(eth)
+            self.demux(buf)
 
     # This method demuxes the traffic.
     # It takes a packet.
@@ -185,7 +194,8 @@ class Shim:
     #   Can be shared memory pointer.
     # What if MUX/DEMUX is implemented on a NIC.
     #   if implemented on NIC hardware then it can be interface Tx queue,where a process reads the interface for incoming packet.
-    def demux(self,packet):
+    def demux(self,buf):
+        packet = dpkt.ethernet.Ethernet(buf)
         flow = self.extract_flow(packet)
         if(flow[NW_DST] == socket.inet_aton(self.mb_ip)):
             print "NOT USING IT"
@@ -196,7 +206,7 @@ class Shim:
             #print func_handle
             if(func_handle):
                 # Based on the function_hadle 
-                func_handle.process_pkt(packet)
+                func_handle.process_pkt(buf)
             else:
                 pass
                 #print "WARNING: We don't have a handler for the packet"
@@ -257,11 +267,12 @@ def usage():
             
 def main(argv):
     iface = ""
+    oface = ""
     freq = 0
     mode = 2
     file_name = None
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hdi:f:", ["help","debug","iface","file"])
+        opts, args = getopt.getopt(sys.argv[1:], "hdi:f:o:", ["help","debug","iface","file","oface"])
     except getopt.GetoptError:
         print "Option error!"
         usage()
@@ -275,18 +286,25 @@ def main(argv):
             mode = constants.DEBUG_MODE
         elif opt in("-f","--file"): 
             file_name = arg
-            cd_pcap = Shim(None,file_name)
-            cd_pcap.loadpcap()
         elif opt in("-i","--iface"):
             iface = str(arg)
-            cd_pcap = Shim(iface,None)
-            cd_pcap.sniff() # hopefully you have done all the hw
+        elif opt in("-o","--oface"):
+            oface = str(arg)
+            #cd_pcap = Shim(iface,oface,None)
+            #cd_pcap.sniff() # hopefully you have done all the hw
             print "Listening on the interface: ",iface
         else:
             assert False, "Unhandled Option"
             usage()
-    #dns_sensor = DNSSensor(mode,str(iface),file_name)
-    #dns_sensor.initiate()
+    if(iface):
+        print "Listening on the interface: ",iface
+        print "Sending on the interface: ",oface
+        cd_pcap = Shim(iface,oface,None)
+        cd_pcap.sniff() # hopefully you have done all the hw
+    if(file_name):
+        print "Sending on the interface: ",oface
+        cd_pcap = Shim(None,oface,file_name)
+        cd_pcap.loadpcap()
 
 if __name__ == "__main__":
     main(sys.argv[1:])
