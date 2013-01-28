@@ -53,7 +53,7 @@ import json
 
 from msmessageproc import MSMessageProcessor
 from networkmaps import FunctionMap,MachineMap,Policy
-
+from nox.lib.netinet.netinet import ethernetaddr, ipaddr, create_eaddr,create_bin_eaddr, create_ipaddr, c_htonl, c_ntohl
 #routing
 from nox.lib.netinet import netinet
 from socket import ntohs, htons
@@ -109,8 +109,6 @@ class pyswitch(Component):
 	# Use this module for routing.
         #routing = self.resolve(pyrouting.PyRouting)
 	#self.route_compiler =  RouteCompiler(routing)
-        pyauth
-        self.auth = self.resolve(pyauth.PyAuth)
 
     def install(self):
         inst.register_for_packet_in(self.packet_in_callback)
@@ -191,12 +189,12 @@ class pyswitch(Component):
             print "Could not find the Middlebox"
             return -1
         msg_dst = ip_addr
-        self.route_compiler.fmap.update_function_machine(ip_addr,None,self.function_descriptor)
+        mac_addr = self.route_compiler.fmap.fd_machine_map[ip_addr]
+        self.route_compiler.fmap.update_function_machine(ip_addr,mac_addr,self.function_descriptor)
         self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name}) #Function descriptor 
         self.route_compiler.update_application_handles(self.function_descriptor,application_object,app_desc)
         #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
         if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,msg_dst)):
-            print "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
             return self.function_descriptor
         else:
             return -1
@@ -207,7 +205,7 @@ class pyswitch(Component):
             if(self.route_compiler.is_allowed(app_desc,fd)):
                 msg_dst = self.route_compiler.fmap.get_ip_addr_from_func_desc(fd)
                 app_handle = self.route_compiler.get_application_handle(fd) # not requied by additional check 
-                print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",str(msg_dst)
+                #print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",str(msg_dst)
                 if((msg_dst != None) and (app_handle != None)):
                     self.ms_msg_proc.send_configure_msg(fd,application_conf_params,msg_dst)
 
@@ -259,6 +257,7 @@ class RouteCompiler():
         self.policy = Policy(None)
         self.mmap = MachineMap()
         self.application_handles = {}
+        self.auth = self.cntxt.resolve(pyauth.PyAuth)
 
     # dumb function.
     def __convert_flow(self,event):
@@ -301,14 +300,20 @@ class RouteCompiler():
 
 
         function_descriptors = self.policy.get_flow_functions(inport,flow) # Find the function descriptors.
+        func_loc = None
         print "XXXXXXXXXXXXXXXXXXXXXX",function_descriptors
         for func_desc,function_name in function_descriptors.iteritems():
             print func_desc,function_name
             # This gives us function location
-            #print "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",self.auth.get_authed_locations(dl_addr,nw_addr)
-            print event.datapath_id
+            ip_addr = self.fmap.get_ip_addr_from_func_desc(func_desc) 
+            mac_addr = self.fmap.fd_machine_map[ip_addr] 
+            nw_addr = socket.inet_ntoa(ip_addr) # already aton 
+            dl_addr = create_eaddr(mac_addr) 
+            print "L"*20,socket.inet_ntoa(ip_addr),dl_addr
+            #self.auth.get_authed_locations(dl_addr,nw_addr)
+            print event.datapath_id,type(event.datapath_id)
             func_loc = (event.datapath_id,2)#self.fmap.get_closest_location(event.datapath_id,function_name)
-            self.copy_flow(event,func_loc) 
+            #self.copy_flow(event,func_loc) 
 
         # REWRITE
         """
@@ -342,7 +347,7 @@ class RouteCompiler():
             pass
         pass
         """
-        self.install_route(event,None)
+        self.install_route(event,func_loc)
         print "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
 
     def update_application_handles(self,fd,application_object,app_desc):
@@ -394,20 +399,20 @@ class RouteCompiler():
             packet = ethernet(array.array('B', event.buf))
         except IncompletePacket, e:
             logger.error('Incomplete Ethernet header')
-	flow = extract_flow(packet)
+        flow = extract_flow(packet)
         inport = event.src_location['port']
         dpid = func_loc[0] # only add extra instruction of copying on the dpid where we want a copy.
         port = func_loc [1]
-
-	flow[core.IN_PORT] = inport
-	actions = [[openflow.OFPAT_OUTPUT, [0, port]]]
-	inst.install_datapath_flow(dp_id=dpid, attrs=flow, idle_timeout=CACHE_TIMEOUT, 
-	                           hard_timeout=openflow.OFP_FLOW_PERMANENT, actions=actions,
-	                           #buffer_id = bufid, priority = 0x8000,#openflow.OFP_DEFAULT_PRIORITY,
-	                           priority = openflow.OFP_DEFAULT_PRIORITY,
-	                           inport = inport, packet=event.buf)
         
-    def install_route_helper(self,indatapath src, inport, dst, outport):
+        flow[core.IN_PORT] = inport
+        actions = [[openflow.OFPAT_OUTPUT, [0, port]]]
+        inst.install_datapath_flow(dp_id=dpid, attrs=flow, idle_timeout=CACHE_TIMEOUT, 
+                                   hard_timeout=openflow.OFP_FLOW_PERMANENT, actions=actions,
+                                   #buffer_id = bufid, priority = 0x8000,#openflow.OFP_DEFAULT_PRIORITY,
+                                   priority = openflow.OFP_DEFAULT_PRIORITY,
+                                   inport = inport, packet=event.buf)
+                           
+    def install_route_helper(self,event,indatapath, src, inport, dst, outport):
         route = pyrouting.Route()
         route.id.src = src
         route.id.dst = dst
@@ -444,7 +449,6 @@ class RouteCompiler():
                 
                 # Send Barriers
                 pending_route = []
-                #log.debug("Sending BARRIER to switches:")
                 # Add barrier xids
                 for dpid in p[1:len(p)-1]:
                     logger.debug("Sending barrier to %s", dpid)
@@ -464,7 +468,7 @@ class RouteCompiler():
                 #    False, event.flow)
                 else:
                     logger.debug("Packet not on route - dropping.")
-                return CONTINUE
+                return True
             else:
                 logger.debug("Invalid route between %s." \
                              % hex(route.id.src.as_host())+':'+str(inport)+' to '+\
@@ -472,11 +476,10 @@ class RouteCompiler():
         else:
             logger.debug("No route between %s and %s." % \
                 (hex(route.id.src.as_host()), hex(route.id.dst.as_host())))
-    return CONTINUE
+    #return CONTINUE
 
     # Use the func_loc to provide as a location for middlebox function.
     def install_route(self,event,func_loc):
-        print "INSTALL"*20
         indatapath = netinet.create_datapathid_from_host(event.datapath_id)
         route = pyrouting.Route()
 
@@ -537,9 +540,20 @@ class RouteCompiler():
             """
             if dloc == 0:
                 continue
-            ##THEO: call the helper function here
-            install_route_helper(indatapath,src,inport, mb,mb_port)
-            install_route_helper(indatapath,mb,mb_port,dst,outport)
+            src = route.id.src
+            inport = inport 
+            if(func_loc != None):
+                mb = netinet.create_datapathid_from_host(func_loc[0] & DP_MASK)#func_loc[0]
+                mb_port = func_loc[1]
+                print "Function Location 1"
+                ##THEO: call the helper function here
+                checked = self.install_route_helper(event,indatapath,src,inport, mb,mb_port)
+                print "Function Location 2"
+                dst_loc = netinet.create_datapathid_from_host(dloc & DP_MASK)
+                checked = self.install_route_helper(event,indatapath,mb,mb_port,dst_loc,outport)
+            else:
+                print "Direct Path"
+                checked = self.install_route_helper(event,indatapath,src,inport, route.id.dst,outport)
         if not checked:
             if event.flow.dl_dst.is_broadcast():
                 logger.debug("Setting up FLOOD flow on %s", str(indatapath))

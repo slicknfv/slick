@@ -45,11 +45,11 @@ class MSMessageProcessor():
 
         #self.app_handles.append(self.dns_handlers)
         #self.app_handles.append(self.p0f_handlers)
-        self.app_handles.append(self.logger_unit1)
-        self.app_handles.append(self.logger_unit2)
+        #self.app_handles.append(self.logger_unit1)
+        #self.app_handles.append(self.logger_unit2)
         #self.app_handles.append(self.trigger_all_test)
-        #self.app_handles.append(self.logger2_obj1)
-        #self.app_handles.append(self.logger2_obj2)
+        self.app_handles.append(self.logger2_obj1)
+        self.app_handles.append(self.logger2_obj2)
 
     # --
     # Function processes the JSON messages and returns a reply.
@@ -73,6 +73,7 @@ class MSMessageProcessor():
                 self.json_msg_events[machine_ip] = pyevent # To keep the connection open
                 #self.send_msg(machine_ip,msg)
                 self.cntxt.route_compiler.fmap.update_function_machine(machine_ip,machine_mac,None) # Simply add the record of the shim.
+                self.cntxt.route_compiler.fmap.fd_machine_map[machine_ip] = machine_mac # Simply add the record of the shim.
                 reply["dummy"]="connected"
                 return reply
             # if type is trigger call raise trigger.

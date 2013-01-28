@@ -23,6 +23,7 @@ class FunctionMap():
     	self.function_map_file = function_map_file
     	self.function_map = defaultdict(dict)
         self.fd_map = defaultdict(list) # Machine IP Address to function descriptor mapping, if the list is empty then we have shim only.
+        self.fd_machine_map = defaultdict(tuple) #(IP_adddress and MAC)
     
     def read_json(self):
     	print self.function_map_file
@@ -233,7 +234,7 @@ class Policy():
         self.FlowTuple = namedtuple("FlowTuple",["in_port","dl_src","dl_dst","dl_vlan","dl_vlan_pcp","dl_type","nw_src","nw_dst","nw_proto","tp_src","tp_dst"])
         self.flow_to_function_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
         self.flow_to_fd_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
-        self.init_tuples()
+        #self.init_tuples()
     
     """
      These three functions: 
