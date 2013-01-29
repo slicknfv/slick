@@ -9,7 +9,7 @@ import getopt
 
 import sys
 #sys.path.insert(0, '.')
-sys.path.append('..')
+sys.path.append('../lib/')
 import pcap
 
 
@@ -139,7 +139,7 @@ class Shim:
         # For further details: http://wiki.wireshark.org/SLL or man page of packet 7
         pc = pcap.pcap(self.iface)
         #pc = pcap.pcap("eth0")
-        print 'Listening on %s: With filter %s' % (pc.name, pc.filter)
+        #print 'Listening on %s: With filter %s' % (pc.name, pc.filter)
         try:
             decode = {  pcap.DLT_LOOP:dpkt.loopback.Loopback,
                         pcap.DLT_NULL:dpkt.loopback.Loopback,
