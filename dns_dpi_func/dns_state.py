@@ -6,6 +6,8 @@ from comm.clientcomm import ClientComm
 import uuid
 
 import socket
+import jsonpickle
+import json
 
 
 class DNSState():
@@ -15,7 +17,7 @@ class DNSState():
         self.src_ip_dns_size_count = defaultdict(int)
 	self.dns_ip = defaultdict(list) # dns to ip 
         # Communication
-        self.client = ClientComm()
+        #self.client = ClientComm()
 
 
     def update_domain_ips(self,domain_name,flow,src_dst_ip_block_list):
@@ -49,7 +51,8 @@ class DNSState():
                     domain_ip_list.append(socket.inet_ntoa(item[1]))
                 bad_domain_event = BadDomainEvent(domain_name,src_ip,domain_ip_list,None,None,eid,event_name,flow)
                 print "XXXXXXXXXXXX"
-                self.client.send_data(bad_domain_event)
+                print "Sending BadDomainEvent"
+                #self.client.send_data(bad_domain_event)
                 pass
             pass
         pass
@@ -60,7 +63,21 @@ class DNSState():
                 domain_name = args[0]
                 num_requests = args[1]
                 multiple_bad_domain_req_event = MultipleBadDomainRequestEvent(domain_name,src_ip,num_requests,eid,event_name,flow)
-                self.client.send_data(multiple_bad_domain_req_event)
+                #self.client.send_data(multiple_bad_domain_req_event)
                 pass
             pass
         pass
+    def get_event(self,event_name,flow,*args):
+        if(event_name == "BadDomainEvent"):#len(args) == 1
+            src_ip = ["src_ip"]
+            eid = uuid.uuid1() # Machine's MAC address and the current time.
+            domain_ip_list = []
+            if(len(args) == 2):
+                domain_name = args[0]
+                for item in args[1]:#src_dst_ip_block_list
+                    domain_ip_list.append(item)
+                print domain_name,src_ip,domain_ip_list,eid,event_name,flow
+                bad_domain_event = BadDomainEvent(domain_name,src_ip,domain_ip_list,0,0,123,event_name,flow)
+                data = json.loads(jsonpickle.encode(bad_domain_event))
+                # returns a dict
+                return data

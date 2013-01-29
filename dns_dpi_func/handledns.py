@@ -13,12 +13,12 @@ from dns_state import DNSState
 
 
 class HandleDNS():
-	def __init__(self):
+	def __init__(self,ld):
 		# Key is IP addr and DNS Transaction ID. Tuple  and value is the dpid where first packet came.
 		self.request_cache = {} 
 		# Block domains list
-		self.load_cache = LoadCache()
-		self.load_cache.load_files()
+		self.load_cache = ld #LoadCache()
+		#self.load_cache.load_files()
 		self.DNS_BLOCK_TIMEOUT = 0xffff
                 self.dns_state = DNSState() # Use this to update the state.
 
@@ -71,6 +71,8 @@ class HandleDNS():
 
     	def handle_dns_request(self, src_ip,dst_ip,proto,sport,dport,data):
                 #request_id,domain_name  = self.extract_domain_name(packet)
+                domain_blocked = False
+                blocked_domain_name = None
                 dns = dpkt.dns.DNS(data)
         	if not dns:
         	    print 'received invalid DNS packet'
@@ -81,10 +83,13 @@ class HandleDNS():
                             # This flow triggered the event.
                             flow = Flow(None,None,None,src_ip,dst_ip,proto,sport,dport)
                             print "This domain name is blocked.",question.name,dns.id ," and blcoked domain is accessed from this IP: ",socket.inet_ntoa(src_ip)
+                            domain_blocked = True
+                            blocked_domain_name = question.name
                             # This code should be on controller for keeping track of dpid
                             # as a sensor can't know this.
                             if not (self.request_cache.has_key((src_ip,dns.id))):
 			        self.request_cache[(src_ip,dns.id)] = (question.name,flow)
+                return (domain_blocked,src_ip,blocked_domain_name) #Its a really bad hack will only send the last domain name.
 
 	def _sanitize_domain_lookups(self,domain_name):
 		print domain_name

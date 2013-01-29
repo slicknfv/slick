@@ -20,18 +20,16 @@ from sets import Set
 from time import gmtime, strftime
 import string
 
+from loadcache import LoadCache
 
 from handledns import HandleDNS
 
 DEBUG_COLLECTION = False
-class CollectData:
-    def __init__(self,iface,filename):
-#        self.iface = iface
-#        self.filename = filename # Name of the file where to read pcap data
-#        self.pcap_file = ""
-#        self.start_time = datetime.datetime.now()
-#        self.prev_ts = 0
-        self.dns_handler = HandleDNS()
+class DNSProcess:
+    def __init__(self):
+        self.load_cache = LoadCache()
+        self.load_cache.load_files() # need to do this during init as its part of init.
+        self.dns_handler = HandleDNS(self.load_cache)
 
 #    # --
 #    # Opens and gives a handle of pcap file.
@@ -102,7 +100,7 @@ class CollectData:
                     #print "dst port:", udp.dport
                     if((udp.dport == 53) or (udp.sport == 53)): # A request. 
                         if(udp.dport == 53): # A request. 
-                            self.dns_handler.handle_dns_request(ip.src,ip.dst,ip.p,udp.sport,udp.dport,udp.data)
+                            return self.dns_handler.handle_dns_request(ip.src,ip.dst,ip.p,udp.sport,udp.dport,udp.data)
                         if(udp.sport == 53): # A DNS response
                             self.dns_handler.handle_dns_response(ip.src,ip.dst,ip.p,udp.sport,udp.dport,udp.data)
                     else:
