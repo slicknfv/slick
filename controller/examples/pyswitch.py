@@ -63,7 +63,7 @@ DP_MASK = 0xffffffffffff
 PORT_MASK = 0xffff
 
 BROADCAST_TIMEOUT   = 2 # was 60
-FLOW_TIMEOUT        = 5
+FLOW_TIMEOUT        = 0xffff
 
 logger = logging.getLogger('nox.coreapps.examples.pyswitch')
 
@@ -519,7 +519,6 @@ class RouteCompiler():
                 #print type(dloc),dloc
                 #print type(outport),outport
                 dloc = dloc | (outport << 48)
-                print "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"
                 print type(dloc),dloc
                 print type(route.id.dst),route.id.dst
                 print type(outport),outport

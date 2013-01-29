@@ -47,9 +47,9 @@ class MSMessageProcessor():
         #self.app_handles.append(self.p0f_handlers)
         #self.app_handles.append(self.logger_unit1)
         #self.app_handles.append(self.logger_unit2)
-        #self.app_handles.append(self.trigger_all_test)
-        self.app_handles.append(self.logger2_obj1)
-        self.app_handles.append(self.logger2_obj2)
+        self.app_handles.append(self.trigger_all_test)
+        #self.app_handles.append(self.logger2_obj1)
+        #self.app_handles.append(self.logger2_obj2)
 
     # --
     # Function processes the JSON messages and returns a reply.
@@ -278,6 +278,8 @@ class TriggerAllUnitTest():
         flow2['tp_src'] = None
         flow2['tp_dst'] = 80
         self.flows.append(flow2)
+        self.f1 = open("1_trigger.txt","w")
+        self.f2 = open("2_trigger.txt","w")
 
     def configure_user_params(self):
         if (self.conf < 2): # Need to call configure_func twice since this application has two functions instantiated
@@ -289,11 +291,17 @@ class TriggerAllUnitTest():
     # This handle Trigger will be called twice for 2 functions.
     def handle_trigger(self,fd,msg):
         if(fd == self.fd[0]):
+            print "HANDLER..............................................................................................................1"
             print "TriggerAll handle_trigger function descriptor",fd
             print "TriggerAll handle_trigger called",msg
+            self.f1.write(str(msg))
+            self.f1.write('\n')
         if(fd == self.fd[1]):
+            print "HANDLER..............................................................................................................2"
             print "TriggerAll handle_trigger function descriptor",fd
             print "TriggerAll handle_trigger called",msg
+            self.f2.write(str(msg))
+            self.f2.write('\n')
 
     def init(self):
         for flow_item in self.flows:
