@@ -210,7 +210,6 @@ class Shim:
             self.demux(buf)
 
     def decode(self, hdr, buf):
-        print "Inside decode"
         if(self.client):
             msg = self.client.recv_data_basic()
             if(msg):
@@ -232,7 +231,6 @@ class Shim:
     def demux(self,buf):
         packet = dpkt.ethernet.Ethernet(buf)
         flow = self.extract_flow(packet)
-        print flow
         if(flow[NW_DST] == socket.inet_aton(self.mb_ip)):
             print "NOT USING IT"
         else:

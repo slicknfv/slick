@@ -1,5 +1,6 @@
 # This class is used to implement trigger generator.
 import os.path
+import dpkt
 
 class TriggerAll():
     def __init__(self,shim):
@@ -15,15 +16,17 @@ class TriggerAll():
         pass
 
     # For DNS print fd and flow but for all other only print fd
-    def process_pkt(self, packet):
+    def process_pkt(self, buf):
         """
             NOTE: Calling extract_flow(packet) from shim, but it can easily be implemented in the Function.
             And it should be. 
             flow = self.extract_flow(packet)
         """
+        packet = dpkt.ethernet.Ethernet(buf)
         flow = self.shim.extract_flow(packet)
         trigger = {"fd":self.function_desc}
         self.shim.client_service.raise_trigger(trigger)
+        self.shim.client_service.fwd_pkt(buf)
 
     def shutdown(self):
         print "Shutting down function with function descriptor:",self.fd
