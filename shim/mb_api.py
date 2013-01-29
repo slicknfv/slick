@@ -9,8 +9,7 @@ parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir) 
 from logger.logger_func import Logger
 from trigger_all.trigger_all import TriggerAll
-#from dns_handler import DHSHandler
-#from scapy.all import *
+from dns_dpi_func.dns_sensor import DNSSensor
 
 """
     These are the functions supported by the Shim  to the controller.
@@ -48,13 +47,11 @@ class ClientService(rpyc.Service):
             function_handle = Logger(self.shim)#start the function but pass the shim reference to invoke trigger.
             function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "TriggerAll"):
-            print "TRIGGER INSTALLED"
             function_handle = TriggerAll(self.shim)#start the function
             function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "DNS-DPI"):
-            #function_handle = DNS-DPI()#start the function
-            #function_handle.init(fd,params_dict)# init invoked on the application.
-            pass
+            function_handle = DnsDpiFunction(self.shim)#start the function
+            function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "p0f"):
             #function_handle = p0f()#start the function
             #function_handle.init(fd,params_dict)# init invoked on the application.
@@ -112,7 +109,7 @@ class ClientService(rpyc.Service):
     def fwd_pkt(self,packet):
         print "Forwarding Packet............."
         self.shim.forward_data_sock.send(packet)
-        #sendp(packet)
+
     # --
     # get_function_handle_from_flow
     # Return the object for the flow

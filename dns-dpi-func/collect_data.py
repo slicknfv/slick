@@ -43,40 +43,6 @@ class CollectData:
         self.decode(self.pcap_file)
     
 
-    # --
-    # This function is for development and debugging from pcap files.
-    # --
-    def printpcap(self):
-        for ts, buf in self.pcap_file:
-            print ts,len(buf)
-            eth = dpkt.ethernet.Ethernet(buf)
-            dst_mac = (eth.dst).encode("hex")
-            src_mac = (eth.src).encode("hex")
-            print "Source MAC:", util.add_colons_to_mac(src_mac)
-            print "Dst MAC:",util.add_colons_to_mac(dst_mac)
-            #print `dpkt.ethernet.Ethernet(pkt)`
-            ip = eth.data
-            print ip.p
-            if(ip.p == dpkt.ip.IP_PROTO_TCP):
-                tcp = ip.data
-                print "source port:", tcp.sport
-                print "dst port:", tcp.dport
-            elif(ip.p == dpkt.ip.IP_PROTO_UDP):
-                udp = ip.data
-                print "source port:", udp.sport
-                print "dst port:", udp.dport
-                
-            print "Source IP:", ip.src.encode("hex")
-            print "Dst IP:",ip.dst.encode("hex")
-
-    # --
-    # Print IP Header Info
-    # --
-    def print_ip_hdr(self,ip):
-        print "Source IP: ",ip.src.encode("hex")
-        print "Destination IP: ",ip.dst.encode("hex")
-        print "Proto Type: " , ip.p
-        pass
 
     # --
     # This function is used to sniff from wire
@@ -116,15 +82,9 @@ class CollectData:
     # --
     def decode(self,pc):
         for ts, buf in pc:
-            # Packet Debugging
-            #print `decode(buf)`
-            #eth = `dpkt.sll.SLL(buf)`
             eth = dpkt.ethernet.Ethernet(buf)
-            #print `eth` # debug
             dst_mac = util.add_colons_to_mac((eth.dst).encode("hex"))
             src_mac = util.add_colons_to_mac((eth.src).encode("hex"))
-            #print "Source MAC:", util.add_colons_to_mac(src_mac)
-            #print "Dst MAC:",util.add_colons_to_mac(dst_mac)
             pkt_len = len(buf)
             if(eth.type== dpkt.ethernet.ETH_TYPE_IP):
                 ip = eth.data
@@ -141,7 +101,6 @@ class CollectData:
                 if not broadcast:
                     if(ip.p == dpkt.ip.IP_PROTO_TCP):
                         pass
-                        #tcp =ip.data
                     elif(ip.p == dpkt.ip.IP_PROTO_UDP):
                         udp =ip.data
                         #print "dst port:", udp.dport

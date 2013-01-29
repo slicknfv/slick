@@ -37,6 +37,7 @@ from comm.clientcomm import ClientComm
 from mb_api import ClientService
 from shim_table import ShimTable
 #import socket, AF_PACKET, SOCK_RAW
+import shim
 
 
 
