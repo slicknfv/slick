@@ -102,7 +102,8 @@ class Shim:
         if(self.filename):
             f = open(self.filename)
             self.pcap_file = dpkt.pcap.Reader(f)
-            self.decode(self.pcap_file)
+            for ts, buf in self.pcap_file:
+                self.decode(None,buf)
     
 
     # --
@@ -241,6 +242,7 @@ class Shim:
             #print func_handle
             if(func_handle):
                 # Based on the function_hadle 
+                print "This is a data packet"
                 func_handle.process_pkt(buf)
             else:
                 pass

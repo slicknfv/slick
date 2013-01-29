@@ -9,7 +9,7 @@ parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir) 
 from logger.logger_func import Logger
 from trigger_all.trigger_all import TriggerAll
-from dns_dpi_func.dns_sensor import DNSSensor
+from dns_dpi_func.dns_dpi_function import DnsDpiFunction
 
 """
     These are the functions supported by the Shim  to the controller.
@@ -50,6 +50,7 @@ class ClientService(rpyc.Service):
             function_handle = TriggerAll(self.shim)#start the function
             function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "DNS-DPI"):
+            print "DNS-DPI Installed"
             function_handle = DnsDpiFunction(self.shim)#start the function
             function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "p0f"):
@@ -107,7 +108,7 @@ class ClientService(rpyc.Service):
         self.shim.client.send_data_basic(trigger_message)
 
     def fwd_pkt(self,packet):
-        print "Forwarding Packet............."
+        #print "Forwarding Packet............."
         self.shim.forward_data_sock.send(packet)
 
     # --
