@@ -207,7 +207,7 @@ class Shim:
                 pass
             self.demux(buf)
 
-    def decode(self, hdr, buf)
+	def decode(self, hdr, buf):
 		if(self.client):
 			msg = self.client.recv_data_basic()
 			if(msg):
