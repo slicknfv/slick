@@ -10,6 +10,7 @@ sys.path.insert(0,parentdir)
 from logger.logger_func import Logger
 from trigger_all.trigger_all import TriggerAll
 #from dns_handler import DHSHandler
+#from scapy.all import *
 
 """
     These are the functions supported by the Shim  to the controller.
@@ -111,6 +112,7 @@ class ClientService(rpyc.Service):
     def fwd_pkt(self,packet):
         print "Forwarding Packet............."
         self.shim.forward_data_sock.send(packet)
+        #sendp(packet)
     # --
     # get_function_handle_from_flow
     # Return the object for the flow

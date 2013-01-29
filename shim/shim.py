@@ -3,8 +3,16 @@
 import socket
 import dpkt
 import sys
-import pcap
+#import pcap
 import getopt
+
+
+import sys
+#sys.path.insert(0, '.')
+sys.path.append('..')
+import pcap
+
+
 
 import select
 
@@ -70,6 +78,7 @@ class Shim:
         inst = self
         self.client_service = ClientService(inst)
         self.forward_data_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
+        #self.forward_data_sock.setsockopt(socket.AF_PACKET,socket.PACKET_OTHERHOST,1)
         #self.send_data_sock.bind(("eth0", 0))
         if(self.oface != None):
             self.forward_data_sock.bind((self.oface, 0))
