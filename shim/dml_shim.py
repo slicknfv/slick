@@ -137,12 +137,14 @@ class Shim:
     # --
     def sniff(self):
         # <dave>
-
-		promiscuousMode = True
-        p = pcap.pcap(self.iface, pcap.PCAP_SNAPLEN_DFLT, promiscuousMode)  # true == promiscuous mod
-		p.setdirection(PCAP_D_IN)           # capture only incoming packets
-		cnt = 999999                        # XXX How do we say "loop forever"?
-        p.loop(cnt, shim_loop_helper, self) # will this call our decode method?
+        try:
+	    promiscuousMode = True
+            pc = pcap.pcap(self.iface, pcap.PCAP_SNAPLEN_DFLT, promiscuousMode)  # true == promiscuous mod
+            pc.setdirection(pcap.PCAP_D_IN)           # capture only incoming packets
+	    cnt = 9999999                        # XXX How do we say "loop forever"?
+            pc.loop(cnt, shim_loop_helper, self) # will this call our decode method?
+        except KeyboardInterrupt:
+            pc.breakloop()
 
 		# </dave>
 
@@ -207,14 +209,14 @@ class Shim:
                 pass
             self.demux(buf)
 
-	def decode(self, hdr, buf):
-		if(self.client):
-			msg = self.client.recv_data_basic()
-			if(msg):
-				self.decode_msg_and_call(msg)
-				print "YYYYYYYYYYYYYYYYYYYYYYYYYYYYY",msg
-		    return
-		self.demux(buf)
+    def decode(self, hdr, buf):
+        print "Inside decode"
+        if(self.client):
+            msg = self.client.recv_data_basic()
+            if(msg):
+                self.decode_msg_and_call(msg)
+                print "YYYYYYYYYYYYYYYYYYYYYYYYYYYYY",msg
+        self.demux(buf)
 
     # This method demuxes the traffic.
     # It takes a packet.
@@ -230,6 +232,7 @@ class Shim:
     def demux(self,buf):
         packet = dpkt.ethernet.Ethernet(buf)
         flow = self.extract_flow(packet)
+        print flow
         if(flow[NW_DST] == socket.inet_aton(self.mb_ip)):
             print "NOT USING IT"
         else:

@@ -137,7 +137,13 @@ class Shim:
         # sniffing on "any" causes the packets to be received in cooked form
         # which looses the Ethernet frame information but gives rest of the information
         # For further details: http://wiki.wireshark.org/SLL or man page of packet 7
-        pc = pcap.pcap(self.iface)
+        #pc = pcap.pcap(self.iface)
+        try:
+            pc = pcap.pcap(self.iface, pcap.PCAP_SNAPLEN_DFLT, pflag)
+            pc.setdirection(pcap.PCAP_D_IN)# only capture incoming packets.
+            pc.loop(cnt, process_pkt, (out, vflag))
+        except KeyboardInterrupt:
+            pc.breakloop()
         #pc = pcap.pcap("eth0")
         #print 'Listening on %s: With filter %s' % (pc.name, pc.filter)
         try:
