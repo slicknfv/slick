@@ -199,6 +199,24 @@ class pyswitch(Component):
         else:
             return -1
 
+                
+    #This function takes the src dpid, dst dpid and list of machines .. the
+    #
+    def pickMBMachine(self, src, dst, machinelist):
+        shortestPath = 0
+        shortestPath_MB = machinelist[0]
+        for mb in machinelist:
+            mb_dpid = XXXXXXXXXXXXXXXXXXXXXX
+            route1 = pyrouting.Route()
+            route1.id.src = src
+            route1.id.dst = mb_dpid
+            route2 = pyrouting.Route()
+            route2.id.src = mb_dpid
+            route2.id.dst = dst
+            if( len(route1.path) + len(route2.path) < shortestPath):
+                shortestPath = len(route1.path) + len(route2.path)
+                shortestPath_MB = mb
+    return mb
 
     def configure_func(self,app_desc,fd,application_conf_params):
         if(self.route_compiler.application_handles.has_key(fd)):
