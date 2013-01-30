@@ -24,7 +24,12 @@ class MSMessageProcessor():
         flow3["dl_src"] = None;flow3["dl_dst"] = None;flow3['dl_vlan'] = None;flow3['dl_vlan_pcp'] = None;flow3['dl_type'] = None;flow3['nw_src'] = None;flow3['nw_dst'] = None;flow3['nw_proto'] = None ;flow3['tp_src'] = None;flow3['tp_dst'] = 80
         flow4 = {}
         flow4["dl_src"] = None;flow4["dl_dst"] = None;flow4['dl_vlan'] = None;flow4['dl_vlan_pcp'] = None;flow4['dl_type'] = None;flow4['nw_src'] = None;flow4['nw_dst'] = None;flow4['nw_proto'] = None ;flow4['tp_src'] = 80;flow4['tp_dst'] = None
-        self.dns_handlers = DNSHandlers(self.cntxt)
+        flow5 = {}
+        flow5["dl_src"] = None; flow5["dl_dst"] = None; flow5['dl_vlan'] = None; flow5['dl_vlan_pcp'] = None; flow5['dl_type'] = None; flow5['nw_src'] = None; flow5['nw_dst'] = None;flow5['nw_proto'] = None ;flow5['tp_src'] = 53;flow5['tp_dst'] = 53
+        #self.dns_handlers = DNSHandlers(self.cntxt)
+        dns_flows=[]
+        dns_flows.append(flow1)
+        self.dns_handlers = DnsDpiFunctionApp(self.cntxt,50,dns_flows)
         self.p0f_handlers = P0fHandlers(self.cntxt)
 
         self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow1) # AD,file_name,threshold,user parameters
@@ -43,11 +48,11 @@ class MSMessageProcessor():
         #print flows1
         self.logger2_obj2 = LoggerUnitTest2(self.cntxt,1002,file_names,flows1)
 
-        #self.app_handles.append(self.dns_handlers)
+        self.app_handles.append(self.dns_handlers)
         #self.app_handles.append(self.p0f_handlers)
         #self.app_handles.append(self.logger_unit1)
         #self.app_handles.append(self.logger_unit2)
-        self.app_handles.append(self.trigger_all_test)
+        #self.app_handles.append(self.trigger_all_test)
         #self.app_handles.append(self.logger2_obj1)
         #self.app_handles.append(self.logger2_obj2)
 
@@ -90,6 +95,7 @@ class MSMessageProcessor():
 
     # Return True for sucess False for failure
     def send_install_msg(self,fd,flow,function_name,params,msg_dst):
+        print "I"*100 
         if((type(fd) == int) and isinstance(params, dict)):
             msg = {"type":"install", "fd":fd, "flow":flow,"function_name":function_name,"params":params}
             return self.send_msg(msg_dst,msg)
@@ -144,7 +150,7 @@ class DNSHandlers(Triggers):
     def __init__(self,inst):
         self.cntxt = inst
         self.installed = False
-	self.DNS_BLOCK_TIMEOUT = 10#0xffff
+	self.DNS_BLOCK_TIMEOUT = 1000#0xffff
         #set the configuration variables here:
         self.visit_threshold = 3 
         # TODO: for function specification.
@@ -164,7 +170,7 @@ class DNSHandlers(Triggers):
             json_str = json.dumps(msg)
             data = jsonpickle.decode(json_str)
             print type(data) # Its a dict
-            self.dns_handlers.handle_BadDomainEvent(data)
+            self.handle_BadDomainEvent(data)
 
     def initialize(self):
         #get the function 
@@ -291,13 +297,11 @@ class TriggerAllUnitTest():
     # This handle Trigger will be called twice for 2 functions.
     def handle_trigger(self,fd,msg):
         if(fd == self.fd[0]):
-            print "HANDLER..............................................................................................................1"
             print "TriggerAll handle_trigger function descriptor",fd
             print "TriggerAll handle_trigger called",msg
             self.f1.write(str(msg))
             self.f1.write('\n')
         if(fd == self.fd[1]):
-            print "HANDLER..............................................................................................................2"
             print "TriggerAll handle_trigger function descriptor",fd
             print "TriggerAll handle_trigger called",msg
             self.f2.write(str(msg))
@@ -322,7 +326,7 @@ class P0fHandlers():
 
 """
 # --
-# This application creates two instances of the same function with different flows and dumps those flows in two diffrent applications
+# This application creates two instances of the same function with different flows and dumps those flows in two diffrent files on the Function Box.
 # --
 """
 class LoggerUnitTest2():
@@ -365,3 +369,97 @@ class LoggerUnitTest2():
                 self.installed = True
                 print "Logger Installed."
             
+from nox.lib.core     import *
+from nox.lib.packet.ethernet     import ethernet
+class DnsDpiFunctionApp():
+    def __init__(self,inst,AD,flows):
+        self.cntxt = inst
+        self.num_functions = 1
+        self.app_d = AD
+        self.fd = [] #List of functions used by this application.
+        self.conf = 0
+        self.installed = False
+	self.DNS_BLOCK_TIMEOUT = 1000#0xffff
+        #set the configuration variables here:
+        self.visit_threshold = 3 
+        self.flows = flows
+        self.trigger_function_installed = False
+
+
+    def init(self):
+        for index in range(0,self.num_functions): # If the flows are same then it will overwrite the flow to function descriptor
+            print "APPLY_FUNC"
+            # read this from policy file.
+            #file_name = self.file_name
+            parameters = {}
+            #print self.flows[index],parameters
+            fd= self.cntxt.apply_func(self.app_d,self.flows[index],"DNS-DPI",parameters,self) 
+            if((fd >0)):#=> we have sucess
+                self.fd.append(fd)
+                self.installed = True
+                print "DNS_DPI Function Installed."
+
+    def configure_user_params(self):
+        if (self.conf < self.num_functions): # Need to call configure_func twice since this application has two functions instantiated
+            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+            params = {}
+            self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) # Call connfigure_func with same app if and different function descriptors.
+            self.conf +=1
+
+    def handle_BadDomainEvent(self,fd,event):
+        #src_ip = socket.inet_aton(event["src_ip"])
+        src_ip = ipstr_to_int(event["src_ip"])
+        bad_domain_name = event["bad_domain_name"]
+        src_dpid = self.cntxt.route_compiler.mmap.get_dpid(src_ip)# Bilal idiot.
+        print "HANDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDLING"
+        #if(app_conf == block):
+        #self._block_ip_list(src_dpid,src_ip,domain_ip_list)
+        #if(app_conf == log)
+        # new_flow[src_ip] = src_ip
+        # DROP-FUNCTION
+        flow = {}
+        flow["dl_src"] = None; flow["dl_dst"] = None; flow['dl_vlan'] = None; flow['dl_vlan_pcp'] = None; flow['dl_type'] = None; flow['nw_src'] = src_ip; flow['nw_dst'] = None;flow['nw_proto'] = None ;flow['tp_src'] = None;flow['tp_dst'] = None
+        parameters = {}
+        #if not self.trigger_function_installed:
+        #    fd= self.cntxt.apply_func(self.app_d,flow,"DROP",parameters,self) 
+        #    if((fd >0)):#=> we have sucess
+        #        self.fd.append(fd)
+        #        self.trigger_function_installed = True
+        print "BLOCKING THE IP ADDRESS", src_ip, "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
+        actions = []
+        print type(src_dpid)
+        print src_dpid
+        src_dpid = 5
+        self.cntxt.install_datapath_flow(src_dpid, { core.DL_TYPE : ethernet.IP_TYPE,core.NW_SRC : src_ip},
+                               self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, #
+                               actions,buffer_id = None, priority=0xffff)
+
+    def handle_trigger(self,fd,msg):
+        if(msg["dns_dpi_type"] == "BadDomainEvent"):
+            self.handle_BadDomainEvent(fd,msg)
+
+    # Set all the configurations based on the paramters inside the conf 
+    def configure_trigger(self):
+        pass
+        # get the location of mb from the controller. from function_map
+        # get the ip address of the mb from the controller. machine_map
+        # There is already the function installed on the machine 
+        # set the variables on the controller.
+        pass
+
+    def _block_ip_list(self,src_dpid,s_ip,domain_ip_list):
+        src_dpid = 5 # Hardcoded for testing the trigger module as self.mmap.update_ip_dpid_mapping() is not called with trigger module.  REMOVE it with live traffic.
+	src_ip = ipstr_to_int(s_ip)
+	for item in domain_ip_list:
+            print type(src_dpid)
+            print src_dpid
+	    dst_ip = ipstr_to_int(item)
+	    print src_ip,dst_ip
+	    ## Make sure we get the full DNS packet at the Controller
+	    actions = []
+	    self.cntxt.install_datapath_flow(src_dpid, 
+				{ core.DL_TYPE : ethernet.IP_TYPE,
+				    core.NW_SRC : src_ip,
+				   core.NW_DST:dst_ip },
+                                   self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, #
+                                   actions,buffer_id = None, priority=0xffff)

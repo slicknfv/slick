@@ -63,7 +63,7 @@ DP_MASK = 0xffffffffffff
 PORT_MASK = 0xffff
 
 BROADCAST_TIMEOUT   = 2 # was 60
-FLOW_TIMEOUT        = 0xffff
+FLOW_TIMEOUT        = 10
 
 logger = logging.getLogger('nox.coreapps.examples.pyswitch')
 
@@ -143,7 +143,7 @@ class pyswitch(Component):
             app_handle.configure_user_params()
             if (curtime - self.prev_time > CACHE_TIMEOUT):
                 self.prev_time = curtime
-        inst.post_callback(5, self.timer_callback)
+        inst.post_callback(1, self.timer_callback)
         return True
 
     def json_message_handler(self,pyevent):
