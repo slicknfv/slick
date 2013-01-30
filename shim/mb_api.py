@@ -10,6 +10,7 @@ sys.path.insert(0,parentdir)
 from logger.logger_func import Logger
 from trigger_all.trigger_all import TriggerAll
 from dns_dpi_func.dns_dpi_function import DnsDpiFunction
+from drop.drop import Drop
 
 """
     These are the functions supported by the Shim  to the controller.
@@ -53,14 +54,23 @@ class ClientService(rpyc.Service):
             print "DNS-DPI Installed"
             function_handle = DnsDpiFunction(self.shim)#start the function
             function_handle.init(fd,params_dict)# init invoked on the application.
+        if(function_name == "DROP"):
+            function_handle = Drop(self.shim)#start the function
+            function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "p0f"):
             #function_handle = p0f()#start the function
             #function_handle.init(fd,params_dict)# init invoked on the application.
             pass
 
         try:
+            if(isinstance(flow['nw_src'],unicode)): #BAD HACK
+                flow['nw_src'] = flow['nw_src'].encode('ascii','replace')
+                #flow['nw_src'] = socket.inet_aton(flow['nw_src'])
+                print flow['nw_src']
+                print type(flow['nw_src'])
             self.shim_table.add_flow(0,flow,fd) #Update flow to fd mapping.
             self.fd_to_object_map[fd] =function_handle
+            print "Function Handle added for fd",fd,function_handle
         except Exception:
             print "WARNING: Unable to create handle for the function", function_name ,"with function descriptor", fd
             del self.fd_to_object_map[fd]
@@ -118,7 +128,10 @@ class ClientService(rpyc.Service):
     def get_function_handle_from_flow(self,flow):
         #fd = self.flow_to_fd_map[flow]
         fd = self.shim_table.lookup_flow(flow) #Update flow to fd mapping.
-        #print fd #fd == None means no match.
+        if(fd != None):
+            pass
+            #print fd #fd == None means no match.
+            #print flow
         if(fd !=None):
             if not (self.fd_to_object_map.has_key(fd)):
                 return None

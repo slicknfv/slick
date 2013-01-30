@@ -2,7 +2,7 @@
 import os.path
 import dpkt
 from dns_dpi_func.dns_process import DNSProcess
-import collect_data
+#import collect_data
 import socket
 
 class DnsDpiFunction():

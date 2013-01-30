@@ -1,7 +1,8 @@
 # Reusing code from controller side.
 from collections import namedtuple
 from collections import defaultdict
-import struct
+import struct 
+import socket
 """
 TODO: Policy Overlap and Union of actions.
 TODO: Policy Conflict and pick them up based on some user defined criteria, security over performance. Or throughput over latency.
@@ -105,6 +106,8 @@ class ShimTable():
         ft = self.convert_flow(in_port,flow)
         if(ft == None):
             return None
+        #if(isinstance(ft.nw_src,str)):
+        #    print type(ft.nw_src),ft.nw_src
         for item in self.flow_to_function_mapping:
             item_match = False
             #if(item.in_port!=None):#If its not a don't care.
@@ -138,6 +141,9 @@ class ShimTable():
             	else:
             		continue
             if(item.nw_src!=None):
+                #print type(item.nw_src),item.nw_src
+                #print type(ft.nw_src),ft.nw_src
+                #print "XXXXXXXXXX"
             	if(item.nw_src == ft.nw_src):
             		item_match = True 
             	else:
