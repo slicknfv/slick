@@ -216,7 +216,7 @@ class pyswitch(Component):
             if( len(route1.path) + len(route2.path) < shortestPath):
                 shortestPath = len(route1.path) + len(route2.path)
                 shortestPath_MB = mb
-    return mb
+        return mb
 
     def configure_func(self,app_desc,fd,application_conf_params):
         if(self.route_compiler.application_handles.has_key(fd)):
@@ -311,7 +311,8 @@ class RouteCompiler():
         flow = extract_flow(packet)
         #update ip to dpid mapping.
         #print "BILAL"*50,self.mmap.ip_dpid
-        self.mmap.update_ip_dpid_mapping(dpid,flow)
+        # Bilal add handling of ports
+        self.mmap.update_ip_dpid_mapping(dpid,0,flow)
         print flow
         #flow = self.__convert_flow(event.flow)
         inport = event.src_location['port']

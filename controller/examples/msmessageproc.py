@@ -420,19 +420,22 @@ class DnsDpiFunctionApp():
         flow = {}
         flow["dl_src"] = None; flow["dl_dst"] = None; flow['dl_vlan'] = None; flow['dl_vlan_pcp'] = None; flow['dl_type'] = None; flow['nw_src'] = src_ip; flow['nw_dst'] = None;flow['nw_proto'] = None ;flow['tp_src'] = None;flow['tp_dst'] = None
         parameters = {}
-        #if not self.trigger_function_installed:
-        #    fd= self.cntxt.apply_func(self.app_d,flow,"DROP",parameters,self) 
-        #    if((fd >0)):#=> we have sucess
-        #        self.fd.append(fd)
-        #        self.trigger_function_installed = True
-        print "BLOCKING THE IP ADDRESS", src_ip, "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
-        actions = []
-        print type(src_dpid)
-        print src_dpid
-        src_dpid = 5
-        self.cntxt.install_datapath_flow(src_dpid, { core.DL_TYPE : ethernet.IP_TYPE,core.NW_SRC : src_ip},
-                               self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, #
-                               actions,buffer_id = None, priority=0xffff)
+        if not self.trigger_function_installed:
+            fd= self.cntxt.apply_func(self.app_d,flow,"DROP",parameters,self) 
+            if((fd >0)):#=> we have sucess
+                self.fd.append(fd)
+                self.trigger_function_installed = True
+        #####################################################################
+        # Use Below code to block the ip address
+        #####################################################################
+        #print "BLOCKING THE IP ADDRESS", src_ip, "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
+        #actions = []
+        #print type(src_dpid)
+        #print src_dpid
+        #src_dpid = 5
+        #self.cntxt.install_datapath_flow(src_dpid, { core.DL_TYPE : ethernet.IP_TYPE,core.NW_SRC : src_ip},
+        #                       self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, #
+        #                       actions,buffer_id = None, priority=0xffff)
 
     def handle_trigger(self,fd,msg):
         if(msg["dns_dpi_type"] == "BadDomainEvent"):
