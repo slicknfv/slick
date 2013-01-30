@@ -157,17 +157,14 @@ class ShimTable():
             	else:
             		continue
             if(item.nw_src!=None):
-                print type(item.nw_src),item.nw_src
-                print type(ft.nw_src),ft.nw_src
-                new_ip = None
-                try:
-                    new_ip = ipstr_to_int(ft.nw_src) 
-                except:
-                    pass
-                print new_ip
-                print "XXXXXXXXXX"
-            	if(item.nw_src == ft.nw_src):
-                        print "SRCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+                #print type(item.nw_src),item.nw_src
+                #print type(ft.nw_src),ipstr_to_int(ft.nw_src)
+                #new_ip = None
+                #new_ip = socket.ntohl(ft.nw_src) 
+                #print new_ip
+                #print "XXXXXXXXXX"
+            	if(item.nw_src == ipstr_to_int(ft.nw_src)):
+                        #print "SRCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
             		item_match = True 
             	else:
             		continue
@@ -199,6 +196,7 @@ class ShimTable():
         if(len(result_list) > 0):
             if(len(result_list) > 1):
                 print "RESULT LIST IS BIG"
+                print len(result_list)
             flow_tuple = result_list[-1] # Since we have ordered list.
             return self.flow_to_function_mapping[flow_tuple]
         return None

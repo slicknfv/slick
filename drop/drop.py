@@ -17,7 +17,8 @@ class Drop():
 
     # For DNS print fd and flow but for all other only print fd
     def process_pkt(self, buf):
-        print "DROPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"
+        #print "DROPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"
+        pass
 
     def shutdown(self):
         print "Shutting down function with function descriptor:",self.fd

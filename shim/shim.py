@@ -39,6 +39,9 @@ from shim_table import ShimTable
 #import socket, AF_PACKET, SOCK_RAW
 import shim
 
+def ip_to_str(a):
+    return "%d.%d.%d.%d" % ((a >> 24) & 0xff, (a >> 16) & 0xff, \
+                            (a >> 8) & 0xff, a & 0xff)
 
 
 IN_PORT    = "in_port"
@@ -251,27 +254,33 @@ class Shim:
 
 
     # use this to extract openflow flow.
-    def extract_flow(self,ethernet):
+    def extract_flow(self,eth):
         """
         Extracts and returns flow attributes from the given 'ethernet' packet.
         The caller is responsible for setting IN_PORT itself.
         """
         attrs = {}
-        attrs[DL_SRC] = ethernet.src
-        attrs[DL_DST] = ethernet.dst
-        attrs[DL_TYPE] = ethernet.type
-        p = ethernet.data
+        attrs[DL_SRC] = eth.src
+        attrs[DL_DST] = eth.dst
+        attrs[DL_TYPE] = eth.type
+        p = eth.data
     
         attrs[DL_VLAN] = 0xffff # XXX should be written OFP_VLAN_NONE
         attrs[DL_VLAN_PCP] = 0
     
-        if(ethernet.type== dpkt.ethernet.ETH_TYPE_IP):
-            ip = ethernet.data
-            attrs[NW_SRC] = ip.src
-            attrs[NW_DST] = ip.dst
+        if(eth.type== dpkt.ethernet.ETH_TYPE_IP):
+            ip = eth.data
+            #print "Source IP: ",int(ip.src.encode("hex"),16)
+            #print "Destination IP: ",int(ip.dst.encode("hex"),16)
+            attrs[NW_SRC] = socket.inet_ntoa(ip.src)
+            attrs[NW_DST] = socket.inet_ntoa(ip.dst)
             attrs[NW_PROTO] = ip.p
             attrs[NW_TOS] = ip.tos
             p = ip.data
+            #print "BBBBBBBBBBBBBBB"
+            #print attrs[NW_SRC]
+            #print attrs[NW_DST]
+            #print "XXXXXXXXXX"
     
             if((ip.p == dpkt.ip.IP_PROTO_TCP) or (ip.p ==dpkt.ip.IP_PROTO_UDP)): 
                 attrs[TP_SRC] = p.sport

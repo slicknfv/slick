@@ -82,6 +82,7 @@ class DNSProcess:
         if(eth.type== dpkt.ethernet.ETH_TYPE_IP):
             ip = eth.data
             dst_ip = socket.inet_ntoa(ip.dst)
+            src_ip = socket.inet_ntoa(ip.src)
             octet_list = string.split(dst_ip,'.')
             broadcast =  False
             for o in octet_list:
