@@ -242,7 +242,7 @@ class Shim:
             #print func_handle
             if(func_handle):
                 # Based on the function_hadle 
-                print "This is a data packet"
+                #print "This is a data packet"
                 func_handle.process_pkt(buf)
             else:
                 pass

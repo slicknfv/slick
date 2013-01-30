@@ -27,7 +27,7 @@ class DnsDpiFunction():
             self.count_thresh = params["count_thresh"]
 
     def process_pkt(self, buf):
-        print "INSIDE process_pkt"
+        #print "INSIDE process_pkt"
         isblocked = False
         src_ip = None
         domain_name = None

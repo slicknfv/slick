@@ -130,6 +130,7 @@ class ClientService(rpyc.Service):
         fd = self.shim_table.lookup_flow(flow) #Update flow to fd mapping.
         if(fd != None):
             pass
+            #print flow
             #print fd #fd == None means no match.
             #print flow
         if(fd !=None):

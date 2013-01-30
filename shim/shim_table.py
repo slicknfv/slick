@@ -1,6 +1,7 @@
 # Reusing code from controller side.
 from collections import namedtuple
-from collections import defaultdict
+#from collections import defaultdict
+from collections import OrderedDict
 import struct 
 import socket
 """
@@ -13,6 +14,12 @@ def mac_to_int(mac):
     for byte in struct.unpack('6B', mac):
         value = (value << 8) | byte
     return long(value)
+def ipstr_to_int(a):                            
+    octets = a.split('.')
+    return int(octets[0]) << 24 |\
+           int(octets[1]) << 16 |\
+           int(octets[2]) <<  8 |\
+           int(octets[3]);
 """
 	Description: 
 		Keeps a flow to function mapping.
@@ -20,7 +27,8 @@ def mac_to_int(mac):
 class ShimTable():
     def __init__(self):
         self.FlowTuple = namedtuple("FlowTuple",["in_port","dl_src","dl_dst","dl_vlan","dl_vlan_pcp","dl_type","nw_src","nw_dst","nw_proto","tp_src","tp_dst"])
-        self.flow_to_function_mapping = defaultdict(int) # key:FlowTuple value:[functions]
+        #self.flow_to_function_mapping = defaultdict(int) # key:FlowTuple value:[functions]
+        self.flow_to_function_mapping = OrderedDict() # key:FlowTuple value:[functions]
         #self.init_tuples()
     
     #return named tuple.
@@ -72,10 +80,16 @@ class ShimTable():
     def init_tuples(self):
         f = self.FlowTuple(in_port=None,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src=None,nw_dst=None,nw_proto=None,tp_src=None,tp_dst=53) # For outgoing
         self.flow_to_function_mapping[f] = {1:"DNS"}
-        rf = self.FlowTuple(in_port=None,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src=None,nw_dst=None,nw_proto=None,tp_src=53,tp_dst=None) # For incoming.
+
+        f1 = self.FlowTuple(in_port=None,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src=None,nw_dst=None,nw_proto=None,tp_src=53,tp_dst=None) # For incoming.
+        #self.flow_to_function_mapping[f1] = {1:"DNS"}
+
+        f2 = self.FlowTuple(in_port=None,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src="192.168.2.20",nw_dst=None,nw_proto=None,tp_src=None,tp_dst=53) # For incoming.
+        self.flow_to_function_mapping[f1] = {1:"DROP"}
+
         f = self.FlowTuple(in_port=None,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src=None,nw_dst=None,nw_proto=None,tp_src=None,tp_dst=80) # For outgoing
-        self.flow_to_function_mapping[f] = {1:"HTTP"}
-        #print self.flow_to_function_mapping
+        #self.flow_to_function_mapping[f] = {1:"HTTP"}
+        print self.flow_to_function_mapping
 
     # Return a reverse flow for the given flow.
     def get_reverse_flow(self,flow):
@@ -102,8 +116,10 @@ class ShimTable():
         Dummy matching function returns True if the first wild card entry matches.
     """
     def lookup_flow(self,flow):
+        result_list = []
         in_port = 0
         ft = self.convert_flow(in_port,flow)
+        #print flow
         if(ft == None):
             return None
         #if(isinstance(ft.nw_src,str)):
@@ -141,10 +157,17 @@ class ShimTable():
             	else:
             		continue
             if(item.nw_src!=None):
-                #print type(item.nw_src),item.nw_src
-                #print type(ft.nw_src),ft.nw_src
-                #print "XXXXXXXXXX"
+                print type(item.nw_src),item.nw_src
+                print type(ft.nw_src),ft.nw_src
+                new_ip = None
+                try:
+                    new_ip = ipstr_to_int(ft.nw_src) 
+                except:
+                    pass
+                print new_ip
+                print "XXXXXXXXXX"
             	if(item.nw_src == ft.nw_src):
+                        print "SRCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
             		item_match = True 
             	else:
             		continue
@@ -169,7 +192,15 @@ class ShimTable():
                 else:
                     continue
             if(item_match == True):
-                return self.flow_to_function_mapping[item]
+                result_list.append(item)
+                #print result_list
+                #return self.flow_to_function_mapping[item]
+            pass
+        if(len(result_list) > 0):
+            if(len(result_list) > 1):
+                print "RESULT LIST IS BIG"
+            flow_tuple = result_list[-1] # Since we have ordered list.
+            return self.flow_to_function_mapping[flow_tuple]
         return None
 
     # Function that returns the corresponding functions dict to the flow.
