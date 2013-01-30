@@ -62,8 +62,8 @@ U32_MAX = 0xffffffff
 DP_MASK = 0xffffffffffff
 PORT_MASK = 0xffff
 
-BROADCAST_TIMEOUT   = 2 # was 60
-FLOW_TIMEOUT        = 10
+BROADCAST_TIMEOUT   = 60 # was 60
+FLOW_TIMEOUT        = 10000
 
 logger = logging.getLogger('nox.coreapps.examples.pyswitch')
 
@@ -169,8 +169,14 @@ class pyswitch(Component):
 	# don't forward lldp packets    
 	if packet.type == ethernet.LLDP_TYPE:
 	    return CONTINUE
-
         flow = extract_flow(packet)
+        if not (self.route_compiler.mmap.mac_to_dpid_port.has_key(packet.src.tostring())):
+            self.route_compiler.mmap.mac_to_dpid_port[packet.src.tostring()] = (dpid,inport)
+        print self.route_compiler.mmap.mac_to_dpid_port
+
+        if not self.route_compiler.mmap.ip_to_dpid_port.has_key(flow['nw_src']):
+            self.route_compiler.mmap.ip_to_dpid_port[flow['nw_src']] = (dpid,inport)
+        print self.route_compiler.mmap.ip_to_dpid_port
         
 	return CONTINUE
 
@@ -303,7 +309,7 @@ class RouteCompiler():
         return attrs
 
     def handle_functions(self,event):
-        dpid = netinet.create_datapathid_from_host(event.datapath_id)
+        dpid = event.datapath_id#netinet.create_datapathid_from_host(event.datapath_id)
         try:
             packet = ethernet(array.array('B', event.buf))
         except IncompletePacket, e:
@@ -312,27 +318,31 @@ class RouteCompiler():
         #update ip to dpid mapping.
         #print "BILAL"*50,self.mmap.ip_dpid
         # Bilal add handling of ports
-        self.mmap.update_ip_dpid_mapping(dpid,0,flow)
-        print flow
-        #flow = self.__convert_flow(event.flow)
         inport = event.src_location['port']
+        self.mmap.update_ip_dpid_mapping(dpid,inport,flow)
+        #flow = self.__convert_flow(event.flow)
 
 
         function_descriptors = self.policy.get_flow_functions(inport,flow) # Find the function descriptors.
         func_loc = None
-        print "XXXXXXXXXXXXXXXXXXXXXX",function_descriptors
         for func_desc,function_name in function_descriptors.iteritems():
+            print "XXXXXXXXXXXXXXXXXXXXXX",function_descriptors
+            print flow
             print func_desc,function_name
             # This gives us function location
             ip_addr = self.fmap.get_ip_addr_from_func_desc(func_desc) 
             mac_addr = self.fmap.fd_machine_map[ip_addr] 
-            nw_addr = socket.inet_ntoa(ip_addr) # already aton 
-            dl_addr = create_eaddr(mac_addr) 
-            print "L"*20,socket.inet_ntoa(ip_addr),dl_addr
+            #nw_addr = socket.inet_ntoa(ip_addr) # already aton 
+            #dl_addr = create_eaddr(mac_addr) 
+            #print "L"*20,socket.inet_ntoa(ip_addr),dl_addr
             #self.auth.get_authed_locations(dl_addr,nw_addr)
-            print event.datapath_id,type(event.datapath_id)
-            func_loc = (event.datapath_id,2)#self.fmap.get_closest_location(event.datapath_id,function_name)
+            print "***We are at switch:***",event.datapath_id,type(event.datapath_id)
+            #func_loc = (event.datapath_id,2)#self.fmap.get_closest_location(event.datapath_id,function_name)
+            func_loc = (6,2)#self.fmap.get_closest_location(event.datapath_id,function_name)
             #self.copy_flow(event,func_loc) 
+            if(dpid != func_loc[0]): # We are receiving packet from the 
+                func_loc = None
+
 
         # REWRITE
         """
@@ -367,7 +377,7 @@ class RouteCompiler():
         pass
         """
         self.install_route(event,func_loc)
-        print "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+        print "ZZZ"
 
     def update_application_handles(self,fd,application_object,app_desc):
         if not (self.application_handles.has_key(fd)):
@@ -413,7 +423,7 @@ class RouteCompiler():
 
     # does what the name says on the dpid in func_loc adds an entry for the traffic to be sent to the DNS-DPI box.
     def copy_flow(self,event,func_loc):
-        print "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+        #print "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
         try:
             packet = ethernet(array.array('B', event.buf))
         except IncompletePacket, e:
@@ -431,16 +441,23 @@ class RouteCompiler():
                                    priority = openflow.OFP_DEFAULT_PRIORITY,
                                    inport = inport, packet=event.buf)
                            
-    def install_route_helper(self,event,indatapath, src, inport, dst, outport):
+    def install_route_helper(self,event,indatapath, src, inport, dst, outport,func_loc):
         route = pyrouting.Route()
         route.id.src = src
         route.id.dst = dst
+        if(func_loc != None):
+            print "Source switch:",route.id.src,"Input Port:",inport
+            print "Destination switch:",route.id.dst,"Output Port:",outport
+            print func_loc
+            print "Did you find Route?",self.routing.get_route(route)
         if self.routing.get_route(route):
             checked = True
             if self.routing.check_route(route, inport, outport):
-                logger.debug('Found route %s.' % hex(route.id.src.as_host())+\
+                #print "ALPHA"*50
+                if(func_loc != None):
+                    print 'Found route %s.' % hex(route.id.src.as_host())+\
                              ':'+str(inport)+' to '+hex(route.id.dst.as_host())+\
-                             ':'+str(outport))
+                             ':'+str(outport)
                 if route.id.src == route.id.dst:
                     firstoutport = outport
                 else:
@@ -460,9 +477,9 @@ class RouteCompiler():
                         p.append(str(route.path[i].dst))
                     p.append(str(outport))
                 
-                print "SETTING UP Route:",route
-                print "ROUTING",route.id.src,route.id.dst,inport,outport
-                print type(inport),type(outport),inport,outport
+                #print "SETTING UP Route:",route
+                #print "ROUTING",route.id.src,route.id.dst,inport,outport
+                #print type(inport),type(outport),inport,outport
                 self.routing.setup_route(event.flow, route, inport, \
                                          outport, FLOW_TIMEOUT, [], True)
                 
@@ -470,7 +487,7 @@ class RouteCompiler():
                 pending_route = []
                 # Add barrier xids
                 for dpid in p[1:len(p)-1]:
-                    logger.debug("Sending barrier to %s", dpid)
+                    #logger.debug("Sending barrier to %s", dpid)
                     pending_route.append(self.cntxt.send_barrier(int(dpid,16)))
                 # Add packetout info
                 pending_route.append([indatapath, inport, event])
@@ -489,13 +506,13 @@ class RouteCompiler():
                     logger.debug("Packet not on route - dropping.")
                 return True
             else:
-                logger.debug("Invalid route between %s." \
+                print "Invalid route between %s." \
                              % hex(route.id.src.as_host())+':'+str(inport)+' to '+\
-                             hex(route.id.dst.as_host())+':'+str(outport))
+                             hex(route.id.dst.as_host())+':'+str(outport)
         else:
             logger.debug("No route between %s and %s." % \
                 (hex(route.id.src.as_host()), hex(route.id.dst.as_host())))
-    #return CONTINUE
+        return CONTINUE
 
     # Use the func_loc to provide as a location for middlebox function.
     def install_route(self,event,func_loc):
@@ -538,9 +555,9 @@ class RouteCompiler():
                 #print type(dloc),dloc
                 #print type(outport),outport
                 dloc = dloc | (outport << 48)
-                print type(dloc),dloc
-                print type(route.id.dst),route.id.dst
-                print type(outport),outport
+                #print type(dloc),dloc
+                #print type(route.id.dst),route.id.dst
+                #print type(outport),outport
             else:
                 dloc = dst
                 route.id.dst = netinet.create_datapathid_from_host(dloc & DP_MASK)
@@ -565,24 +582,26 @@ class RouteCompiler():
                 mb_port = func_loc[1]
                 print "Function Location 1"
                 ##THEO: call the helper function here
-                checked = self.install_route_helper(event,indatapath,src,inport, mb,mb_port)
+                checked = self.install_route_helper(event,indatapath,src,inport, mb,mb_port,func_loc)
                 print "Function Location 2"
                 dst_loc = netinet.create_datapathid_from_host(dloc & DP_MASK)
-                checked = self.install_route_helper(event,indatapath,mb,mb_port,dst_loc,outport)
+                checked = self.install_route_helper(event,indatapath,mb,mb_port,dst_loc,outport,func_loc)
             else:
-                print "Direct Path"
-                checked = self.install_route_helper(event,indatapath,src,inport, route.id.dst,outport)
+                #print "Direct Path"
+                checked = self.install_route_helper(event,indatapath,src,inport, route.id.dst,outport,func_loc)
         if not checked:
             if event.flow.dl_dst.is_broadcast():
-                logger.debug("Setting up FLOOD flow on %s", str(indatapath))
+                if(func_loc != None):
+                    logger.debug("Setting up FLOOD flow on %s", str(indatapath))
                 self.routing.setup_flow(event.flow, indatapath, \
-                    openflow.OFPP_FLOOD, event.buffer_id, event.buf, \
+                        openflow.OFPP_FLOOD, event.buffer_id, event.buf, \
                         BROADCAST_TIMEOUT, "", \
                         event.flow.dl_type == htons(ethernet.IP_TYPE))
             else:
                 inport = ntohs(event.flow.in_port)
-                logger.debug("Flooding")
-                print "WARNING","FLOODING"*20
+                if(func_loc != None):
+                    logger.debug("Flooding")
+                    print "WARNING","FLOODING"*20
                 self.routing.send_packet(indatapath, inport, \
                     openflow.OFPP_FLOOD, \
                     event.buffer_id, event.buf, "", \

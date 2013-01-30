@@ -155,6 +155,8 @@ class FunctionMap():
 class MachineMap():
     def __init__(self):
         self.machine_ip_map = defaultdict(dict) # key=dpid:value=IP address 
+        self.mac_to_dpid_port = defaultdict(tuple)
+        self.ip_to_dpid_port = defaultdict(tuple)
         self.ip_dpid = {} #keeps a record of the location of IP address. key:ip value: dpid
         self.ip_port = {} #keeps a record of the location of IP address. key:ip value: port
         #TODO: Add machine specs ability to read the files.
@@ -209,7 +211,7 @@ class MachineMap():
             self.ip_port[src_ip] = port
         else:
             if(self.ip_dpid[src_ip] != dpid):
-                print src_ip, " changed the location, from:",self.ip_dpid[src_ip] ," to:",dpid
+                print ip_to_str(src_ip), " changed the location, from:",self.ip_dpid[src_ip] ," to:",dpid
                 self.ip_dpid[src_ip] = dpid
     
     def get_dpid(self,ip_addr):
