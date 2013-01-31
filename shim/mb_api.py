@@ -10,6 +10,7 @@ sys.path.insert(0,parentdir)
 from logger.logger_func import Logger
 from trigger_all.trigger_all import TriggerAll
 from dns_dpi_func.dns_dpi_function import DnsDpiFunction
+from p0f.p0ftriggers import P0F
 from drop.drop import Drop
 
 """
@@ -58,9 +59,8 @@ class ClientService(rpyc.Service):
             function_handle = Drop(self.shim)#start the function
             function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "p0f"):
-            #function_handle = p0f()#start the function
-            #function_handle.init(fd,params_dict)# init invoked on the application.
-            pass
+            function_handle = P0F(self.shim)
+            function_handle.init(fd,params_dict)
 
         try:
             if(isinstance(flow['nw_src'],unicode)): #BAD HACK

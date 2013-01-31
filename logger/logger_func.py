@@ -25,7 +25,6 @@ class Logger():
 
     # Paramters
     def configure(self,params):
-        print "BILAL"
         if(params.has_key("count_thresh")):
             self.count_thresh = params["count_thresh"]
         print self.count_thresh
@@ -42,13 +41,7 @@ class Logger():
         flow = self.shim.extract_flow(packet)
         self.file_handle.write(str(flow))
         self.file_handle.write('\n')
-        self.count +=1
         self.shim.client_service.fwd_pkt(buf)
-        #if(self.count >= self.count_thresh):
-        #    #print "RAISE_TRIGGER",self.function_desc,flow
-        #    trigger = {"fd":self.function_desc,"thresh":self.count_thresh}
-        #    self.shim.client_service.raise_trigger(trigger)
-        #    self.count = 0
 
     def shutdown(self):
         print "Shutting down function with function descriptor:",self.fd
