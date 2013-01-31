@@ -12,6 +12,7 @@ from trigger_all.trigger_all import TriggerAll
 from dns_dpi_func.dns_dpi_function import DnsDpiFunction
 from p0f.p0ftriggers import P0F
 from drop.drop import Drop
+from bloomfilter.bloomfilter import BloomFilter
 
 """
     These are the functions supported by the Shim  to the controller.
@@ -60,6 +61,9 @@ class ClientService(rpyc.Service):
             function_handle.init(fd,params_dict)# init invoked on the application.
         if(function_name == "p0f"):
             function_handle = P0F(self.shim)
+            function_handle.init(fd,params_dict)
+        if(function_name == "BF"):
+            function_handle = BloomFilter(self.shim)
             function_handle.init(fd,params_dict)
 
         try:
