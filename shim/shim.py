@@ -94,6 +94,7 @@ class Shim:
 
 
     def register_machine(self):
+        print "MAC Address: ",self.mac, "Machine IP Address:",self.mb_ip
         register_msg = {"type":"register","machine_mac":self.mac,"machine_ip":self.mb_ip}
         self.client.send_data_basic(register_msg)
 
