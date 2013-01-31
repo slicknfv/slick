@@ -29,7 +29,10 @@ class MSMessageProcessor():
         flow6 = {}
         flow6["dl_src"] = None; flow6["dl_dst"] = None; flow6['dl_vlan'] = None; flow6['dl_vlan_pcp'] = None; flow6['dl_type'] = None; flow6['nw_src'] = None; flow6['nw_dst'] = None;flow6['nw_proto'] = None ;flow6['tp_src'] = None;flow6['tp_dst'] = 40000
         flow7 = {}
-        flow7["dl_src"] = None;flow7["dl_dst"] = None;flow7['dl_vlan'] = None;flow7['dl_vlan_pcp'] = None;flow7['dl_type'] = None;flow7['nw_src'] = None;flow7['nw_dst'] = None;flow7['nw_proto'] = 6 ;flow7['tp_src'] = None;flow7['tp_dst'] = None
+        flow7["dl_src"] = None;flow7["dl_dst"] = None;flow7['dl_vlan'] = None;flow7['dl_vlan_pcp'] = None;flow7['dl_type'] = None;flow7['nw_src'] = None;flow7['nw_dst'] = None;flow7['nw_proto'] = None ;flow7['tp_src'] = None;flow7['tp_dst'] = 80
+        # To be used for filter app.
+        flow8 = {}
+        flow8["dl_src"] = None;flow8["dl_dst"] = None;flow8['dl_vlan'] = None;flow8['dl_vlan_pcp'] = None;flow8['dl_type'] = None;flow8['nw_src'] = None;flow8['nw_dst'] = None;flow8['nw_proto'] = None ;flow8['tp_src'] = None;flow8['tp_dst'] = 80
         #self.dns_handlers = DNSHandlers(self.cntxt)
         dns_flows=[]
         dns_flows.append(flow1)
@@ -40,6 +43,12 @@ class MSMessageProcessor():
         p0f_flows = []
         p0f_flows.append(flow7) # All port80 traffic.[We need tcp only but lets only do http for now.
         self.p0f_handlers = P0fFunctionApp(self.cntxt,51,p0f_flows)
+        #########
+        #BloomFilterFunctionApp code
+        #########
+        bf_flows = []
+        bf_flows.append(flow8) # All port80 traffic.[We need tcp only but lets only do http for now.
+        self.bf_handlers = BloomFilterFunctionApp(self.cntxt,52,bf_flows)
 
         self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow6) # AD,file_name,threshold,user parameters
         self.logger_unit2 = LoggerUnitTest(self.cntxt,101,"/tmp/http_log",1000,flow3)
@@ -58,12 +67,13 @@ class MSMessageProcessor():
         self.logger2_obj2 = LoggerUnitTest2(self.cntxt,1002,file_names,flows1)
 
         #self.app_handles.append(self.dns_handlers)
-        self.app_handles.append(self.p0f_handlers)
+        #self.app_handles.append(self.p0f_handlers)
         #self.app_handles.append(self.logger_unit1)
         #self.app_handles.append(self.logger_unit2)
         #self.app_handles.append(self.trigger_all_test)
         #self.app_handles.append(self.logger2_obj1)
         #self.app_handles.append(self.logger2_obj2)
+        self.app_handles.append(self.bf_handlers)
 
     # --
     # Function processes the JSON messages and returns a reply.
@@ -542,3 +552,43 @@ class P0fFunctionApp():
 	    		   core.TP_DST: port_number },
                                120,120, #
                                actions,buffer_id = None, priority=0xffff)
+############
+# BloomFilter Function
+############
+class BloomFilterFunctionApp():
+    def __init__(self,inst,AD,flows):
+        self.cntxt = inst
+        self.num_functions = 1
+        self.app_d = AD
+        self.fd = [] #List of functions used by this application.
+        self.conf = 0
+        self.installed = False
+        self.flows = flows
+        #App specific
+        self.trigger_function_installed = False
+
+
+    def init(self):
+        for index in range(0,self.num_functions): 
+            print "APPLY_FUNC"
+            parameters = {}
+            fd= self.cntxt.apply_func(self.app_d,self.flows[index],"BF",parameters,self) #Bloom Filter
+            if((fd >0)):#=> we have sucess
+                self.fd.append(fd)
+                self.installed = True
+                print "BF Function Installed."
+
+    def configure_user_params(self):
+        if (self.conf < self.num_functions): 
+            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+            params = {"bf_size":"1000","error_rate":"0.01"}
+            self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) 
+            self.conf +=1
+
+    def handle_trigger(self,fd,msg):
+        #print msg
+        if(msg.has_key("BF_trigger_type")):
+            if(msg["BF_trigger_type"] == "VAL_DETECTED"):
+                print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+                print "Bloom Filter Detected Value"
+
