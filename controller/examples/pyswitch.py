@@ -170,13 +170,14 @@ class pyswitch(Component):
 	if packet.type == ethernet.LLDP_TYPE:
 	    return CONTINUE
         flow = extract_flow(packet)
-        if not (self.route_compiler.mmap.mac_to_dpid_port.has_key(packet.src.tostring())):
-            self.route_compiler.mmap.mac_to_dpid_port[packet.src.tostring()] = (dpid,inport)
-        print self.route_compiler.mmap.mac_to_dpid_port
+        src_mac = mac_to_str(packet.src.tostring())
+        if not (self.route_compiler.mmap.mac_to_dpid_port.has_key(src_mac)):
+            self.route_compiler.mmap.mac_to_dpid_port[src_mac] = (dpid,inport)
+        #print self.route_compiler.mmap.mac_to_dpid_port
 
         if not self.route_compiler.mmap.ip_to_dpid_port.has_key(flow['nw_src']):
             self.route_compiler.mmap.ip_to_dpid_port[flow['nw_src']] = (dpid,inport)
-        print self.route_compiler.mmap.ip_to_dpid_port
+        #print self.route_compiler.mmap.ip_to_dpid_port
         
 	return CONTINUE
 
@@ -340,8 +341,8 @@ class RouteCompiler():
             #func_loc = (event.datapath_id,2)#self.fmap.get_closest_location(event.datapath_id,function_name)
             func_loc = (6,2)#self.fmap.get_closest_location(event.datapath_id,function_name)
             #self.copy_flow(event,func_loc) 
-            if(dpid != func_loc[0]): # We are receiving packet from the 
-                func_loc = None
+            #if(dpid != func_loc[0]): # We are receiving packet from the 
+            #    func_loc = None
 
 
         # REWRITE
@@ -446,6 +447,7 @@ class RouteCompiler():
         route.id.src = src
         route.id.dst = dst
         if(func_loc != None):
+            print "Indatapath:",indatapath,"Input Port:",inport
             print "Source switch:",route.id.src,"Input Port:",inport
             print "Destination switch:",route.id.dst,"Output Port:",outport
             print func_loc
@@ -538,15 +540,12 @@ class RouteCompiler():
         #    dstlist.append(func_loc)
         checked = False
         for dst in dstlist:
-            """
-            print "LOOOP"*20
-            print dst
-            print type(func_loc),func_loc
-            """
             if isinstance(dst, dict):
                 if not dst['allowed']:
                     continue
                 dloc = dst['authed_location']['sw']['dp']
+                #dst_mac = str(event.flow.dl_dst)
+                #dloc = self.mmap.mac_to_dpid_port[dst_mac][0] #this is dpid 
                 #print "ROUTING111",type(dloc),dloc
                 #print func_loc
                 route.id.dst = netinet.create_datapathid_from_host(dloc & DP_MASK)
@@ -589,6 +588,24 @@ class RouteCompiler():
             else:
                 #print "Direct Path"
                 checked = self.install_route_helper(event,indatapath,src,inport, route.id.dst,outport,func_loc)
+            #if(func_loc != None):
+            #    mb = netinet.create_datapathid_from_host(func_loc[0] & DP_MASK)#func_loc[0]
+            #    mb_port = func_loc[1]
+            #    dst_mac = str(event.flow.dl_dst) 
+            #    print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAA",dst_mac
+            #    print self.mmap.mac_to_dpid_port #this is dpid 
+            #    #mac = array.array('B',binascii.unhexlify(dst.replace(b":",b"")))
+            #    dloc = self.mmap.mac_to_dpid_port[dst_mac][0] #this is dpid 
+            #    print dloc
+            #    outport = self.mmap.mac_to_dpid_port[dst_mac][1] # this is outport
+            #    print "Function Location 1"
+            #    ##THEO: call the helper function here
+            #    src = route.id.src
+            #    print src,indatapath
+            #    checked = self.install_route_helper(event,indatapath,indatapath,inport, mb,mb_port,func_loc)
+            #    print "Function Location 2"
+            #    dst_loc = netinet.create_datapathid_from_host(dloc & DP_MASK)
+            #    checked = self.install_route_helper(event,indatapath,mb,mb_port,dst_loc,outport,func_loc)
         if not checked:
             if event.flow.dl_dst.is_broadcast():
                 if(func_loc != None):

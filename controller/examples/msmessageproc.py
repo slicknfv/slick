@@ -26,13 +26,15 @@ class MSMessageProcessor():
         flow4["dl_src"] = None;flow4["dl_dst"] = None;flow4['dl_vlan'] = None;flow4['dl_vlan_pcp'] = None;flow4['dl_type'] = None;flow4['nw_src'] = None;flow4['nw_dst'] = None;flow4['nw_proto'] = None ;flow4['tp_src'] = 80;flow4['tp_dst'] = None
         flow5 = {}
         flow5["dl_src"] = None; flow5["dl_dst"] = None; flow5['dl_vlan'] = None; flow5['dl_vlan_pcp'] = None; flow5['dl_type'] = None; flow5['nw_src'] = None; flow5['nw_dst'] = None;flow5['nw_proto'] = None ;flow5['tp_src'] = 53;flow5['tp_dst'] = 53
+        flow6 = {}
+        flow6["dl_src"] = None; flow6["dl_dst"] = None; flow6['dl_vlan'] = None; flow6['dl_vlan_pcp'] = None; flow6['dl_type'] = None; flow6['nw_src'] = None; flow6['nw_dst'] = None;flow6['nw_proto'] = None ;flow6['tp_src'] = None;flow6['tp_dst'] = 40000
         #self.dns_handlers = DNSHandlers(self.cntxt)
         dns_flows=[]
         dns_flows.append(flow1)
         self.dns_handlers = DnsDpiFunctionApp(self.cntxt,50,dns_flows)
         self.p0f_handlers = P0fHandlers(self.cntxt)
 
-        self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow1) # AD,file_name,threshold,user parameters
+        self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow6) # AD,file_name,threshold,user parameters
         self.logger_unit2 = LoggerUnitTest(self.cntxt,101,"/tmp/http_log",1000,flow3)
 
         self.trigger_all_test = TriggerAllUnitTest(self.cntxt)
