@@ -28,6 +28,10 @@ class BloomFilter():
     def configure(self,params):
         if(params.has_key("sentinelfile")):
             self.filename = params["sentinelfile"]
+        if(params.has_key("addsentinel")):
+            sentinel = params["addsentinel"]
+            if(self.bf):
+                self.bf.add(sentinel) # Add the new value to the sentinel
 
     def BFInit(self,bf_size,error_rate,filename):
         self.bf = pybloomfilter.BloomFilter(10000, 0.001, 'filter.bloom')
