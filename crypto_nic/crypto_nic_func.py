@@ -17,7 +17,6 @@ class CryptoNIC():
     def configure(self,params):
 		pass
 
-    # For DNS print fd and flow but for all other only print fd
     def process_pkt(self, buf):
         #print "INSIDE process_pkt"
         """
@@ -29,6 +28,7 @@ class CryptoNIC():
 		if(eth.type == dpkt.ethernet.ETH_TYPE_IP):
 			ip = eth.data
 			# xor the ip data with the key
+			# TODO check that ip.data.__len__() <= key.__len__()
 			for i in range(0, ip.data.__len__()):
 				ip.data[i] = chr(ord(ip.data[i]) ^ ord(key[i]))
         self.shim.client_service.fwd_pkt(buf)
