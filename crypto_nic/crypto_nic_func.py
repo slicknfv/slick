@@ -1,7 +1,6 @@
 # This class is used to implement a simple crypto nic, same as lego
 import os.path
 import dpkt
-import random
 
 class CryptoNIC():
     def __init__(self,shim):
