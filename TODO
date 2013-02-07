@@ -1,0 +1,42 @@
+Compiler:
+---------
+-> Compiler to read programs and generate application code. There should be option to read the program and generate code, and the option to write custom application.
+-> Separate the Slick applications from the controller so that they can be run independently, even on a separate host. 
+
+Function Specs:
+---------------
+-> Read the function specification conformance on the controller code.
+
+Routing:
+---------
+-> Route Optimization among existing set of machines placed in the network, should involve dynamic redirection of flows based on changing events in the network. At time t1 machine M1 might be the best solution for the network traffic to process function f but at time t1 machine M2 might become best solution to apply function f as new hosts have asked for the similar function processing.
+        a- Initial placement of machine.[On first flow]
+        b- Changing placement of machine.
+-> Make Route setup work for bigger network and see what are the problem with bigger topologies and different topologies than tree. Does it work in loop  etc.
+
+Policy Conflicts:
+------------------
+-> Policy conflicts and overlaps, how can we have these policy issues resolved.
+
+Design/Implementation Suggestion:
+-----------------
+-> Use Openflow version of shim layer that can be used with the controller and maintain MB MACs at the controller.
+-> Inband Middlebox traffic handling.
+-> Shim Layer in C/C++.[ For SOSP need C/C++]
+->Use POX controller instead of NOX.   
+->Need the ability to link Function code written in C/C++,Python and other languages.
+
+Policy to Flow Conversion:
+---------------------------
+1- Currently we use the port numbers to identify the traffic, if its not identifiable by port need DPI.
+2- What if we need DPI to understand the traffic, adding a single protocol detection might mean sending all the traffic to the DPI box
+
+Functions to Add:
+-----------------
+       1- HTTP header rewriting, use the CherryProxy
+       2- Use the nDPI library with the C/C++ and with Python CTypes.
+
+Future:
+---------
+Improving the Implementation:
+   Using the wireshark decoding protocol.
