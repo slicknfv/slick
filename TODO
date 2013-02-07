@@ -9,10 +9,11 @@ Function Specs:
 
 Routing:
 ---------
--> Route Optimization among existing set of machines placed in the network, should involve dynamic redirection of flows based on changing events in the network. At time t1 machine M1 might be the best solution for the network traffic to process function f but at time t1 machine M2 might become best solution to apply function f as new hosts have asked for the similar function processing.
-        a- Initial placement of machine.[On first flow]
-        b- Changing placement of machine.
--> Make Route setup work for bigger network and see what are the problem with bigger topologies and different topologies than tree. Does it work in loop  etc.
+-> Code placement algorithm for the initial placement of a middle box function.[On first flow]
+-> Design and code algorithm for dynamically adjusting placement of a middle box function based on changes in traffic dynamics. This optimization would prove useful in situations where traffic from more end points are redirected through the middle box function.  For example, at time t0 traffic is between only one pair of end points but at time t1 there are now 10 points at different locations. It may be more beneficial, in terms of latency, to move the middle box function to a location that is central to all 10 points.
+-> Modify Route setup function and ensure that it works for networks with more than one switch
+-> Test Slick on networks with loops 
+-> Test Slick on non-tree networks
 
 Policy Conflicts:
 ------------------
