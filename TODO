@@ -19,13 +19,14 @@ Policy Conflicts:
 ------------------
 -> Policy conflicts and overlaps, how can we have these policy issues resolved.
 
+
 Design/Implementation Suggestion:
 -----------------
 -> Use Openflow version of shim layer that can be used with the controller and maintain MB MACs at the controller.
 -> Inband Middlebox traffic handling.
 -> Shim Layer in C/C++.[ For SOSP need C/C++]
-->Use POX controller instead of NOX.   
-->Need the ability to link Function code written in C/C++,Python and other languages.
+-> Use POX controller instead of NOX.   
+-> Need the ability to link Function code written in C/C++,Python and other languages.
 
 Policy to Flow Conversion:
 ---------------------------
@@ -36,6 +37,11 @@ Functions to Add:
 -----------------
        1- HTTP header rewriting, use the CherryProxy
        2- Use the nDPI library with the C/C++ and with Python CTypes.
+
+Misc.
+-----
+-> Trust relationship between the middleboxes.
+-> Add function code downloading ability?
 
 Future:
 ---------
