@@ -35,6 +35,7 @@ Policy to Flow Conversion:
 
 Functions to Add:
 -----------------
+       Any specific functions?
        1- HTTP header rewriting, use the CherryProxy
        2- Use the nDPI library with the C/C++ and with Python CTypes.
 
@@ -47,3 +48,44 @@ Future:
 ---------
 Improving the Implementation:
    Using the wireshark decoding protocol.
+
+
+
+
+
+*****************************
+Slick Contributions
+*****************************
+
+
+Programming Model:
+1- Slick provides a programming model.
+
+
+
+Optimization Algorithm:
+2- Optimization Algorithm that can be used to place functions and steer traffic using available hardware in the network. Implementing optimization algorithm does not need the abstraction for supporting for the Switches and Middlboxes.
+
+
+
+Abstraction:
+3- There is abstraction that can be used to increase the feasible solution space for the optimization algorithm and we need to add the support
+
+for middlebox functions and different versions of Openflow switches.
+
+
+
+Policies:
+4- There are policies. Overlapping and Conflicts.
+    Overlap: Arises when 2 policies wants to send same flow to 2 different boxes. [match]
+    Overlap: Its not an overlap when 2 policies want to send the same flow to one box. But can it cause multiple copies?
+    Conflict: arises when 2 policies want to have 2 functions on the same flow. [function]
+
+    How do we statically analyze them to figure out the conflicts.
+    -> Policy A: If there is a policy that says that send all the DNS traffic for the DNS blocking.
+    -> Policy B: Send all the traffic of a subnet 192.168.10.* to DPI box for further analysis. 
+    Implementing Policy A and Policy B in the network at one time means that all the DNS flows from subnet 192.168.10.* should be sent to DNS box and to DPI box. This has two solutions:
+      1- Send the subnet DNS flows to DPI box and DNS box and then drop flows at one of the box.
+      2- Send the traffic to the one box and then to other box.This solution makes more sense.[Serialize]
+
+
