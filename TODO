@@ -59,23 +59,62 @@ Slick Contributions
 
 
 Programming Model:
+-----------------
 1- Slick provides a programming model.
+    Tradtionally adding a new functions inside the network has been thought as adding a new Middlboxes in the network. 
+    Slick provides a model for adding new functions in a network instead of adding Middleboxes.
+    In current networks adding a new function in the network means looking for a middlebox with functionality 'X'
+    and then adding its support in the network. If we we have to use a single function provided by the middlebox we have to 
+    deselect some of the functions provided by the middlebox if Middlebox allows and then use the function.  
+    
+    Trying to compare click with Slick. While thinking about these differences:
+    Click Server = Slick Network
+    Click Element = Slick Function
+    Click Configuration = Slick application.
 
-
+    I see the following differences.
+    i- Click provides a programming model where different elements can be put togther into a single graph. But Click's model is available
+    for a single machine where all the elements stay on the same machine. In Slick graph nodes can reside on different machine. Which 
+    means Click does not have to think about Function Placement and Traffic Steering.[This makes me think perhaps adding the function placement
+    and traffic steering algorithm in Programming Model is the right choide?]
+    ii- All Click elements run on the same hardware x86/network processor/fpga etc. while slick functions can run on different platforms.[Heterogeneity:Similar to LEGO;but network/host level]
+    iii- In Click if there are three elements connected as shown below:
+                     B
+                  /
+                /
+        A --- /-
+              \
+                \
+                  \
+                    C
+        Then the logic that needs to redirect the packet to Element B/C must be embedded in the element A. But in Slick we use OpenFlow switch or Shim Layer to redirect the
+        traffic. [This point is similar to LEGO where redirection logic is not stored in CPP but in OpenFlow switch]
+    iv- In click there is concept of "Hot Swapping" that can be used to load new configurations on the fly. This kind of concept is unnatural for the networks where
+        modifying network configuration means adding or removing a node from a configuration. Slick uses that and can add new node or remove nodes. [One can say this is the general enough concept in the networks]
+    v- In Click there is no 'Oracle' that could tell where to send the traffic next but in Slick there is controller that tells the next hop of traffic.[Similar to OpenFlow/LEGO and a long list]
+    vi-  We have not discussed this thing in detail in design but:
+        Click has: 
+            1-to-m mapping between configuration and elements.
+        In Slick there is:
+            1-to-m mapping between application and functions. But we also need:
+            m-to-1 mapping between applications  and a function. [An example might be a specific Functionlaity that is expensive enough that all the applications have to use that function.]
+            m-to-n ??
 
 Optimization Algorithm:
+-----------------------
 2- Optimization Algorithm that can be used to place functions and steer traffic using available hardware in the network. Implementing optimization algorithm does not need the abstraction for supporting for the Switches and Middlboxes.
 
 
 
 Abstraction:
-3- There is abstraction that can be used to increase the feasible solution space for the optimization algorithm and we need to add the support
-
-for middlebox functions and different versions of Openflow switches.
+------------
+3- There is abstraction that can be used to increase the feasible solution space for the optimization algorithm and 
+we need to add the support for middlebox functions and different versions of Openflow switches.
 
 
 
 Policies:
+---------
 4- There are policies. Overlapping and Conflicts.
     Overlap: Arises when 2 policies wants to send same flow to 2 different boxes. [match]
     Overlap: Its not an overlap when 2 policies want to send the same flow to one box. But can it cause multiple copies?
@@ -85,7 +124,7 @@ Policies:
     -> Policy A: If there is a policy that says that send all the DNS traffic for the DNS blocking.
     -> Policy B: Send all the traffic of a subnet 192.168.10.* to DPI box for further analysis. 
     Implementing Policy A and Policy B in the network at one time means that all the DNS flows from subnet 192.168.10.* should be sent to DNS box and to DPI box. This has two solutions:
-      1- Send the subnet DNS flows to DPI box and DNS box and then drop flows at one of the box.
-      2- Send the traffic to the one box and then to other box.This solution makes more sense.[Serialize]
+      i- Send the subnet DNS flows to DPI box and DNS box and then drop flows at one of the box.
+      ii- Send the traffic to the one box and then to other box.This solution makes more sense.[Serialize]
 
 
