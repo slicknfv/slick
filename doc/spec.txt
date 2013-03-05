@@ -1,0 +1,124 @@
+Methods Exposed by Controller to Application:
+----------------------------------------------
+1.1- apply_func()
+input: application_descriptor,flow,function_name,parameters,application_handle
+output: function_descriptor,application_descriptor
+state_updates/description: 
+        i- Update machine to function_descriptor mapping. 
+        ii- Update flow to function descriptor mapping 
+        iii-Update function descriptor to AD mapping 
+        iv- call shim's install method with parameters and FD
+
+1.2- configure_func()
+input: application_descriptor, function descriptor, config command, arbitrary parameters
+output: E_NO_SUCH_FUNCTION if AD not installed
+        E_NOT_YOUR_FUNCTION if FD is not mapped to AD
+        Otherwise it returns what Shim.configure returns
+state_updates/description: 
+        Lookup machine for the provided function_descriptor and send application_configuration_parameters.
+
+1.3- remove_func()
+input: application_descriptor, function_descriptor
+output: E_NO_SUCH_FUNCTION if FD not installed
+		E_NOT_YOUR_FUNCTION if FD is not mapped to AD
+        SUCCESS otherwise
+state_updates/description: 
+    Rollback state update in apply_func()
+
+
+
+Methods Exposed by Application to Controller:
+----------------------------------------------
+2.1- handle_trigger()
+input: function_descriptor,the parameters the Shim provided to Controller.raise_trigger (which the Function originally provided to Shim.raise_trigger)
+output: None
+state_updates/description: Depends on the application.
+
+2.2- init()
+input: application_descriptor,arbitrary parameters
+output: SUCCESS/FAILURE (if it was good enough for functions, good enough for apps)
+state_updates/description:
+	initialize the application,
+	store the application descriptor in the application
+
+
+
+Methods Exposed by Function to Shim:
+------------------------------------
+3.1- init()
+input: arbitrary parameters
+output: SUCCESS/FAILURE
+state_updates/description: 
+    install and run the function.  
+    the shim performs the install, this function just initializes
+
+
+3.2- configure()
+input: arbitrary parameters
+output: SUCCESS/FAILURE
+state_updates: 
+    Updates function state.
+
+3.3- process_pkt()
+input: packet
+output: None
+state_updates: 
+    Function state is updated.
+    Passing flow to process_pkt() does not break the process_pkt but it adds an overhead to each packet passed to the application.
+
+
+3.4- shutdown()
+input: arbitrary parameters
+output: SUCCESS/FAILURE
+state_updates: Function is killed.
+
+
+Methods Exposed by Shim to Function:
+------------------------------------
+4.1- raise_trigger()
+input: arbitrary parameters
+output: None
+state_updates: None
+
+
+Methods Exposed by Shim to Controller:
+--------------------------------------
+5.1- install()
+input: install_message[fd,flow,function_name,params that the application provided in Controller.apply_func]
+output: E_ALREADY_INSTALLED if already installed
+        E_CANNOT_GET_FUNCTION if it can't download the function
+        Otherwise it returns whatever Function.init() returns
+state_updates: 
+    Based on success of function installation. 
+    i- update flow to function descriptor map(maintained at shim).
+    ii- update function descriptor to function object map.
+    iii - create a Function instance and call that instance's init() with the provided params
+
+
+5.2- configure()
+input: configure_message[fd,config-name,params]
+output: E_NO_SUCH_FUNCTION if fd not installed
+        SUCCESS otherwise
+state_updates: 
+    Based on fd, looks up the function object and calls the function's configure.
+
+
+5.3- stop()
+input: stop_message[fd]
+output: E_NO_SUCH_FUNCTION if fd not installed
+        Otherwise it returns whatever Function.shutdown() returns
+state_updates: 
+    Based on fd, looks up the function object and calls the function's shutdown.
+
+
+Methods Exposed by Controller to Shim:
+--------------------------------------
+6.1- raise_trigger()
+input: function_descriptor, whatever inputs were in the raise_trigger() it exported to the function
+output: E_NO_SUCH_FUNCTION if function not in controller's state
+        SUCCESS otherwise
+state/whatever: just an RPC call at the controller.  The controller's raise_trigger() method:
+   - checks whether or not it has that fd in its fd-to-app mapping
+   - if not, returns FAILURE
+   - otherwise, it returns SUCCESS and then calls fd_to_app[fd].handle_trigger(inputs)
+
