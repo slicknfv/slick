@@ -1,0 +1,62 @@
+1- Programming Model:
+------------------
+-> Modify *Route Setup* function and ensure that it works for networks with more than one switch.
+-> Add function *code downloading* ability.
+-> Read the *function specification* conformance on the controller code.
+
+    -----------------
+    Design/Implementation:
+    -----------------
+    -> Use Openflow version of shim layer that can be used with the controller and maintain MB MACs at the controller.
+    -> Inband Middlebox traffic handling. Using OpenFlow automatically brings it inband.
+    -> Use POX controller instead of NOX.
+    -> Need the ability to link Function code written in C/C++,Python and other languages.
+
+
+2- Optimization:
+-------------
+    -> Code placement algorithm for the initial placement of a middle box function.[On first flow]
+    -> Design and code algorithm for dynamically adjusting placement of a middle box function based on changes in traffic dynamics. 
+        This optimization would prove useful in situations where traffic from more end points are redirected through the middle box function.  
+        For example, at time t0 traffic is between only one pair of end points but at time t1 there are now 10 points at different locations. 
+        It may be more beneficial, in terms of latency, to move the middle box function to a location that is central to all 10 points.
+    -> Use the knowledge about the abilities of existing middleboxes in optimization algorithm.
+
+3- Interface:
+-------------
+    -> Design and architecture of the *hardware interfaces*.
+    -> "Hardware Interface" to handle proprietary middleboxes. For each new proprietary middlebox we need a separate interface. 
+    -> "Hardware Interface" to implement functions on openflow switches. For different versions of OpenFlow standards.For example: OpenFlow (v 1.0)with header writing ability can rewrite the headers
+        -> Are interfaces part of controller or they are part of applications or they are a separate component of Slick.
+        -> Assuming Interface software will be a separte component than Application and Controller what will be the interface between "hardware interface" component and Applications and Controller. 
+        -> Where should the interface reside if the standalone middlebox is open source or closed source?
+        -> What kind of software architecture should be present for "hardware interfaces"? plugins?
+    -> Implement it for one+ proprietary box and one+ versions of openflow to show possible optimizations.
+    -> How should the abilities of hardware middleboxes be conveyed to Optimization Algorithm
+
+
+4- Policy Conflicts:
+--------------------
+-> Policy conflicts and overlaps, how can we have these policy issues resolved.
+-> How does Slick handles the conflicts.
+    Overlap: Arises when 2 policies wants to send same flow to 2 different boxes. [match]
+    Conflict: arises when 2 policies want to have 2 functions on the same flow. [function]
+
+
+
+************************************************************************************************************
+Please add new functions and testing ideas/points below.
+************************************************************************************************************
+
+Functions to Add:
+-----------------
+       Any specific functions?
+       1- HTTP header rewriting, use the CherryProxy
+       2- Use the nDPI library with the C/C++ and with Python CTypes.
+
+Testing:
+--------
+    -> Test Slick on networks with loops 
+    -> Test Slick on non-tree networks
+
+
