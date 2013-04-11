@@ -1,15 +1,16 @@
 1- Programming Model:
 ------------------
--> Modify *Route Setup* function and ensure that it works for networks with more than one switch.
--> Add function *code downloading* ability.
--> Read the *function specification* conformance on the controller code.
+-> Modify *Route Setup* function and ensure that it works for networks with more than one switch.[Necessary]
+-> Add function *code downloading* ability. [Necessary]
+-> Read the *function specification* conformance on the controller code.[Good]
+-> Separate application processes; instead of two applications.[Good]
 
     -----------------
     Design/Implementation:
     -----------------
-    -> Use Openflow version of shim layer that can be used with the controller and maintain MB MACs at the controller.
-    -> Inband Middlebox traffic handling. Using OpenFlow automatically brings it inband.
-    -> Use POX controller instead of NOX.
+    -> Use Openflow version of shim layer that can be used with the controller and maintain MB MACs at the controller.[Good]
+    -> Inband Middlebox traffic handling. Using OpenFlow automatically brings it inband.[Good]
+    -> Use POX controller instead of NOX.[Must]
     -> Need the ability to link Function code written in C/C++,Python and other languages.
 
 
@@ -21,6 +22,9 @@
         For example, at time t0 traffic is between only one pair of end points but at time t1 there are now 10 points at different locations. 
         It may be more beneficial, in terms of latency, to move the middle box function to a location that is central to all 10 points.
     -> Use the knowledge about the abilities of existing middleboxes in optimization algorithm.
+
+    -> How much time it takes to load the code?
+    -> What if the code
 
 3- Interface:
 -------------
