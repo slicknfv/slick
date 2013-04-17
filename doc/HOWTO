@@ -1,0 +1,33 @@
+This document describes how to write Slick Elements and Applications.
+
+Slick Elements:
+---------------
+A slick Element performs packet processing on packets handed by the shim layer.
+Writing a Slick Element does not require knowing the shim layer, application or controller information.
+
+To implement a Slick Element the programmer need to implement following functions.
+
+i- init(fd,params)
+    This function has the code that should have logic for initializing the slick element.
+    In the simplest form this code will start an executable with user provided initialization parameters.
+    @args:
+        fd: It is an integer value representing the Element instance.
+        params: Its a map of key value pairs. 
+
+ii- configure(params)
+    All the configuration related to programmin
+    @args:
+        params: Its a map of key value pairs. 
+
+iii- process_pkt(self,buf)
+    This function should have the implementation for packet processing.
+    Packets belonging to the same flow will come to same Element instance.
+    @args:
+        buf: Its byte packet buffer with Ethernet frame.
+
+iv- shutdown(self)
+    This function should have code for gracefully shutting down the Element instance to reclaim resources
+    on middlebox hardware.
+
+Slick Applications:
+-------------------
