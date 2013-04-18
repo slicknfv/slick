@@ -147,7 +147,7 @@ class slick_controller (object):
 
   def _handle_ConnectionUp (self, event):
     log.debug("Connection %s" % (event.connection,))
-    print "Connection %s" % (event.connection,)
+    print "XXXXXXXXXXXXXXXXXXXXXXX \n Connection %s" % (event.connection,)
     LearningSwitch(event.connection, self.transparent)
 
 
