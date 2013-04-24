@@ -6,8 +6,8 @@ from collections import defaultdict
 from collections import namedtuple
 
 # NOX
-from nox.lib.core     import *
-from nox.lib.packet.packet_utils import mac_to_str, mac_to_int,ipstr_to_int,ip_to_str
+#from nox.lib.core     import *
+#from nox.lib.packet.packet_utils import mac_to_str,ip_to_str
 """
 	This class provides the function map for each dpid.
         We need to update the location of functions once they are installed or removed.

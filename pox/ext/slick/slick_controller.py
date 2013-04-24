@@ -29,137 +29,132 @@ from pox.lib.util import dpid_to_str
 from pox.lib.util import str_to_bool
 import time
 
+from route_compiler import RouteCompiler
+from msmessageproc import MSMessageProcessor
+
 log = core.getLogger()
 
-# We don't want to flood immediately when a switch connects.
-# Can be overriden on commandline.
-_flood_delay = 0
 
-class LearningSwitch (object):
-  def __init__ (self, connection, transparent):
-    # Switch we'll be adding L2 learning switch capabilities to
-    self.connection = connection
-    self.transparent = transparent
-
-    # Our table
-    self.macToPort = {}
-
-    # We want to hear PacketIn messages, so we listen
-    # to the connection
-    connection.addListeners(self)
-
-    # We just use this to know when to log a helpful message
-    self.hold_down_expired = _flood_delay == 0
-
-    #log.debug("Initializing LearningSwitch, transparent=%s",
-    #          str(self.transparent))
-
-  def _handle_PacketIn (self, event):
-    """
-    Handle packet in messages from the switch to implement above algorithm.
-    """
-
-    packet = event.parsed
-
-    def flood (message = None):
-      """ Floods the packet """
-      msg = of.ofp_packet_out()
-      if time.time() - self.connection.connect_time >= _flood_delay:
-        # Only flood if we've been connected for a little while...
-
-        if self.hold_down_expired is False:
-          # Oh yes it is!
-          self.hold_down_expired = True
-          log.info("%s: Flood hold-down expired -- flooding",
-              dpid_to_str(event.dpid))
-
-        if message is not None: log.debug(message)
-        #log.debug("%i: flood %s -> %s", event.dpid,packet.src,packet.dst)
-        # OFPP_FLOOD is optional; on some switches you may need to change
-        # this to OFPP_ALL.
-        msg.actions.append(of.ofp_action_output(port = of.OFPP_FLOOD))
-      else:
-        pass
-        #log.info("Holding down flood for %s", dpid_to_str(event.dpid))
-      msg.data = event.ofp
-      msg.in_port = event.port
-      self.connection.send(msg)
-
-    def drop (duration = None):
-      """
-      Drops this packet and optionally installs a flow to continue
-      dropping similar ones for a while
-      """
-      if duration is not None:
-        if not isinstance(duration, tuple):
-          duration = (duration,duration)
-        msg = of.ofp_flow_mod()
-        msg.match = of.ofp_match.from_packet(packet)
-        msg.idle_timeout = duration[0]
-        msg.hard_timeout = duration[1]
-        msg.buffer_id = event.ofp.buffer_id
-        self.connection.send(msg)
-      elif event.ofp.buffer_id is not None:
-        msg = of.ofp_packet_out()
-        msg.buffer_id = event.ofp.buffer_id
-        msg.in_port = event.port
-        self.connection.send(msg)
-
-    self.macToPort[packet.src] = event.port # 1
-
-    if not self.transparent: # 2
-      if packet.type == packet.LLDP_TYPE or packet.dst.isBridgeFiltered():
-        drop() # 2a
-        return
-
-    if packet.dst.is_multicast:
-      flood() # 3a
-    else:
-      if packet.dst not in self.macToPort: # 4
-        flood("Port for %s unknown -- flooding" % (packet.dst,)) # 4a
-      else:
-        port = self.macToPort[packet.dst]
-        if port == event.port: # 5
-          # 5a
-          log.warning("Same port for packet from %s -> %s on %s.%s.  Drop."
-              % (packet.src, packet.dst, dpid_to_str(event.dpid), port))
-          drop(10)
-          return
-        # 6
-        log.debug("installing flow for %s.%i -> %s.%i" %
-                  (packet.src, event.port, packet.dst, port))
-        msg = of.ofp_flow_mod()
-        msg.match = of.ofp_match.from_packet(packet, event.port)
-        msg.idle_timeout = 10
-        msg.hard_timeout = 30
-        msg.actions.append(of.ofp_action_output(port = port))
-        msg.data = event.ofp # 6a
-        self.connection.send(msg)
+# This class has information about the Slick Controller initialization.
+class SlickInit (object):
+    def __init__ (self, connection, transparent):
+        # Switch we'll be adding L2 learning switch capabilities to
+        self.connection = connection
+        # We want to hear PacketIn messages, so we listen
+        # to the connectio
+        # But we also need datapath_join event and the datapath_leave event.i.e. connectionUP and connectionDown
+        self.connection.addListeners(self)
 
 
 class slick_controller (object):
-  """
-  Waits for OpenFlow switches to connect and makes them learning switches.
-  """
-  def __init__ (self, transparent):
-    core.openflow.addListeners(self)
-    self.transparent = transparent
+    """
+    Waits for OpenFlow switches to connect 
+    """
+    def __init__ (self, transparent):
+        core.openflow.addListeners(self)
+        self.transparent = transparent
 
-  def _handle_ConnectionUp (self, event):
-    log.debug("Connection %s" % (event.connection,))
-    print "XXXXXXXXXXXXXXXXXXXXXXX \n Connection %s" % (event.connection,)
-    LearningSwitch(event.connection, self.transparent)
+        # Function Descriptors
+        self.function_descriptor = int(1)
+        self.prev_time = 0
+        #routing
+        self.route_compiler =  RouteCompiler(self)
+        # JSON Messenger Handlers
+        self.json_msg_events = {}
+        self.ms_msg_proc = MSMessageProcessor(self)
+        self.app_initialized = False
 
+        self.switches = {} # A dictionary of switch ids and if the mac is a middlebox or not. 
 
-def launch (transparent=False, hold_down=_flood_delay):
-  """
-  Starts an L2 learning switch.
-  """
-  try:
-    global _flood_delay
-    _flood_delay = int(str(hold_down), 10)
-    assert _flood_delay >= 0
-  except:
-    raise RuntimeError("Expected hold-down to be a number")
+    def _handle_ConnectionUp (self, event):
+        log.debug("Connection %s" % (event.connection,))
+        print "Connection %s" % (event.connection,)
+        self.switches[event.dpid] = self._is_middlebox() # Keep track of switches.
 
-  core.registerNew(slick_controller, str_to_bool(transparent))
+    def _handle_PacketIn (self, event):
+        """
+        Handle packet in messages from the switch to implement above algorithm.
+        """
+        packet = event.parsed
+        """
+        print packet.src
+        print packet.dst
+        """
+        # Handle the functions
+        #self.handle_functions(event)
+
+    # This box is for the middlebox.
+    # Can one MAC be a middlebox and an IP address.
+    def _is_middlebox(self):
+        # If this mac is for the middlebox.
+        return False
+
+    def app_installations(self):
+        # For the  MSManager for JSONMsgs
+        JSONMsg_event.register_event_converter(self.ctxt)
+        self.register_handler(JSONMsg_event.static_get_name(), self.json_message_handler)
+
+    # Slick API Functions
+    """
+    Controller to Application Functions
+    """
+    # return function descriptor.
+    def apply_func(self, app_desc,flow, function_name,parameters,application_object):
+        self.function_descriptor += 1
+        #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
+        if(self.route_compiler.is_installed(app_desc)):# We have the application installed
+            print "Creating another function for application: ",app_desc
+        ip_addr = self.route_compiler.fmap.get_machine_for_function()
+        if(ip_addr == None): # There is no machine registerd for function installation.
+            print "Could not find the Middlebox"
+            return -1
+        msg_dst = ip_addr
+        mac_addr = self.route_compiler.fmap.fd_machine_map[ip_addr]
+        self.route_compiler.fmap.update_function_machine(ip_addr,mac_addr,self.function_descriptor)
+        self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name}) #Function descriptor 
+        self.route_compiler.update_application_handles(self.function_descriptor,application_object,app_desc)
+        #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
+        if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,msg_dst)):
+            return self.function_descriptor
+        else:
+            return -1
+
+                
+    #This function takes the src dpid, dst dpid and list of machines .. the
+    #
+    def pickMBMachine(self, src, dst, machinelist):
+        shortestPath = 0
+        shortestPath_MB = machinelist[0]
+        for mb in machinelist:
+            mb_dpid = XXXXXXXXXXXXXXXXXXXXXX
+            route1 = pyrouting.Route()
+            route1.id.src = src
+            route1.id.dst = mb_dpid
+            route2 = pyrouting.Route()
+            route2.id.src = mb_dpid
+            route2.id.dst = dst
+            if( len(route1.path) + len(route2.path) < shortestPath):
+                shortestPath = len(route1.path) + len(route2.path)
+                shortestPath_MB = mb
+        return mb
+
+    def configure_func(self,app_desc,fd,application_conf_params):
+        if(self.route_compiler.application_handles.has_key(fd)):
+            if(self.route_compiler.is_allowed(app_desc,fd)):
+                msg_dst = self.route_compiler.fmap.get_ip_addr_from_func_desc(fd)
+                app_handle = self.route_compiler.get_application_handle(fd) # not requied by additional check 
+                #print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",str(msg_dst)
+                if((msg_dst != None) and (app_handle != None)):
+                    self.ms_msg_proc.send_configure_msg(fd,application_conf_params,msg_dst)
+
+    #TODO:
+    def remove_func(self,app_desc,fd):
+        # roll back
+        desc_removed = self.route_compiler.fmap.del_function_desc(fd)
+
+##############################
+# POX Launch the application.
+##############################
+def launch (transparent=False):
+    # The second component is argument for slick_controller.
+    core.registerNew(slick_controller, str_to_bool(transparent))
