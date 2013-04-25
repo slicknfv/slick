@@ -182,11 +182,13 @@ class Shim:
     
     def decode_msg_and_call(self,data):
         message_list = data.split('\n')
+        print message_list
         for index,m in enumerate(message_list):
             if(index < len(message_list)-1):
+                print index,m
                 msg = json.loads(m)
                 #print "XXXXXXXXXXXXXXX",m
-                #print "YYYYYYYYYYYYYYY",msg
+                print "YYYYYYYYYYYYYYY",msg
                 #print len(message_list)
                 if(msg["type"] == "install"):
                     #if (self.client_service.fd_to_object_map.has_key(fd)):

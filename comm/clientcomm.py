@@ -72,6 +72,7 @@ class ClientComm():
     # sends a json object across the network.
     def send_data_basic(self,data):
         data_dict = json.dumps(data)
+        data_dict += '\n'
         if(LOCAL_DBG):
             print "Sending Data:",data_dict
         try:

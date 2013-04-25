@@ -28,9 +28,12 @@ import pox.openflow.libopenflow_01 as of
 from pox.lib.util import dpid_to_str
 from pox.lib.util import str_to_bool
 import time
+from pox.lib.recoco import Timer # For timer calls.
+
 
 from route_compiler import RouteCompiler
 from msmessageproc import MSMessageProcessor
+from conf import *
 
 log = core.getLogger()
 
@@ -63,8 +66,10 @@ class slick_controller (object):
         self.json_msg_events = {}
         self.ms_msg_proc = MSMessageProcessor(self)
         self.app_initialized = False
-
         self.switches = {} # A dictionary of switch ids and if the mac is a middlebox or not. 
+
+        # Application Initialization and Configuration.
+        Timer(APPCONF_REFRESH_RATE, self.timer_callback, recurring = True)
 
     def _handle_ConnectionUp (self, event):
         log.debug("Connection %s" % (event.connection,))
@@ -94,6 +99,19 @@ class slick_controller (object):
         JSONMsg_event.register_event_converter(self.ctxt)
         self.register_handler(JSONMsg_event.static_get_name(), self.json_message_handler)
 
+    def timer_callback(self):
+        # initialize the applications.
+        for app in self.ms_msg_proc.app_handles:
+            if not (app.installed):
+                app.init()
+                print app
+
+        #Configure/ Read the configurations again and again
+        for fd in self.route_compiler.application_handles:
+            app_handle = self.route_compiler.get_application_handle(fd)
+            app_handle.configure_user_params()
+        return True
+
     # Slick API Functions
     """
     Controller to Application Functions
@@ -104,17 +122,18 @@ class slick_controller (object):
         #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
         if(self.route_compiler.is_installed(app_desc)):# We have the application installed
             print "Creating another function for application: ",app_desc
-        ip_addr = self.route_compiler.fmap.get_machine_for_function()
-        if(ip_addr == None): # There is no machine registerd for function installation.
+        mac_addr = self.route_compiler.fmap.get_machine_for_function()
+        ip_addr = self.route_compiler.fmap.get_ip_addr(mac_addr)
+        if(mac_addr == None): # There is no machine registerd for function installation.
             print "Could not find the Middlebox"
             return -1
         msg_dst = ip_addr
-        mac_addr = self.route_compiler.fmap.fd_machine_map[ip_addr]
+        #mac_addr = self.route_compiler.fmap.fd_machine_map[ip_addr]
         self.route_compiler.fmap.update_function_machine(ip_addr,mac_addr,self.function_descriptor)
         self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name}) #Function descriptor 
         self.route_compiler.update_application_handles(self.function_descriptor,application_object,app_desc)
         #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
-        if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,msg_dst)):
+        if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,mac_addr)):
             return self.function_descriptor
         else:
             return -1
@@ -141,7 +160,7 @@ class slick_controller (object):
     def configure_func(self,app_desc,fd,application_conf_params):
         if(self.route_compiler.application_handles.has_key(fd)):
             if(self.route_compiler.is_allowed(app_desc,fd)):
-                msg_dst = self.route_compiler.fmap.get_ip_addr_from_func_desc(fd)
+                msg_dst = self.route_compiler.fmap.get_mac_addr_from_func_desc(fd)
                 app_handle = self.route_compiler.get_application_handle(fd) # not requied by additional check 
                 #print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",str(msg_dst)
                 if((msg_dst != None) and (app_handle != None)):

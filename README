@@ -25,3 +25,34 @@ controller:
         pyswitch.py:  It acts as the controller for the applications.
         msmessageproc.py: This has the application classes
         networkmaps.py: has flow to function mapping. It also has function and machine maps.
+
+
+POX Invocation:
+--------------
+./pox.py --verbose samples.spanning_tree --forwarding=l2_multi
+
+Running the Slick Controller.
+./pox.py --verbose samples.spanning_tree --forwarding=l2_multi slick.slick_controller
+# Start the slick controller
+# Start the SlickMessageProcessor
+#Start the L2 packet forwarding after starting spanning tree module.
+sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=127.0.0.1 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi
+
+Running the Middlebox Functions:
+--------------------------------
+For the real interface.
+sudo python shim.py -i eth0 -o eth0
+or
+sudo python shim.py -i eth0 -o eth1
+
+#python shim.py
+
+python shim.py -f <file_name>.pcap -o eth0
+
+
+
+
+
+
+
+

@@ -5,6 +5,8 @@ from struct import unpack
 from collections import defaultdict
 from collections import namedtuple
 
+from conf import *
+
 # NOX
 #from nox.lib.core     import *
 #from nox.lib.packet.packet_utils import mac_to_str,ip_to_str
@@ -23,8 +25,9 @@ class FunctionMap():
     def __init__(self,function_map_file):
     	self.function_map_file = function_map_file
     	self.function_map = defaultdict(dict)
-        self.fd_map = defaultdict(list) # Machine IP Address to function descriptor mapping, if the list is empty then we have shim only.
-        self.fd_machine_map = defaultdict(tuple) #(IP_adddress and MAC)
+        self.fd_map = defaultdict(list) # Machine MAC Address to function descriptor mapping, if the list is empty then we have shim only.
+        self.fd_machine_map = defaultdict(tuple) #Key=Function_descriptor -> (IP_adddress,MAC)
+        self.mac_to_ip = {} # Key= MAC -> ip_address
     
     def read_json(self):
     	print self.function_map_file
@@ -71,7 +74,6 @@ class FunctionMap():
         function_locations = {}
         for dpid,dictionary in self.function_map.iteritems():
             for port,f_list in dictionary.iteritems():
-                #print "VVVVVVVVVVVVVVVVVVVV",f_list
                 if(len(f_list) >= 1):
                     if(f_list[0] == function_name):
                         function_locations[(dpid,port)] = function_name
@@ -112,14 +114,22 @@ class FunctionMap():
 
     # IP address should be a string and function_desc is an integer.
     def update_function_machine(self,ip_addr,machine_mac,function_desc):
-        if((function_desc != None) and (ip_addr !=None)):
-            print "BNNNNNNNNNNNNNNNNNNNNNNNNNNNNNXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-            print function_desc
-            self.fd_map[ip_addr].append(function_desc)
-            print "fd_map",self.fd_map
-        elif(ip_addr !=None):
-            self.fd_map[ip_addr] = []
+        print function_desc, machine_mac
+        if((function_desc != None) and (machine_mac !=None)):
+            self.fd_map[machine_mac].append(function_desc)
+            print "fd_map: populating existing",self.fd_map
+        elif(machine_mac !=None):
+            print "fd_map: Creating New",self.fd_map
+            self.fd_map[machine_mac] = []
+        if((machine_mac != None) and (ip_addr != None)):
+            if (not self.mac_to_ip.has_key(machine_mac)):
+                self.mac_to_ip[machine_mac] = ip_addr
 
+    # Given the MAC address return the IP address
+    def get_ip_addr(self,mac):
+        if(mac != None):
+            return self.mac_to_ip[mac]
+    
     def del_function_desc(self,function_desc):
         if(function_desc != None):
             if(function_desc in self.fd_map[ip_addr]):
@@ -128,22 +138,23 @@ class FunctionMap():
             else:
                 print "Function descriptor does not exist:",function_desc
                 return False
-    # Given the function desc. return the ip address [used by configure function]
-    def get_ip_addr_from_func_desc(self,func_desc):
-        print "fd_map",self.fd_map
-        for ip_addr in self.fd_map:
-            if(func_desc in self.fd_map[ip_addr]):
-                return ip_addr
 
-    # Returns the shim machine with the ip _addr
+    # Given the function desc. return the mac address [used by configure function]
+    def get_mac_addr_from_func_desc(self,func_desc):
+        print "fd_map",self.fd_map
+        for mac_addr in self.fd_map:
+            if(func_desc in self.fd_map[mac_addr]):
+                return mac_addr
+
+    # Returns the shim machine with the mac _addr
     def get_machine_for_function(self):
         print "fd_map",self.fd_map
-        for ip_addr in self.fd_map:
+        for mac_addr in self.fd_map:
             #print "CNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-            if(ip_addr != None):
+            if(mac_addr != None):
                 # TODO: Add optimization algorithm here.
-                if (len(self.fd_map[ip_addr]) <10): # 10 functions can be added per machine.
-                    return ip_addr
+                if (len(self.fd_map[mac_addr]) < MAX_FUNCTION_INSTANCES): # 10 functions can be added per machine.
+                    return mac_addr
         return None
 
 

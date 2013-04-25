@@ -103,6 +103,6 @@ if __name__ == '__main__':
     #net = TreeNet( depth=1, fanout=4, switch=OVSKernelSwitch )
     #net = TreeNet( depth=1, fanout=4, switch=UserSwitch,listenPort=6634 )
     #initial testing with this topology.
-    #net = TreeNet( depth=1, fanout=4, switch=OVSKernelSwitch,listenPort=6634 )
-    net = TreeNet( depth=2, fanout=2, switch=OVSKernelSwitch,listenPort=6634 )
+    net = TreeNet( depth=1, fanout=4, switch=OVSKernelSwitch,listenPort=6634 )
+    #net = TreeNet( depth=1, fanout=2, switch=OVSKernelSwitch,listenPort=6634 )
     connectToInternet( net )

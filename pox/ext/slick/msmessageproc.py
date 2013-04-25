@@ -1,8 +1,9 @@
 import jsonpickle
 import json
-
 from collections import defaultdict
 import socket
+
+from pox.core import core as core
 
 from applications import *
 
@@ -10,8 +11,8 @@ from applications import *
 class MSMessageProcessor():
     def __init__(self,context):
         self.cntxt = context
-        # JSON Messenger Handlers
-        self.json_msg_events = {}
+        # TCP Connection handlers
+        self.tcp_conn_handlers = {}
         # These are the pplication initializations.
         self.app_handles = []
         self._initialize()
@@ -81,7 +82,7 @@ class MSMessageProcessor():
     # @args;
     #   msg = dict
     # --
-    def process_msg(self,pyevent,msg):
+    def process_msg(self,msg,socket_name):
         reply = {}
         #print self.cntxt
         if(msg.has_key("type")):
@@ -93,10 +94,11 @@ class MSMessageProcessor():
                 return reply
             if(msg["type"] == "register"): # This machine has the shim installed
                 machine_ip = socket.inet_aton(msg["machine_ip"]) 
+                machine_ip = msg["machine_ip"]
                 machine_mac = msg["machine_mac"]
                 print "MAAAAAAAAAAAAAAAAAAAAAAAC",machine_ip,machine_mac
-                self.json_msg_events[machine_ip] = pyevent # To keep the connection open
-                #self.send_msg(machine_ip,msg)
+                #self.json_msg_events[machine_ip] = pyevent # To keep the connection open
+                self.tcp_conn_handlers[machine_mac] = socket_name
                 self.cntxt.route_compiler.fmap.update_function_machine(machine_ip,machine_mac,None) # Simply add the record of the shim.
                 print self.cntxt.route_compiler.mmap.ip_dpid
                 print self.cntxt.route_compiler.mmap.ip_port
@@ -121,13 +123,13 @@ class MSMessageProcessor():
             msg = {"type":"install", "fd":fd, "flow":flow,"function_name":function_name,"params":params}
             return self.send_msg(msg_dst,msg)
 
+    # msg_dst == Middlebox MAC address
     def send_configure_msg(self,fd,params_dict,msg_dst):
         #print type(fd),fd,type(params_dict),params_dict
         if((type(fd) == int) and isinstance(params_dict, dict)):
             msg = {"type":"configure", "fd":fd,"params":params_dict}
             print msg
-            print self.send_msg(msg_dst,msg)
-            #print "Unable to send the message"
+            self.send_msg(msg_dst,msg)
                 
 
     """
@@ -136,10 +138,26 @@ class MSMessageProcessor():
             mb_ip: Where the rule should be installed.
             reply: a dictionary that should be sent as json messge
     """
-    def send_msg(self,mb_ip,msg):
-        if (len(self.json_msg_events) >= 1):
-            pyevent = self.json_msg_events[mb_ip]
-            pyevent.reply(json.dumps(msg)+'\n')
+    #def send_msg(self,mb_ip,msg):
+    #    if (len(self.json_msg_events) >= 1):
+    #        pyevent = self.json_msg_events[mb_ip]
+    #        pyevent.reply(json.dumps(msg)+'\n')
+    #        return True
+    #    else:
+    #        return False
+        
+    # Use Middlebox MAC address instead of the IP address.
+    # and the message for sending the information.
+    def send_msg(self,mb_mac,msg):
+        if (len(self.tcp_conn_handlers) >= 1):
+            print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",mb_mac
+            socket_name = self.tcp_conn_handlers[mb_mac]
+            msg = json.dumps(msg)+'\n'
+            core.TCPTransport.send_mb_msg(socket_name,msg)
             return True
         else:
             return False
+
+    # socket_name is a string
+    def update_connection(self,socket_name):
+        pass

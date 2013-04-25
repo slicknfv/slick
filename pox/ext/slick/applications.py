@@ -428,6 +428,7 @@ class BloomFilterFunctionApp():
             print "APPLY_FUNC"
             parameters = {}
             fd= self.cntxt.apply_func(self.app_d,self.flows[index],"BF",parameters,self) #Bloom Filter
+            print fd
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
                 self.installed = True
@@ -437,6 +438,8 @@ class BloomFilterFunctionApp():
         if (self.conf < self.num_functions): 
             print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
             params = {"bf_size":"1000","error_rate":"0.01"}
+            print self.conf
+            print self.fd
             self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) 
             self.conf +=1
 

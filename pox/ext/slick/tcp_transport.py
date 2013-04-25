@@ -55,6 +55,7 @@ class TCPTransport (Task, Transport):
 
         rc = TCPConnection(self, listener.accept()[0])
         self._connections.add(rc)
+        print "SSSOOOOOOOOOOOOOOOCKKKKKKKKKKK",rc._socket_name
         rc.start()
       except:
         traceback.print_exc()
@@ -65,6 +66,14 @@ class TCPTransport (Task, Transport):
     except:
       pass
     log.debug("No longer listening for connections")
+  
+
+  def send_mb_msg(self,socket_name,msg):
+    print "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
+    for item in self._connections:
+      if(item.get_socket_name() == socket_name):
+        item.send_raw(msg)
+
 
 
 class TCPConnection (Connection, Task):
@@ -77,7 +86,8 @@ class TCPConnection (Connection, Task):
     Task.__init__(self)
 
     #self.start()
-    self._send_welcome()
+    #self._send_welcome()
+    #self.send_raw("HEEEEEEEEEEEEEEEEEEEEEEELLLOOOOOOOOOOOO")
 
   def _close (self):
     super(TCPConnection, self)._close()
@@ -89,6 +99,7 @@ class TCPConnection (Connection, Task):
   def send_raw (self, data):
     try:
       l = self._socket.send(data)
+      print "SSSSSSSSSSSSSSSSSSSSSSSSSSS",data
       if l == len(data): return
     except:
       pass
@@ -99,8 +110,7 @@ class TCPConnection (Connection, Task):
     log.debug("%s started" % (self,))
     while self.is_connected:
       d = yield Recv(self._socket)
-      print core.slick_controller.route_compiler
-      print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",d
+      self.process_messages(d)
       if d is None or len(d) == 0:
         break
       #print "RECV", d
@@ -112,18 +122,37 @@ class TCPConnection (Connection, Task):
     s = "" + self.__class__.__name__ + " " + self._socket_name
     return s
 
+  def process_messages(self,d):
+    if((type(d) == str) and (len(d) > 0)):
+      lines = d.split('\n')
+      # Process Messages separately
+      for line in lines:
+        try:
+          rcvd_msg = json.loads(line)
+          core.slick_controller.ms_msg_proc.process_msg(rcvd_msg,self._socket_name)
+        except ValueError:
+          def IsNotNull(value):
+            return value is not None and len(value) > 0
+          if(IsNotNull(line)):
+            raise Exception("Unable to Parse a string receveid")
+
+  def get_socket_name(self):
+    return self._socket_name
+
   @staticmethod
   def _get_socket_name(socket):
     s = "%s:%i" % socket.getsockname()
     s += "/%s:%i" % socket.getpeername()
     return s
+  
 
 
 import pox.core
 
 def launch (tcp_address = "0.0.0.0", tcp_port = 7790):
   def start ():
-    print tcp_address,tcp_port
-    t = TCPTransport(tcp_address, tcp_port)
-    t.start()
+    core.registerNew(TCPTransport,str(tcp_address),int(tcp_port))
+    #t = TCPTransport(tcp_address, tcp_port)
+    #t.start()
+    core.TCPTransport.start()
   core.call_when_ready(start, "MessengerNexus", __name__)
