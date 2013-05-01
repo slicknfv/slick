@@ -8,3 +8,8 @@ APPCONF_REFRESH_RATE = 1
 # This number should be specific to each Middlebox hardware. But for now we keep a global limit.
 # This number should be learned for each middlebox.
 MAX_FUNCTION_INSTANCES = 10
+
+
+# Username and Password for the Middleboxes
+MB_USERNAME = "Slick"
+MB_PASSWORD = "Slick"

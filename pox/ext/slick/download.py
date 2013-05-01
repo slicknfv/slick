@@ -1,15 +1,15 @@
 # This file exposes methods that can be used by the 
 # slick controller to download the files on the remote hosts.
-# It also provides the interface to exectue the code.
+from paramiko import SSHClient
+from scp import SCPClient
 
-
+from conf import *
 
 class Download():
     def __init__(self):
-        self.hostname = None # host FQDN
-        self.port= 22
-        self.protocol = "ssh"
-        self.ip_address = None
+        # Middlebox's has one control interface.
+        self.hostnames = {} #MAC to IP address mapping. MAC is used for middlebox ID and IP is used for to connect to middlebox.
+        self.ssh_clients = {} # Middlebox MAC to ssh client mapping
 
     # its the string that is used specifiy the hostname
     def set_hostname(self.hostname):
@@ -31,4 +31,27 @@ class Download():
     # and donload them to the provided hostname
     def send_file(self,function_name):
         for ite
+        pass
+
+    
+    # return the SSH client for the host name with the provided information.
+    def create_MB_ssh_client(self,server, port, user, password):
+        ssh = SSHCLient()
+        ssh.load_system_host_keys()
+        ssh.connect(server, port, user, password)
+        return ssh
+
+    def add_mb_client(self,server,port,username,password):
+        if(username == None):
+            user = MB_USERNAME
+        if(password == None):
+            password = MB_PASSWORD
+        ssh = create_MB_ssh_client(server,port,user,password)
+        scp = SCPClient(ssh.get_transport())
+
+    # Need to call it in the apply_func before installing the code.
+    def put_file(self,filename,username=None,password=None):
+        pass
+
+    def get_file(self,filename,username);
         pass
