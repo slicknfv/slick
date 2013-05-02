@@ -39,6 +39,9 @@ from shim_table import ShimTable
 #import socket, AF_PACKET, SOCK_RAW
 import shim
 
+
+from dynamic_load import MiddleboxModules
+
 def ip_to_str(a):
     return "%d.%d.%d.%d" % ((a >> 24) & 0xff, (a >> 16) & 0xff, \
                             (a >> 8) & 0xff, a & 0xff)

@@ -5,11 +5,14 @@ from scp import SCPClient
 
 from conf import *
 
+from collections import defaultdict
+
 class Download():
     def __init__(self):
         # Middlebox's has one control interface.
-        self.hostnames = {} #MAC to IP address mapping. MAC is used for middlebox ID and IP is used for to connect to middlebox.
-        self.ssh_clients = {} # Middlebox MAC to ssh client mapping
+        self.mb_hosts = {} #MAC to IP address mapping. MAC is used for middlebox ID and IP is used for to connect to middlebox.
+        self.ssh_clients = {} # Middlebox MAC to ssh client object mapping
+        self.mb_settings = defaultdict(dict) #Middlebox MAC -> middlebox settings mapping.
 
     # its the string that is used specifiy the hostname
     def set_hostname(self.hostname):

@@ -38,15 +38,15 @@ from conf import *
 log = core.getLogger()
 
 
-# This class has information about the Slick Controller initialization.
-class SlickInit (object):
-    def __init__ (self, connection, transparent):
-        # Switch we'll be adding L2 learning switch capabilities to
-        self.connection = connection
-        # We want to hear PacketIn messages, so we listen
-        # to the connectio
-        # But we also need datapath_join event and the datapath_leave event.i.e. connectionUP and connectionDown
-        self.connection.addListeners(self)
+## This class has information about the Slick Controller initialization.
+#class SlickInit (object):
+#    def __init__ (self, connection, transparent):
+#        # Switch we'll be adding L2 learning switch capabilities to
+#        self.connection = connection
+#        # We want to hear PacketIn messages, so we listen
+#        # to the connectio
+#        # But we also need datapath_join event and the datapath_leave event.i.e. connectionUP and connectionDown
+#        self.connection.addListeners(self)
 
 
 class slick_controller (object):
@@ -54,8 +54,9 @@ class slick_controller (object):
     Waits for OpenFlow switches to connect 
     """
     def __init__ (self, transparent):
-        core.openflow.addListeners(self)
         self.transparent = transparent
+        core.openflow.addListeners(self)
+        #self.connection.addListeners(self)
 
         # Function Descriptors
         self.function_descriptor = int(1)
@@ -67,6 +68,7 @@ class slick_controller (object):
         self.ms_msg_proc = MSMessageProcessor(self)
         self.app_initialized = False
         self.switches = {} # A dictionary of switch ids and if the mac is a middlebox or not. 
+        self.switch_connections = {}
 
         # Application Initialization and Configuration.
         Timer(APPCONF_REFRESH_RATE, self.timer_callback, recurring = True)
@@ -75,6 +77,7 @@ class slick_controller (object):
         log.debug("Connection %s" % (event.connection,))
         print "Connection %s" % (event.connection,)
         self.switches[event.dpid] = self._is_middlebox() # Keep track of switches.
+        self.switch_connections[event.dpid] = event.connection
 
     def _handle_PacketIn (self, event):
         """
@@ -94,6 +97,10 @@ class slick_controller (object):
         # If this mac is for the middlebox.
         return False
 
+    def get_connection(self,dpid):
+        if(self.switch_connections.has_key(dpid)):
+            return self.switch_connections[dpid]
+    
     def app_installations(self):
         # For the  MSManager for JSONMsgs
         JSONMsg_event.register_event_converter(self.ctxt)

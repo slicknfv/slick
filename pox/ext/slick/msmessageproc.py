@@ -29,7 +29,7 @@ class MSMessageProcessor():
         flow5 = {}
         flow5["dl_src"] = None; flow5["dl_dst"] = None; flow5['dl_vlan'] = None; flow5['dl_vlan_pcp'] = None; flow5['dl_type'] = None; flow5['nw_src'] = None; flow5['nw_dst'] = None;flow5['nw_proto'] = None ;flow5['tp_src'] = 53;flow5['tp_dst'] = 53
         flow6 = {}
-        flow6["dl_src"] = None; flow6["dl_dst"] = None; flow6['dl_vlan'] = None; flow6['dl_vlan_pcp'] = None; flow6['dl_type'] = None; flow6['nw_src'] = None; flow6['nw_dst'] = None;flow6['nw_proto'] = None ;flow6['tp_src'] = None;flow6['tp_dst'] = 40000
+        flow6["dl_src"] = None; flow6["dl_dst"] = None; flow6['dl_vlan'] = None; flow6['dl_vlan_pcp'] = None; flow6['dl_type'] = None; flow6['nw_src'] = None; flow6['nw_dst'] = None;flow6['nw_proto'] = None ;flow6['tp_src'] = None;flow6['tp_dst'] = 53
         flow7 = {}
         flow7["dl_src"] = None;flow7["dl_dst"] = None;flow7['dl_vlan'] = None;flow7['dl_vlan_pcp'] = None;flow7['dl_type'] = None;flow7['nw_src'] = None;flow7['nw_dst'] = None;flow7['nw_proto'] = None ;flow7['tp_src'] = None;flow7['tp_dst'] = 80
         # To be used for filter app.
@@ -68,14 +68,14 @@ class MSMessageProcessor():
         #print flows1
         self.logger2_obj2 = LoggerUnitTest2(self.cntxt,1002,file_names,flows1)
 
-        #self.app_handles.append(self.dns_handlers)
+        self.app_handles.append(self.dns_handlers)
         #self.app_handles.append(self.p0f_handlers)
         #self.app_handles.append(self.logger_unit1)
         #self.app_handles.append(self.logger_unit2)
         #self.app_handles.append(self.trigger_all_test)
         #self.app_handles.append(self.logger2_obj1)
         #self.app_handles.append(self.logger2_obj2)
-        self.app_handles.append(self.bf_handlers)
+        #self.app_handles.append(self.bf_handlers)
 
     # --
     # Function processes the JSON messages and returns a reply.

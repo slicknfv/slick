@@ -7,6 +7,12 @@
 import os
 import sys
 from collections import defaultdict
+from pox.lib.addresses import IPAddr, EthAddr
+import pox.lib.packet as pkt
+import pox.openflow.libopenflow_01 as of
+
+from nox_util.packet_utils import *
+
 """
     Trigger handling code.
 """
@@ -64,20 +70,29 @@ class DNSHandlers(Triggers):
 
     def _block_ip_list(self,src_dpid,s_ip,domain_ip_list):
         src_dpid = 5 # Hardcoded for testing the trigger module as self.mmap.update_ip_dpid_mapping() is not called with trigger module.  REMOVE it with live traffic.
-	src_ip = ipstr_to_int(s_ip)
+	#src_ip = ipstr_to_int(s_ip)
+	src_ip = s_ip
 	for item in domain_ip_list:
             print type(src_dpid)
             print src_dpid
-	    dst_ip = ipstr_to_int(item)
+	    dst_ip = item
 	    print src_ip,dst_ip
 	    ## Make sure we get the full DNS packet at the Controller
-	    actions = []
-	    self.cntxt.install_datapath_flow(src_dpid, 
-				{ core.DL_TYPE : ethernet.IP_TYPE,
-				    core.NW_SRC : src_ip,
-				   core.NW_DST:dst_ip },
-                                   self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, #
-                                   actions,buffer_id = None, priority=0xffff)
+	    #actions = []
+	    #self.cntxt.install_datapath_flow(src_dpid, 
+	    #    		{ core.DL_TYPE : ethernet.IP_TYPE,
+	    #    		    core.NW_SRC : src_ip,
+	    #    		   core.NW_DST:dst_ip },
+            #                       self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, #
+            #                       actions,buffer_id = None, priority=0xffff)
+            msg = of.ofp_flow_mod()
+            msg.priority = 42
+            msg.match.dl_type = 0x800
+            msg.match.nw_src = IPAddr(src_ip)
+            msg.match.nw_dst = IPAddr(dst_ip)
+            dst_port = of.OFPP_NONE
+            msg.actions.append(of.ofp_action_output(dst_port))
+            self.cntxt.connection.send(msg)
 
 
 
@@ -102,7 +117,6 @@ class LoggerUnitTest():
 
     def configure_user_params(self):
         if not self.conf:
-            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
             params = {"file_name":self.file_name,"count_thresh":self.count_thresh}
             self.cntxt.configure_func(self.app_d,self.fd,params)
             self.conf = True
@@ -323,20 +337,34 @@ class DnsDpiFunctionApp():
 
     def _block_ip_list(self,src_dpid,s_ip,domain_ip_list):
         src_dpid = 5 # Hardcoded for testing the trigger module as self.mmap.update_ip_dpid_mapping() is not called with trigger module.  REMOVE it with live traffic.
-	src_ip = ipstr_to_int(s_ip)
+	#src_ip = ipstr_to_int(s_ip)
+        src_ip = s_ip
 	for item in domain_ip_list:
             print type(src_dpid)
             print src_dpid
-	    dst_ip = ipstr_to_int(item)
+	    #dst_ip = ipstr_to_int(item)
+	    dst_ip = item
 	    print src_ip,dst_ip
 	    ## Make sure we get the full DNS packet at the Controller
-	    actions = []
-	    self.cntxt.install_datapath_flow(src_dpid, 
-				{ core.DL_TYPE : ethernet.IP_TYPE,
-				    core.NW_SRC : src_ip,
-				   core.NW_DST:dst_ip },
-                                   self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, #
-                                   actions,buffer_id = None, priority=0xffff)
+	    #actions = []
+	    #self.cntxt.install_datapath_flow(src_dpid, 
+	    #    		{ core.DL_TYPE : ethernet.IP_TYPE,
+	    #    		    core.NW_SRC : src_ip,
+	    #    		   core.NW_DST:dst_ip },
+            #                       self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, #
+            #                       actions,buffer_id = None, priority=0xffff)
+            msg = of.ofp_flow_mod()
+            msg.priority = 42
+            msg.match.dl_type = pkt.ethernet.IP_TYPE
+            msg.match.nw_src = IPAddr(src_ip)
+            msg.match.nw_dst = IPAddr(dst_ip)
+            msg.idle_timeout = self.DNS_BLOCK_TIMEOUT 
+            msg.hard_timeout = self.DNS_BLOCK_TIMEOUT
+            # Not specifying action to drop the packets.
+            #dst_port = of.OFPP_NONE
+            #msg.actions.append(of.ofp_action_output(dst_port))
+            connection = self.cntxt.get_connection(src_dpid)
+            connection.send(msg)
 
 
 
@@ -393,20 +421,44 @@ class P0fFunctionApp():
 
     def _block_ports(self,s_ip,port_numbers):#port numbers is a list
         src_dpid = 5 # Hardcoded for testing the trigger module as self.mmap.update_ip_dpid_mapping() is not called with trigger module.  REMOVE it with live traffic.
-	src_ip = ipstr_to_int(s_ip)
-        #print type(src_dpid)
-        #print src_dpid
+	src_ip = s_ip
 	## Make sure we get the full DNS packet at the Controller
 	actions = []
         for port_number in port_numbers:
             # This is the API provided by OpenFlow switch.
             #PROBLEM: This rule is not installing the port number.
-	    self.cntxt.install_datapath_flow(src_dpid, 
-	    		{ core.DL_TYPE : ethernet.IP_TYPE,
-	    		    core.NW_DST : src_ip, #Block incoming netbios traffic.
-	    		   core.TP_DST: port_number },
-                               120,120, #
-                               actions,buffer_id = None, priority=0xffff)
+	    #self.cntxt.install_datapath_flow(src_dpid, 
+	    #		{ core.DL_TYPE : ethernet.IP_TYPE,
+	    #		    core.NW_DST : src_ip, #Block incoming netbios traffic.
+	    #		   core.TP_DST: port_number },
+            #                   120,120, #
+            #                   actions,buffer_id = None, priority=0xffff)
+
+            #PROBLEM: This rule is not installing the port number.
+            msg = of.ofp_flow_mod()
+            msg.priority = 42
+            msg.match.dl_type = pkt.ethernet.IP_TYPE
+            msg.match.nw_dst = IPAddr(src_ip)
+            msg.match.tp_dst = port_number # Block all ports 1-by-1
+            msg.idle_timeout = 120 
+            msg.hard_timeout = 120
+            # Not specifying action to drop the packets.
+            #dst_port = of.OFPP_NONE
+            #msg.actions.append(of.ofp_action_output(dst_port))
+            connection = self.cntxt.get_connection(src_dpid)
+            connection.send(msg)
+
+    # how to drop packet.
+    def drop (self,duration = None):
+      if duration is not None:
+        if not isinstance(duration, tuple):
+          duration = (duration,duration)
+        msg = of.ofp_flow_mod()
+        msg.match = of.ofp_match.from_packet(packet)
+        msg.buffer_id = event.ofp.buffer_id
+        self.connection.send(msg)
+
+
 ############
 # BloomFilter Function
 ############
