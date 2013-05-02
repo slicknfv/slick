@@ -34,6 +34,7 @@ from pox.lib.recoco import Timer # For timer calls.
 from route_compiler import RouteCompiler
 from msmessageproc import MSMessageProcessor
 from conf import *
+from download import Download
 
 log = core.getLogger()
 
@@ -69,6 +70,7 @@ class slick_controller (object):
         self.app_initialized = False
         self.switches = {} # A dictionary of switch ids and if the mac is a middlebox or not. 
         self.switch_connections = {}
+        self.download = Download()
 
         # Application Initialization and Configuration.
         Timer(APPCONF_REFRESH_RATE, self.timer_callback, recurring = True)
@@ -124,6 +126,10 @@ class slick_controller (object):
     Controller to Application Functions
     """
     # return function descriptor.
+    # ERROR Codes:
+    #   -1 : Error in installing the function
+    #   -2 : Error in downloading the files to middlebox.
+    #   -3 : Error in adding a middlebox client.
     def apply_func(self, app_desc,flow, function_name,parameters,application_object):
         self.function_descriptor += 1
         #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
@@ -140,10 +146,16 @@ class slick_controller (object):
         self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name}) #Function descriptor 
         self.route_compiler.update_application_handles(self.function_descriptor,application_object,app_desc)
         #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
-        if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,mac_addr)):
-            return self.function_descriptor
+        if(self.download.add_mb_client(mac_addr,ip_addr,None,None)):
+            if(self.download.put_file(mac_addr,function_name)): #Given the function name send the files to the middlebox.
+                if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,mac_addr)):
+                    return self.function_descriptor
+                else:
+                    return -1
+            else:
+                return -2
         else:
-            return -1
+            return -3
 
                 
     #This function takes the src dpid, dst dpid and list of machines .. the

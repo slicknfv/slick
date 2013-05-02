@@ -12,7 +12,7 @@ MAX_FUNCTION_INSTANCES = 10
 
 # Middlebox Settings
 # Username and Password for the Middleboxes
-MB_USERNAME = "Slick"
-MB_PASSWORD = "Slick"
+MB_USERNAME = "openflow"
+MB_PASSWORD = "openflow"
 # Default location to download code if the location by the user is not provided.
 DEFAULT_CODE_LOCATION = "/tmp/"

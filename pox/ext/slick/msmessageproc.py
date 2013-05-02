@@ -68,9 +68,9 @@ class MSMessageProcessor():
         #print flows1
         self.logger2_obj2 = LoggerUnitTest2(self.cntxt,1002,file_names,flows1)
 
-        self.app_handles.append(self.dns_handlers)
+        #self.app_handles.append(self.dns_handlers)
         #self.app_handles.append(self.p0f_handlers)
-        #self.app_handles.append(self.logger_unit1)
+        self.app_handles.append(self.logger_unit1)
         #self.app_handles.append(self.logger_unit2)
         #self.app_handles.append(self.trigger_all_test)
         #self.app_handles.append(self.logger2_obj1)
