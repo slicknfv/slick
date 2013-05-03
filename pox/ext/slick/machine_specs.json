@@ -1,0 +1,28 @@
+{
+    "00:12:34:56:78:9a": {
+        "processing_unit": "processor",
+        "processor_type": "x86",
+        "peripherals": {},
+        "cpu_speed": "2GHz",
+        "cores": "16",
+        "memory": "16GB",
+        "disk_size": "2TB",
+        "disk_type": "HDD",
+        "os": "linux",
+        "flavor": "ubuntu",
+        "flavor_version": "9.10"
+    },
+    "01:12:34:56:78:9a": {
+        "processing_unit": "processor",
+        "processor_type": "x86",
+        "peripherals": {},
+        "cpu_speed": "2GHz",
+        "cores": "16",
+        "memory": "16GB",
+        "disk_size": "2TB",
+        "disk_type": "HDD",
+        "os": "linux",
+        "flavor": "ubuntu",
+        "flavor_version": "9.10"
+    }
+}

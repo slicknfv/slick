@@ -6,6 +6,8 @@ from collections import defaultdict
 from collections import namedtuple
 
 from conf import *
+from specs import MachineSpec
+from specs import FunctionSpec
 
 # NOX
 #from nox.lib.core     import *
@@ -28,6 +30,8 @@ class FunctionMap():
         self.fd_map = defaultdict(list) # Machine MAC Address to function descriptor mapping, if the list is empty then we have shim only.
         self.fd_machine_map = defaultdict(tuple) #Key=Function_descriptor -> (IP_adddress,MAC)
         self.mac_to_ip = {} # Key= MAC -> ip_address
+        self.function_specs = FunctionSpec()
+        self.machine_specs = MachineSpec()
     
     def read_json(self):
     	print self.function_map_file
@@ -150,7 +154,6 @@ class FunctionMap():
     def get_machine_for_function(self):
         print "fd_map",self.fd_map
         for mac_addr in self.fd_map:
-            #print "CNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
             if(mac_addr != None):
                 # TODO: Add optimization algorithm here.
                 if (len(self.fd_map[mac_addr]) < MAX_FUNCTION_INSTANCES): # 10 functions can be added per machine.
@@ -172,6 +175,8 @@ class MachineMap():
         self.ip_port = {} #keeps a record of the location of IP address. key:ip value: port
         #TODO: Add machine specs ability to read the files.
         self.machine_specs = {} # key:ip_address and value:machine spec json file.
+        self.function_specs = FunctionSpec()
+        self.machine_specs = MachineSpec()
 
     # Load the machine map from a file or from another module that 
     # is responsible for routing the packets.
@@ -238,9 +243,6 @@ class MachineMap():
             return self.ip_port[ip_addr]
         else:
             return -1
-    # Given a dictionary of machine specs, return a list of IP addresses machine with that spec.
-    def get_machines(self,machine_specs_dict):
-        return []
 """
 TODO: Policy Overlap and Union of actions.
 TODO: Policy Conflict and pick them up based on some user defined criteria, security over performance. Or throughput over latency.
