@@ -1,0 +1,43 @@
+Element Specification File:
+----------------------------
+Any field not specified should be taken as "Don't Care" by Element placement and traffic steering algorithm.
+
+affinity:
+    This field is used to tell if the element requires flow affinity.
+    Possible Values:
+        Yes/No
+placement:
+    This field is used to tell if the element should be placed "near" the source, in the "middle" of the network or "far" from the source.
+    Three possible values:
+        "near" : Near from the source
+        "far"  : Far from the source
+        "middle" : In the middle between source and destination of the flow.
+os:
+    This field is used to tell what operating system is required to run the software.
+        Possible values:
+            Linux etc.
+os_flavor:
+    If the element code depends on some specific flavor of operating system then it should be specified.
+        Possible values:
+            Ubuntu etc.
+inline:
+    Should specify if the element should be placed inline of the traffic or should be placed offline(copy of traffic is going to element).
+        Possible values:
+            Yes/No.
+triggers:
+    Describe the triggers produced by the element.
+        Possible values:
+            Triggers defined in the code for the element.
+
+
+
+
+
+Mchine Specification File:
+--------------------------
+    Machine specification provide MAC to machine hardware mapping. Following are the fields
+    that should be specified in the machine specification files.
+    Key:
+        Each record has the MAC address used to identify machine's unique ID.
+    Value Fields:
+        
