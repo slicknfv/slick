@@ -5,6 +5,8 @@
         "os_flavor": "Ubuntu",
         "software": "python",
         "inline": "no",
+        "affinity" : "yes"
+        "placement" : "middle"
         "triggers": [
             "BadDomainEvent",
             "MultipleBadDomainRequestEvent",
