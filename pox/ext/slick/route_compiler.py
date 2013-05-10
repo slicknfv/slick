@@ -1,6 +1,9 @@
 import networkmaps
 from networkmaps import FunctionMap,Policy,MachineMap
 
+import pox.openflow.libopenflow_01 as of
+from nox_util.packet_utils import *
+
 # Get source and destination of the flow.
 class RouteCompiler():
     def __init__(self,cntxt):
@@ -37,69 +40,32 @@ class RouteCompiler():
         return attrs
 
     def handle_functions(self,event):
-        dpid = netinet.create_datapathid_from_host(event.datapath_id)
-        try:
-            packet = ethernet(array.array('B', event.buf))
-        except IncompletePacket, e:
-            logger.error('Incomplete Ethernet header')
-        flow = extract_flow(packet)
+        packet = event.parsed
+        dpid = event.dpid#netinet.create_datapathid_from_host(event.datapath_id)
+        flow_match = of.ofp_match.from_packet(packet) # extract flow fields
         #update ip to dpid mapping.
-        #print "BILAL"*50,self.mmap.ip_dpid
-        self.mmap.update_ip_dpid_mapping(dpid,0,flow)
-        print flow
+        #self.mmap.update_ip_dpid_mapping(dpid,0,flow)
         #flow = self.__convert_flow(event.flow)
-        inport = event.src_location['port']
+        inport = event.port
 
 
-        function_descriptors = self.policy.get_flow_functions(inport,flow) # Find the function descriptors.
-        func_loc = None
-        print "XXXXXXXXXXXXXXXXXXXXXX",function_descriptors
-        for func_desc,function_name in function_descriptors.iteritems():
-            print func_desc,function_name
-            # This gives us function location
-            ip_addr = self.fmap.get_ip_addr_from_func_desc(func_desc) 
-            mac_addr = self.fmap.fd_machine_map[ip_addr] 
-            nw_addr = socket.inet_ntoa(ip_addr) # already aton 
-            dl_addr = create_eaddr(mac_addr) 
-            print "L"*20,socket.inet_ntoa(ip_addr),dl_addr
-            print event.datapath_id,type(event.datapath_id)
-            func_loc = (event.datapath_id,2)#self.fmap.get_closest_location(event.datapath_id,function_name)
-            #self.copy_flow(event,func_loc) 
-
-        # REWRITE
-        """
-        # We have a flow what functions should we apply on it.
-        functions_dict = self.policy.get_flow_functions(inport,flow) # For the given flow find the policy
-        sorted(functions_dict, key=lambda key: functions_dict[key])
-        print functions_dict
-        for func_order,function_name in functions_dict.iteritems():
-            print func_order,function_name
-            self.fmap.init_switch(event.datapath_id,2,["DNS-DPI"]) # This is hard coded for now
-            function_locations = self.fmap.get_function_locations(function_name)
-            print function_locations # a dict with keys(dpid,port)
-            if not function_locations:
-                #location = install_function(function_name)
-                self.update_function_desc
-            else: # function is already present in the network.
-                #location_dpid = self.fmap.get_closest_location(dpid,function_name)
-                location_dpid = self.fmap.get_closest_location(event.datapath_id,function_name)
-                location_port = None
-                # Get the port of the closes_location dpid for the function requested.
-                for key in function_locations:
-                    print key # key is a tuple(dpid,port)
-                    if(key[0] == location_dpid):
-                        location_port = key[1]
-                        pass
-                    pass
-                func_loc = (location_dpid,location_port)
-                #self.install_route(event,func_loc)
-                self.copy_flow(event,func_loc) 
-                pass
-            pass
-        pass
-        """
-        self.install_route(event,func_loc)
-        print "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
+        #function_descriptors = self.policy.get_flow_functions(inport,flow_match) # Find the function descriptors.
+        #func_loc = None
+        #print "XXXXXXXXXXXXXXXXXXXXXX"*100,function_descriptors
+        #for func_desc,function_name in function_descriptors.iteritems():
+        #    print func_desc,function_name
+        #    # This gives us function location
+        #    mac_addr = self.fmap.get_mac_addr_from_func_desc(func_desc) 
+        #    #mac_addr = self.fmap.fd_machine_map[ip_addr] 
+        #    #nw_addr = socket.inet_ntoa(ip_addr) # already aton 
+        #    dl_addr = create_eaddr(mac_addr) 
+        #    print "L"*20,socket.inet_ntoa(ip_addr),dl_addr
+        #    print event.datapath_id,type(event.datapath_id)
+        #    func_loc = (event.datapath_id,2)#self.fmap.get_closest_location(event.datapath_id,function_name)
+        #    #self.copy_flow(event,func_loc) 
+        #self.install_route(event,func_loc)
+        #self.cntxt.controller_interface.mb_placement_steering(event,function_descriptors)
+        #print "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ"
 
     def update_application_handles(self,fd,application_object,app_desc):
         if not (self.application_handles.has_key(fd)):
@@ -122,6 +88,7 @@ class RouteCompiler():
         else:
             print "ERROR: There is no application for the function descriptor:",fd
             return None
+
     # return True if app_desc is registered as application for fd
     def is_allowed(self,app_desc,fd):
         temp_app_desc = self.get_application_descriptor(fd)

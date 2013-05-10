@@ -7,11 +7,9 @@ from collections import namedtuple
 
 from conf import *
 from specs import MachineSpec
-from specs import FunctionSpec
+from specs import ElementSpec
+from nox_util.packet_utils import *
 
-# NOX
-#from nox.lib.core     import *
-#from nox.lib.packet.packet_utils import mac_to_str,ip_to_str
 """
 	This class provides the function map for each dpid.
         We need to update the location of functions once they are installed or removed.
@@ -30,7 +28,7 @@ class FunctionMap():
         self.fd_map = defaultdict(list) # Machine MAC Address to function descriptor mapping, if the list is empty then we have shim only.
         self.fd_machine_map = defaultdict(tuple) #Key=Function_descriptor -> (IP_adddress,MAC)
         self.mac_to_ip = {} # Key= MAC -> ip_address
-        self.function_specs = FunctionSpec()
+        self.element_specs = ElementSpec()
         self.machine_specs = MachineSpec()
     
     def read_json(self):
@@ -151,8 +149,11 @@ class FunctionMap():
                 return mac_addr
 
     # Returns the shim machine with the mac _addr
-    def get_machine_for_function(self):
+    def get_machine_for_element(self,element_name):
+        temp_mac = "d6:fa:43:9f:a3:6b"
+        element_spec = self.element_specs.get_element_spec(element_name)
         print "fd_map",self.fd_map
+        #return temp_mac
         for mac_addr in self.fd_map:
             if(mac_addr != None):
                 # TODO: Add optimization algorithm here.
@@ -175,7 +176,7 @@ class MachineMap():
         self.ip_port = {} #keeps a record of the location of IP address. key:ip value: port
         #TODO: Add machine specs ability to read the files.
         self.machine_specs = {} # key:ip_address and value:machine spec json file.
-        self.function_specs = FunctionSpec()
+        self.element_specs = ElementSpec()
         self.machine_specs = MachineSpec()
 
     # Load the machine map from a file or from another module that 
@@ -425,10 +426,11 @@ class Policy():
     # Function that returns the corresponding functions dict to the flow.
     def get_flow_functions(self,inport,flow):
         # Based on the flow figure out the functions and then return a list of functipons available on the port.
-        src_mac = mac_to_int(flow['dl_src'])
-        dst_mac = mac_to_int(flow['dl_dst'])
-        f = self.FlowTuple(in_port=inport,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
+        src_mac = mac_to_int(flow.dl_src.toRaw())
+        dst_mac = mac_to_int(flow.dl_dst.toRaw())
+        f = self.FlowTuple(in_port=inport,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow.dl_vlan,dl_vlan_pcp=flow.dl_vlan_pcp,dl_type= flow.dl_type,nw_src=flow.nw_src,nw_dst=flow.nw_dst,nw_proto=flow.nw_proto,tp_src=flow.tp_src,tp_dst=flow.tp_dst)
         #print f
+        print self.flow_to_function_mapping
         function_dict = self.lookup_flow(f)
         if(len(function_dict) > 0):
         	print "There is a match"

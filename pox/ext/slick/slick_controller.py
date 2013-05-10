@@ -29,12 +29,15 @@ from pox.lib.util import dpid_to_str
 from pox.lib.util import str_to_bool
 import time
 from pox.lib.recoco import Timer # For timer calls.
+from pox.lib.addresses import *
 
 
 from route_compiler import RouteCompiler
 from msmessageproc import MSMessageProcessor
 from conf import *
 from download import Download
+#from pox_interface import POXInterface
+from nox_util.packet_utils import *
 
 log = core.getLogger()
 
@@ -71,6 +74,7 @@ class slick_controller (object):
         self.switches = {} # A dictionary of switch ids and if the mac is a middlebox or not. 
         self.switch_connections = {}
         self.download = Download()
+        self.controller_interface = POXInterface(self)
 
         # Application Initialization and Configuration.
         Timer(APPCONF_REFRESH_RATE, self.timer_callback, recurring = True)
@@ -91,7 +95,8 @@ class slick_controller (object):
         print packet.dst
         """
         # Handle the functions
-        #self.handle_functions(event)
+        self.route_compiler.handle_functions(event)
+        # Setup routes for the flow to pass through
 
     # This box is for the middlebox.
     # Can one MAC be a middlebox and an IP address.
@@ -103,10 +108,10 @@ class slick_controller (object):
         if(self.switch_connections.has_key(dpid)):
             return self.switch_connections[dpid]
     
-    def app_installations(self):
-        # For the  MSManager for JSONMsgs
-        JSONMsg_event.register_event_converter(self.ctxt)
-        self.register_handler(JSONMsg_event.static_get_name(), self.json_message_handler)
+    #def app_installations(self):
+    #    # For the  MSManager for JSONMsgs
+    #    JSONMsg_event.register_event_converter(self.ctxt)
+    #    self.register_handler(JSONMsg_event.static_get_name(), self.json_message_handler)
 
     def timer_callback(self):
         # initialize the applications.
@@ -130,12 +135,15 @@ class slick_controller (object):
     #   -1 : Error in installing the function
     #   -2 : Error in downloading the files to middlebox.
     #   -3 : Error in adding a middlebox client.
-    def apply_func(self, app_desc,flow, function_name,parameters,application_object):
+    def apply_elem(self, app_desc,flow, function_name,parameters,application_object):
+        is_last_call = True # Should be argument of the apply_elem functions
         self.function_descriptor += 1
         #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
         if(self.route_compiler.is_installed(app_desc)):# We have the application installed
             print "Creating another function for application: ",app_desc
-        mac_addr = self.route_compiler.fmap.get_machine_for_function()
+        mac_addr = self.route_compiler.fmap.get_machine_for_element(function_name)
+        if(mac_addr != None):
+            print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"*10,hex(mac_addr)
         ip_addr = self.route_compiler.fmap.get_ip_addr(mac_addr)
         if(mac_addr == None): # There is no machine registerd for function installation.
             print "Could not find the Middlebox"
@@ -149,6 +157,8 @@ class slick_controller (object):
         if(self.download.add_mb_client(mac_addr,ip_addr,None,None)):
             if(self.download.put_file(mac_addr,function_name)): #Given the function name send the files to the middlebox.
                 if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,mac_addr)):
+                    #if(is_last_call):
+                    #    self.controller_interface.mb_placement_steering(mac_addr,flow,self.function_descriptor)
                     return self.function_descriptor
                 else:
                     return -1
@@ -189,6 +199,60 @@ class slick_controller (object):
     def remove_func(self,app_desc,fd):
         # roll back
         desc_removed = self.route_compiler.fmap.del_function_desc(fd)
+        #update mb_placement_steering for changed elements
+
+from pox.core import core
+import pox.openflow.discovery
+
+class POXInterface():
+    def __init__(self,cntxt):
+        self.cntxt = cntxt
+
+    def get_route(self,src_ip,dst_ip):
+        pass
+
+    # Return the capacity for the link
+    def get_link_capacity(self,src_mac,dst_mac):
+        pass
+
+    # Return link utilization
+    def get_link_utilization(self,src_mac,dst_mac):
+        pass
+
+    # Return the utilization  of the middlebox.
+    def get_machine_utilization(self,middlebox_mac):
+        pass
+
+
+    # @args:
+    #       List of function descriptors
+    # 
+    # -
+    def mb_placement_steering(self,mb_mac,flow,function_descriptors):
+        print mb_mac
+        print flow
+        print function_descriptor
+        if(mb_mac!= None): # we have already placed the function
+            for item in function_descriptors:
+                pass
+            pass
+        print "MASJID"*100
+        pass
+
+
+    # Wrapper for slick contrller interface.
+    # returns the dictionary 
+    def get_element_descriptors(self,flow):
+        element_macs = {}
+        function_descriptors = self.cntxt.route_compiler.policy.get_flow_functions(flow.in_port,flow) # Find the function descriptors.
+        for func_desc,function_name in function_descriptors.iteritems():
+            print func_desc,function_name
+            mac_addr_temp = self.cntxt.route_compiler.fmap.get_mac_addr_from_func_desc(func_desc) 
+            # Convert MAC in Long to EthAddr
+            mac_str = mac_to_str(mac_addr_temp)
+            mac_addr = EthAddr(mac_str)
+            element_macs[func_desc] = mac_addr
+        return element_macs
 
 ##############################
 # POX Launch the application.

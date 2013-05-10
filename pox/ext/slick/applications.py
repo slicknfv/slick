@@ -128,7 +128,7 @@ class LoggerUnitTest():
         file_name = self.file_name
         parameters = {"file_name":file_name}
         #Incrementing app_d since we'll create 2 applications 
-        fd= self.cntxt.apply_func(self.app_d,self.flow,"Logger",parameters,self) 
+        fd= self.cntxt.apply_elem(self.app_d,self.flow,"Logger",parameters,self) 
         print fd
         if((fd >0)):#=> we have sucess
             #self.func_descs.append(fd)
@@ -202,7 +202,7 @@ class TriggerAllUnitTest():
     def init(self):
         for flow_item in self.flows:
             parameters = {}
-            fd = self.cntxt.apply_func(self.app_d,flow_item,"TriggerAll",parameters,self) #sending the object 
+            fd = self.cntxt.apply_elem(self.app_d,flow_item,"TriggerAll",parameters,self) #sending the object 
             if((fd >0)):#=> we have sucess
                 #self.func_descs.append(fd)
                 self.fd.append(fd)
@@ -249,7 +249,7 @@ class LoggerUnitTest2():
             #file_name = self.file_name
             parameters = {"file_name":self.file_names[index]}
             #print self.flows[index],parameters
-            fd= self.cntxt.apply_func(self.app_d,self.flows[index],"Logger",parameters,self) 
+            fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"Logger",parameters,self) 
             #print fd
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
@@ -273,12 +273,12 @@ class DnsDpiFunctionApp():
 
     def init(self):
         for index in range(0,self.num_functions): # If the flows are same then it will overwrite the flow to function descriptor
-            print "APPLY_FUNC"
+            print "apply_elem"
             # read this from policy file.
             #file_name = self.file_name
             parameters = {}
             #print self.flows[index],parameters
-            fd= self.cntxt.apply_func(self.app_d,self.flows[index],"DNS-DPI",parameters,self) 
+            fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"DNS-DPI",parameters,self) 
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
                 self.installed = True
@@ -306,7 +306,7 @@ class DnsDpiFunctionApp():
         flow["dl_src"] = None; flow["dl_dst"] = None; flow['dl_vlan'] = None; flow['dl_vlan_pcp'] = None; flow['dl_type'] = None; flow['nw_src'] = src_ip; flow['nw_dst'] = None;flow['nw_proto'] = None ;flow['tp_src'] = None;flow['tp_dst'] = None
         parameters = {}
         if not self.trigger_function_installed:
-            fd= self.cntxt.apply_func(self.app_d,flow,"DROP",parameters,self) 
+            fd= self.cntxt.apply_elem(self.app_d,flow,"DROP",parameters,self) 
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
                 self.trigger_function_installed = True
@@ -390,9 +390,9 @@ class P0fFunctionApp():
 
     def init(self):
         for index in range(0,self.num_functions): 
-            print "APPLY_FUNC"
+            print "apply_elem"
             parameters = {}
-            fd= self.cntxt.apply_func(self.app_d,self.flows[index],"p0f",parameters,self) 
+            fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"p0f",parameters,self) 
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
                 self.installed = True
@@ -477,9 +477,9 @@ class BloomFilterFunctionApp():
 
     def init(self):
         for index in range(0,self.num_functions): 
-            print "APPLY_FUNC"
+            print "apply_elem"
             parameters = {}
-            fd= self.cntxt.apply_func(self.app_d,self.flows[index],"BF",parameters,self) #Bloom Filter
+            fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"BF",parameters,self) #Bloom Filter
             print fd
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)

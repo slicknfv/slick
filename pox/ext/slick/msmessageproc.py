@@ -96,7 +96,8 @@ class MSMessageProcessor():
                 machine_ip = socket.inet_aton(msg["machine_ip"]) 
                 machine_ip = msg["machine_ip"]
                 machine_mac = msg["machine_mac"]
-                print "MAAAAAAAAAAAAAAAAAAAAAAAC",machine_ip,machine_mac
+                print "MAAAAAAAAAAAAAAAAAAAAAAAC",machine_ip,hex(machine_mac)
+                print "MAAAAAAAAAAAAAAAAAAAAAAAC",type(machine_ip),type(machine_mac)
                 #self.json_msg_events[machine_ip] = pyevent # To keep the connection open
                 self.tcp_conn_handlers[machine_mac] = socket_name
                 self.cntxt.route_compiler.fmap.update_function_machine(machine_ip,machine_mac,None) # Simply add the record of the shim.

@@ -88,7 +88,10 @@ class Download():
                     scp = SCPClient(ssh.get_transport())
                     print scp
                     print file_path
-                    scp.put(file_path,recursive=True)
+                    try:
+                        scp.put(file_path,recursive=True)
+                    except:
+                        print "SCPException"
                 #files = os.listdir(file_path)
                 ## assumes no directory in the element dir
                 #for item in files:
@@ -98,6 +101,8 @@ class Download():
                 if(self.scp_client.has_key(mac_addr)):
                     scp = self.scp_clients[mac_addr]
                 scp.put(file_path)
+            pass
+        return True
 
     # Provide the full filename 
     def get_file(self,filename,username):

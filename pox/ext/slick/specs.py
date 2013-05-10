@@ -5,11 +5,11 @@ from collections import defaultdict
 import os,sys
 import json
 
-class FunctionSpec():
+class ElementSpec():
     def __init__(self):
         self.element_specs = {} # function_name to element specification dictionary
-        #self.elements_path = os.getcwd() + "/"+"ext/slick/elements/"
-        self.elements_path = os.getcwd() + "/"+"elements/"
+        self.elements_path = os.getcwd() + "/"+"ext/slick/elements/"
+        #self.elements_path = os.getcwd() + "/"+"elements/"
         self._load_specs()
 
     def _load_specs(self,path = None):
@@ -18,12 +18,13 @@ class FunctionSpec():
             if not item.startswith('.'):
                 file_path = self.elements_path + "/" + item + "/"+item+".spec"
                 with open(file_path) as f:
+                    print file_path
                     json_data_dict = json.load(f)
                     print json_data_dict
                     self.element_specs[item] = json_data_dict
 
     # Returns a dictionary
-    def get_element_specs(self,element_name):
+    def get_element_spec(self,element_name):
         if(self.element_specs.has_key(element_name)):
             return self.element_specs[element_name]
 
@@ -46,9 +47,9 @@ class MachineSpec():
             json_data_dict = json.load(f)
             print json_data_dict
 
-    # get the list of machines that have the specifications same as provided function specification
-    def get_machines(self,function_spec):
-        for key,value in function_spec:
+    # get the list of machine macs that have the specifications same as provided element_specification
+    def get_machines(self,element_spec):
+        for key,value in element_spec:
             pass
         pass
 
