@@ -252,13 +252,22 @@ class Shim:
             if(func_handle):
                 # Based on the function_hadle 
                 #print "This is a data packet"
+                print flow,func_handle
                 func_handle.process_pkt(buf)
             else:
-                pass
+                #try reverse_flow
+                reverse_flow = self.get_reverse_flow(flow)
+                func_handle = self.client_service.get_function_handle_from_flow(reverse_flow)
+                if(func_handle):
+                    print "FOUND REVERSE FLOW"
+                    func_handle.process_pkt(buf)
+                else:
+                    pass
                 #print "WARNING: We don't have a handler for the packet"
 
-
-
+    # --
+    # Utility functions
+    # --
     # use this to extract openflow flow.
     def extract_flow(self,eth):
         """
@@ -309,6 +318,30 @@ class Shim:
             #attrs[TP_SRC] = 0
             #attrs[TP_DST] = 0
         #print attrs
+        return attrs
+
+    # Return a reverse flow for the given flow.
+    def get_reverse_flow(self,flow):
+        attrs = {}
+        #attrs[in_port] = None
+        attrs[DL_SRC] = flow[DL_DST]
+        attrs[DL_DST] = flow[DL_SRC]
+        attrs[DL_TYPE] = flow[DL_TYPE]
+
+        attrs[DL_VLAN] = flow[DL_VLAN]
+        attrs[DL_VLAN_PCP] = flow[DL_VLAN_PCP]
+
+        attrs[NW_SRC] = flow[NW_DST]
+        attrs[NW_DST] = flow[NW_SRC]
+        if(flow.has_key(NW_PROTO)):
+            attrs[NW_PROTO] = flow[NW_PROTO]
+        if(flow.has_key(NW_TOS)):
+            attrs[NW_TOS] = flow[NW_TOS]
+
+        if(flow.has_key(TP_DST)):
+            attrs[TP_SRC] = flow[TP_DST]
+        if(flow.has_key(TP_SRC)):
+            attrs[TP_DST] = flow[TP_SRC]
         return attrs
 
 

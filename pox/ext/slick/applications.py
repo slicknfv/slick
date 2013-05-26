@@ -278,7 +278,7 @@ class DnsDpiFunctionApp():
             #file_name = self.file_name
             parameters = {}
             #print self.flows[index],parameters
-            fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"DNS-DPI",parameters,self) 
+            fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"DNS_DPI",parameters,self) 
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
                 self.installed = True

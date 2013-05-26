@@ -92,7 +92,7 @@ class ShimTable():
         print self.flow_to_function_mapping
 
     # Return a reverse flow for the given flow.
-    def get_reverse_flow(self,flow):
+    def get_reverse_flow_tuple(self,flow):
         """
         r_dl_src = flow.dl_dst
         r_dl_dst = flow.dl_src

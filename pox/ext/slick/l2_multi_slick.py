@@ -245,7 +245,7 @@ class Switch (EventMixin):
 
   def _install (self, switch, in_port, out_port, match, buf = None):
     msg = of.ofp_flow_mod()
-    msg.match = match
+    msg.match = match # match should be fine as we are installing the in_port separately.
     msg.match.in_port = in_port
     msg.idle_timeout = FLOW_IDLE_TIMEOUT
     msg.hard_timeout = FLOW_HARD_TIMEOUT
@@ -272,19 +272,25 @@ class Switch (EventMixin):
     mb_locations.insert(0,(self,event.port)) # prepend
     mb_locations.append((dst_sw,last_port))
     #for index,location in enumerate(mb_locations):
-    for index in range(0,len(mb_locations)-1): 
-      print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"*100
-      print len(mb_locations)
+    for index in range(0,len(mb_locations)-1): #For n nodes we need n-1 paths installed.
+      print "A"*100,index
       print mb_locations
       #loc = (self, event.port) # Place we saw this ethaddr
       switch1 = mb_locations[index][0]
       switch2 = mb_locations[index+1][0]
       switch1_port = mb_locations[index][1]
       switch2_port = mb_locations[index+1][1]
+      #print switch1,switch1_port,switch2,switch2_port
+      # get path from source to mb
+      #p1 = _get_path(switch1, dst_sw, event.port, last_port)
+      # get path from mb to destination
+      #p2 = _get_path(switch1, dst_sw, event.port, last_port)
 
       # source_switch,destination_switch,source_port,destination_port
-      p = _get_path(switch1, dst_sw, event.port, last_port)
+      #p = _get_path(switch1, dst_sw, event.port, last_port)
+      p = _get_path(switch1, switch2, switch1_port, switch2_port)
       print p
+      print "B"*100
       if p is None:
         log.warning("Can't get from %s to %s", match.dl_src, match.dl_dst)
 
@@ -324,7 +330,7 @@ class Switch (EventMixin):
         return
 
       log.debug("Installing path for %s -> %s %04x (%i hops)",
-          match.dl_src, match.dl_dst, match.dl_type, len(p))
+          switch1, switch2, match.dl_type, len(p))
 
       # We have a path -- install it
       self._install_path(p, match, event.ofp)

@@ -52,7 +52,7 @@ class ClientService(rpyc.Service):
         if(function_name == "TriggerAll"):
             function_handle = TriggerAll(self.shim)#start the function
             function_handle.init(fd,params_dict)# init invoked on the application.
-        if(function_name == "DNS-DPI"):
+        if(function_name == "DNS_DPI"):
             print "DNS-DPI Installed"
             function_handle = DnsDpiFunction(self.shim)#start the function
             function_handle.init(fd,params_dict)# init invoked on the application.

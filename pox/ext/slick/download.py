@@ -81,6 +81,7 @@ class Download():
     def put_file(self,mac_addr,function_name):
         scp = None
         file_path = self._lookup_function_files(function_name)
+        print file_path
         if(os.path.exists(file_path)):
             if(os.path.isdir(file_path)):
                 if(self.scp_clients.has_key(mac_addr)):
