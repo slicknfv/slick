@@ -254,6 +254,42 @@ class POXInterface():
             element_macs[func_desc] = mac_addr
         return element_macs
 
+    # This function returns a matching flow 
+    # flow is of type ofp_match
+    def get_generic_flow(self,flow):
+        matching_flow = flow
+        matched_flow_tuple = self.cntxt.route_compiler.policy.get_matching_flow(flow) # Find the function descriptors.
+        print "MMMMMMMMMMMMMMMMMMMMMMMMMATCHING FLOW: "*4,matched_flow_tuple
+
+        if(matched_flow_tuple != None):
+            #Can't assign port as its assigned by the routing algorithm.
+            #if(matched_flow_tuple.dl_src != None):
+            matching_flow.dl_src = matched_flow_tuple.dl_src
+            #if(matched_flow_tuple.dl_dst != None):
+            matching_flow.dl_dst = matched_flow_tuple.dl_dst
+            #if(matched_flow_tuple.dl_vlan != None):
+            matching_flow.dl_vlan = matched_flow_tuple.dl_vlan
+            #if(matched_flow_tuple.dl_vlan_pcp != None):
+            matching_flow.dl_vlan_pcp = matched_flow_tuple.dl_vlan_pcp
+            #if(matched_flow_tuple.dl_type != None):
+            matching_flow.dl_type = matched_flow_tuple.dl_type
+            #if(matched_flow_tuple.nw_tos != None):
+            matching_flow.nw_tos = None  #matched_flow_tuple.nw_tos
+            #if(matched_flow_tuple.nw_proto != None):
+            matching_flow.nw_proto = matched_flow_tuple.nw_proto
+            #if(matched_flow_tuple.nw_src != None):
+            matching_flow.nw_src = matched_flow_tuple.nw_src
+            #if(matched_flow_tuple.nw_dst != None):
+            matching_flow.nw_dst = matched_flow_tuple.nw_dst
+            #if(matched_flow_tuple.tp_dst != None):
+            matching_flow.tp_dst = matched_flow_tuple.tp_dst
+            #if(matched_flow_tuple.tp_src != None):
+            matching_flow.tp_src = matched_flow_tuple.tp_src
+        else:
+            return None # so we know there is no match.
+
+        return matching_flow
+
 ##############################
 # POX Launch the application.
 ##############################

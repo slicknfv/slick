@@ -35,6 +35,8 @@ class MSMessageProcessor():
         # To be used for filter app.
         flow8 = {}
         flow8["dl_src"] = None;flow8["dl_dst"] = None;flow8['dl_vlan'] = None;flow8['dl_vlan_pcp'] = None;flow8['dl_type'] = None;flow8['nw_src'] = None;flow8['nw_dst'] = None;flow8['nw_proto'] = None ;flow8['tp_src'] = None;flow8['tp_dst'] = 80
+        #flow9 = {}
+        #flow9["dl_src"] = None;flow9["dl_dst"] = None;flow9['dl_vlan'] = None;flow9['dl_vlan_pcp'] = None;flow9['dl_type'] = None;flow9['nw_src'] = "10.0.0.4";flow9['nw_dst'] = None;flow9['nw_proto'] = None ;flow9['tp_src'] = None;flow9['tp_dst'] = None
         #self.dns_handlers = DNSHandlers(self.cntxt)
         dns_flows=[]
         dns_flows.append(flow1)

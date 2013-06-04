@@ -10,6 +10,20 @@ from specs import MachineSpec
 from specs import ElementSpec
 from nox_util.packet_utils import *
 
+IN_PORT    = "in_port"
+DL_SRC     = "dl_src"
+DL_DST     = "dl_dst"
+DL_VLAN    = "dl_vlan"
+DL_VLAN_PCP = "dl_vlan_pcp"
+DL_TYPE    = "dl_type"
+NW_SRC     = "nw_src"
+NW_SRC_N_WILD = "nw_src_n_wild"
+NW_DST     = "nw_dst"
+NW_DST_N_WILD = "nw_dst_n_wild"
+NW_PROTO   = "nw_proto"
+NW_TOS     = "nw_tos"
+TP_SRC     = "tp_src"
+TP_DST     = "tp_dst"
 """
 	This class provides the function map for each dpid.
         We need to update the location of functions once they are installed or removed.
@@ -438,3 +452,85 @@ class Policy():
         else:
         	return function_dict
 
+    # Returns a mtching flow of type ofp_match
+    # else returns a None
+    def get_matching_flow(self,in_flow):
+        #src_mac = mac_to_int(flow.dl_src.toRaw())
+        #dst_mac = mac_to_int(flow.dl_dst.toRaw())
+        src_mac = in_flow.dl_src
+        dst_mac = in_flow.dl_dst
+        ft = self.FlowTuple(in_port=in_flow.in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=in_flow.dl_vlan,dl_vlan_pcp=in_flow.dl_vlan_pcp,dl_type= in_flow.dl_type,nw_src=in_flow.nw_src,nw_dst=in_flow.nw_dst,nw_proto=in_flow.nw_proto,tp_src=in_flow.tp_src,tp_dst=in_flow.tp_dst)
+
+        print self.flow_to_function_mapping
+        for item in self.flow_to_function_mapping:
+            item_match = False
+            if(item.in_port!=None):#If its not a don't care.
+            	if(item.in_port == ft.in_port):
+            		item_match = True 
+                        #matching_flow.in_port = item.in_port
+            	else: 
+            		continue
+            if(item.dl_src!=None):#If its not a don't care.
+            	if(item.dl_src == ft.dl_src):
+            		item_match = True 
+                        #matching_flow.dl_src = item.dl_src
+            	else:# If its not a don't care and we have not matched then its not what we are looking for. 
+            		continue
+            if(item.dl_dst!=None):
+            	if(item.dl_dst == ft.dl_dst):
+            		item_match = True 
+                        #matching_flow.dl_dst = item.dl_dst
+            	else:
+            		continue
+            if(item.dl_vlan!=None):
+            	if(item.dl_vlan == ft.dl_vlan):
+            		item_match = True 
+                        #matching_flow.dl_vlan = item.dl_vlan
+            	else:
+            		continue
+            if(item.dl_vlan_pcp!=None):
+            	if(item.dl_vlan_pcp == ft.dl_vlan_pcp):
+            		item_match = True 
+                        #matching_flow.dl_vlan_pcp = item.dl_vlan_pcp
+            	else:
+            		continue
+            if(item.dl_type!=None):
+            	if(item.dl_type == ft.dl_type):
+            		item_match = True 
+                        #matching_flow.dl_type = item.dl_type
+            	else:
+            		continue
+            if(item.nw_src!=None):
+            	if(item.nw_src == ft.nw_src):
+            		item_match = True 
+                        #matching_flow.nw_src = item.nw_src
+            	else:
+            		continue
+            if(item.nw_dst!=None):
+            	if(item.nw_dst == ft.nw_dst):
+            		item_match = True 
+                        #matching_flow.nw_dst = item.nw_dst
+            	else:
+            		continue
+            if(item.nw_proto!=None):
+            	if(item.nw_proto == ft.nw_proto):
+            		item_match = True 
+                        #matching_flow.nw_proto = item.nw_proto
+            	else:
+            		continue
+            if(item.tp_src!=None):
+                if(item.tp_src == ft.tp_src):
+                    item_match = True 
+                    #matching_flow.tp_src = item.tp_src
+                else:
+                    continue
+            if(item.tp_dst!=None):
+                if(item.tp_dst == ft.tp_dst):
+                    item_match = True 
+                    #matching_flow.tp_dst = item.tp_dst
+                else:
+                    continue
+            if(item_match == True):
+                return item
+                #return matching_flow
+        return None

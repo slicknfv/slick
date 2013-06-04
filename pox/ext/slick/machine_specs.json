@@ -12,7 +12,7 @@
         "flavor": "ubuntu",
         "flavor_version": "9.10"
     },
-    "01:12:34:56:78:9a": {
+    "01:12:34:56:78:9b": {
         "processing_unit": "processor",
         "processor_type": "x86",
         "peripherals": {},
