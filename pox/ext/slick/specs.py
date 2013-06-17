@@ -4,6 +4,7 @@
 from collections import defaultdict
 import os,sys
 import json
+import logging
 
 class ElementSpec():
     def __init__(self):
@@ -18,9 +19,8 @@ class ElementSpec():
             if not item.startswith('.'):
                 file_path = self.elements_path + "/" + item + "/"+item+".spec"
                 with open(file_path) as f:
-                    print file_path
+                    logging.debug("Loading Element Specification File: %s",file_path)
                     json_data_dict = json.load(f)
-                    print json_data_dict
                     self.element_specs[item] = json_data_dict
 
     # Returns a dictionary
@@ -55,7 +55,7 @@ class MachineSpec():
 
 # This is testing code
 def main(argv):
-    func_spec = FunctionSpec()
+    func_spec = ElementSpec()
     func_spec._load_specs()
     print func_spec.element_specs
     print func_spec.get_element_specs("logger")

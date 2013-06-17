@@ -9,8 +9,8 @@
         "disk_size": "2TB",
         "disk_type": "HDD",
         "os": "linux",
-        "flavor": "ubuntu",
-        "flavor_version": "9.10"
+        "os_flavor": "ubuntu",
+        "os_flavor_version": "9.10"
     },
     "01:12:34:56:78:9b": {
         "processing_unit": "processor",
@@ -22,7 +22,7 @@
         "disk_size": "2TB",
         "disk_type": "HDD",
         "os": "linux",
-        "flavor": "ubuntu",
-        "flavor_version": "9.10"
+        "os_flavor": "ubuntu",
+        "os_flavor_version": "9.10"
     }
 }

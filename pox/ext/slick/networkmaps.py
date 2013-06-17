@@ -8,7 +8,7 @@ from collections import namedtuple
 from conf import *
 from specs import MachineSpec
 from specs import ElementSpec
-from nox_util.packet_utils import *
+from utils.packet_utils import *
 
 IN_PORT    = "in_port"
 DL_SRC     = "dl_src"
@@ -148,8 +148,8 @@ class FunctionMap():
     
     def del_function_desc(self,function_desc):
         if(function_desc != None):
-            if(function_desc in self.fd_map[ip_addr]):
-                self.fd_map[ip_addr].remove(function_desc)
+            if(function_desc in self.fd_map[mac_addr]):
+                self.fd_map[mac_addr].remove(function_desc)
                 return True
             else:
                 print "Function descriptor does not exist:",function_desc
@@ -164,17 +164,37 @@ class FunctionMap():
 
     # Returns the shim machine with the mac _addr
     def get_machine_for_element(self,element_name):
-        temp_mac = "d6:fa:43:9f:a3:6b"
         element_spec = self.element_specs.get_element_spec(element_name)
         print "fd_map",self.fd_map
-        #return temp_mac
         for mac_addr in self.fd_map:
             if(mac_addr != None):
-                # TODO: Add optimization algorithm here.
+                # TODO: Add recurrent optimization algorithm call here.
                 if (len(self.fd_map[mac_addr]) < MAX_FUNCTION_INSTANCES): # 10 functions can be added per machine.
                     return mac_addr
         return None
 
+    """
+    Description:
+        Function to lookup the machine specification.
+    @args:
+        function_spec: Its the function specification
+
+    @returns:
+        list of mac addresses of machines whose spec match with function_spec.
+    """
+    def lookup_machines(self,function_spec):
+        matched_machines = [] 
+        #print function_spec
+        if(function_spec.has_key("os") and function_spec.has_key("processor_type") and function_spec.has_key("os_flavor") and function_spec.has_key("os_flavor_version")):
+            for mac,machine_spec in self.machine_specs:
+                if(machine_spec.has_key("os") and machine_spec.has_key("processor_type") and machine_spec.has_key("os_flavor") and machine_spec.has_key("os_flavor_version")):
+                    if((machine_spec["os"] == function_spec["os"]) and (machine_spec["processor_type"] == function_spec["processor_type"]) and (machine_spec["os_flavor"] == function_spec["os_flavor"]) and (machine_spec["os_flavor_version"] and function_spec["os_flavor_version"])):
+                        matched_machines.append(mac)
+                else:
+                    raise Exception(" Invalid Machine Specification")
+        else: 
+            raise Exception(" Invalid Function Specification")
+        return matched_machines
 
 """
 # Tell which machines are hanging to which switches.
@@ -188,8 +208,6 @@ class MachineMap():
         self.ip_to_dpid_port = defaultdict(tuple)
         self.ip_dpid = {} #keeps a record of the location of IP address. key:ip value: dpid
         self.ip_port = {} #keeps a record of the location of IP address. key:ip value: port
-        #TODO: Add machine specs ability to read the files.
-        self.machine_specs = {} # key:ip_address and value:machine spec json file.
         self.element_specs = ElementSpec()
         self.machine_specs = MachineSpec()
 
@@ -455,8 +473,6 @@ class Policy():
     # Returns a mtching flow of type ofp_match
     # else returns a None
     def get_matching_flow(self,in_flow):
-        #src_mac = mac_to_int(flow.dl_src.toRaw())
-        #dst_mac = mac_to_int(flow.dl_dst.toRaw())
         src_mac = in_flow.dl_src
         dst_mac = in_flow.dl_dst
         ft = self.FlowTuple(in_port=in_flow.in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=in_flow.dl_vlan,dl_vlan_pcp=in_flow.dl_vlan_pcp,dl_type= in_flow.dl_type,nw_src=in_flow.nw_src,nw_dst=in_flow.nw_dst,nw_proto=in_flow.nw_proto,tp_src=in_flow.tp_src,tp_dst=in_flow.tp_dst)

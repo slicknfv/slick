@@ -4,7 +4,7 @@
         "os": "Linux",
         "os_flavor": "Ubuntu",
         "inline": "no",
-        "os_flavor_version": "9.10"
+        "os_flavor_version": "9.10",
         "affinity" : "yes",
         "placement" : "middle",
         "triggers": [

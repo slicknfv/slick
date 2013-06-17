@@ -39,6 +39,7 @@ from pox.openflow.discovery import Discovery
 from pox.lib.util import dpid_to_str
 import time
 
+import copy
 
 log = core.getLogger()
 
@@ -56,6 +57,11 @@ path_map = defaultdict(lambda:defaultdict(lambda:(None,None)))
 
 # Waiting path.  (dpid,xid)->WaitingPath
 waiting_paths = {}
+
+# Middlebox MAC Addresses
+middleboxes = [] #defaultdict(list)
+
+buffer_sent = {} # Key = (middlebox_switch_id,buffer_id) Value= Boolean
 
 # Time to not flood in seconds
 FLOOD_HOLDDOWN = 5
@@ -166,6 +172,13 @@ def _get_path (src, dst, first_port, final_port):
   return r
 
 
+# Returns True if its the first time reference to buffer.
+def _is_valid_buffer(mac_addr,buffer_id):
+    for switch in middleboxes:
+        if(switch.dpid == mac_addr):
+            print "RETURNING TRUE:::::::::::::::::::::::::::::::::::::::::::"
+            return True
+
 class WaitingPath (object):
   """
   A path which is waiting for its path to be established
@@ -198,13 +211,18 @@ class WaitingPath (object):
     Called when a barrier has been received
     """
     self.xids.discard((event.dpid,event.xid))
-    if len(self.xids) == 0:
+    if len(self.xids) == 0: # First wait for barrier replies and then send the packet out
       # Done!
+      #print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM:::::::::::::::::::::::::::",middleboxes
+      #print event.dpid
+      #if not (_is_middlebox_switch(event.dpid)): #Don't send the packet out if its not there.
       if self.packet:
         log.debug("Sending delayed packet out %s"
                   % (dpid_to_str(self.first_switch),))
         msg = of.ofp_packet_out(data=self.packet,
             action=of.ofp_action_output(port=of.OFPP_TABLE))
+        #if not (buffer_sent.has_key((event.dpid,msg.buffer_id))): # Clean this buffer after some time
+        #buffer_sent[(event.dpid,msg.buffer_id)] = True
         core.openflow.sendToDPID(self.first_switch, msg)
 
       core.l2_multi_slick.raiseEvent(PathInstalled(self.path))
@@ -243,22 +261,41 @@ class Switch (EventMixin):
   def __repr__ (self):
     return dpid_to_str(self.dpid)
 
-  def _install (self, switch, in_port, out_port, match, buf = None):
+  def _install_back (self, switch, in_port, out_port, match, buf = None):
     msg = of.ofp_flow_mod()
     msg.match = match # match should be fine as we are installing the in_port separately.
     msg.match.in_port = in_port
+    msg.match.tp_src = None
     msg.idle_timeout = FLOW_IDLE_TIMEOUT
     msg.hard_timeout = FLOW_HARD_TIMEOUT
     msg.actions.append(of.ofp_action_output(port = out_port))
     msg.buffer_id = buf
+    print msg.match
+    print msg.buffer_id
+    print msg.actions
+    print "Installing path for ",switch," and inport and out_port::::::::::::::::",in_port,out_port#,msg.match
+    switch.connection.send(msg)
+
+  def _install (self, switch, in_port, out_port, match, buf = None):
+    msg = of.ofp_flow_mod()
+    msg.match = match # match should be fine as we are installing the in_port separately.
+    msg.match.in_port = in_port
+    msg.match.tp_src = None
+    msg.idle_timeout = FLOW_IDLE_TIMEOUT
+    msg.hard_timeout = FLOW_HARD_TIMEOUT
+    msg.actions.append(of.ofp_action_output(port = out_port))
+    msg.buffer_id = buf
+    print "Installing path for ",switch," and inport and out_port::::::::::::::::",in_port,out_port#,msg.match
     switch.connection.send(msg)
 
   def _install_path (self, p, match, packet_in=None):
     wp = WaitingPath(p, packet_in)
     for sw,in_port,out_port in p:
+      print "U"*100, sw,in_port,out_port
       self._install(sw, in_port, out_port, match)
       msg = of.ofp_barrier_request()
       sw.connection.send(msg)
+      #print "Sending Barrier Request::::::::::::::::::::::::: ",msg.xid
       wp.add_xid(sw.dpid,msg.xid)
 
   def install_path (self, dst_sw, last_port, match, event,mb_locations):
@@ -271,10 +308,10 @@ class Switch (EventMixin):
     switch2_port = None
     mb_locations.insert(0,(self,event.port)) # prepend
     mb_locations.append((dst_sw,last_port))
+    print mb_locations
     #for index,location in enumerate(mb_locations):
     for index in range(0,len(mb_locations)-1): #For n nodes we need n-1 paths installed.
       print "A"*100,index
-      print mb_locations
       #loc = (self, event.port) # Place we saw this ethaddr
       switch1 = mb_locations[index][0]
       switch2 = mb_locations[index+1][0]
@@ -287,12 +324,12 @@ class Switch (EventMixin):
       #p2 = _get_path(switch1, dst_sw, event.port, last_port)
 
       # source_switch,destination_switch,source_port,destination_port
-      #p = _get_path(switch1, dst_sw, event.port, last_port)
       p = _get_path(switch1, switch2, switch1_port, switch2_port)
       print p
-      print "B"*100
+      print match.dl_src, "->", match.dl_dst, "type:" ,match.dl_type, "proto:",match.nw_proto, 
+      print "IPs:",match.nw_src,"->",match.nw_dst,"Transport: ",match.tp_src,"->", match.tp_dst
       if p is None:
-        log.warning("Can't get from %s to %s", match.dl_src, match.dl_dst)
+        log.warning("Can't get from %s to %s", switch1, switch2)
 
         import pox.lib.packet as pkt
 
@@ -300,7 +337,7 @@ class Switch (EventMixin):
             event.parsed.find('ipv4')):
           # It's IP -- let's send a destination unreachable
           log.debug("Dest unreachable (%s -> %s)",
-                    match.dl_src, match.dl_dst)
+                    switch1, switch2)
           from pox.lib.addresses import EthAddr
           e = pkt.ethernet()
           e.src = EthAddr(dpid_to_str(switch1.dpid)) #FIXME: Hmm...
@@ -323,14 +360,16 @@ class Switch (EventMixin):
           ipp.payload = icmp
           e.payload = ipp
           msg = of.ofp_packet_out()
-          msg.actions.append(of.ofp_action_output(port = event.port))
+          msg.actions.append(of.ofp_action_output(port = switch1_port))
           msg.data = e.pack()
           self.connection.send(msg)
 
         return
 
-      log.debug("Installing path for %s -> %s %04x (%i hops)",
-          switch1, switch2, match.dl_type, len(p))
+      #log.debug("Installing path for %s -> %s %04x (%i hops)",
+      #    switch1, switch2, match.dl_type, len(p))
+      log.debug("Installing path for %s -> %s (%i hops)",
+          switch1, switch2, len(p))
 
       # We have a path -- install it
       self._install_path(p, match, event.ofp)
@@ -364,16 +403,21 @@ class Switch (EventMixin):
         self.connection.send(msg)
     #slick
     packet = event.parsed
+    #print packet.src, "->",packet.dst, "type:",packet.type#, packet.srcip,"->", packet.dstip, "proto:",packet.protocol
     flow_match = of.ofp_match.from_packet(packet) # extract flow fields
 
     element_descriptors = slick_controller_interface.get_element_descriptors(flow_match)
-    mb_locations = [] # Order of this list is important.
+    # Order of this list is important.
+    # This is the same order in which we want the packets to traverse.
+    mb_locations = [] 
     for element_id,mac_addr in element_descriptors.iteritems():
         #print element_id,mac_addr
         #print type(mac_addr)
         temp_loc = mac_map.get(mac_addr) 
-        print temp_loc
+        #print temp_loc
         mb_locations.append(temp_loc)
+        if(temp_loc[0] not in middleboxes):
+            middleboxes.append(temp_loc[0]) # Need these to not send packet out as packet is not reached.
 
     loc = (self, event.port) # Place we saw this ethaddr
     print loc
@@ -418,7 +462,33 @@ class Switch (EventMixin):
       else:
         dest = mac_map[packet.dst]
         match = of.ofp_match.from_packet(packet)
-        self.install_path(dest[0], dest[1], match, event,mb_locations)
+        match_copy = copy.copy(match)
+        #print match_copy
+        matched_flow_tuple = slick_controller_interface.get_generic_flow(match_copy)
+        if(matched_flow_tuple != None):
+            #print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
+            #print match
+            #print matched_flow_tuple
+            """
+                dl_type,src_ip,dst_ip are the required field. Without these forwarding
+                does not work.
+            """
+            match.dl_src = matched_flow_tuple.dl_src
+            match.dl_dst = matched_flow_tuple.dl_dst
+            match.dl_vlan = matched_flow_tuple.dl_vlan
+            match.dl_vlan_pcp = matched_flow_tuple.dl_vlan_pcp
+            #match.dl_type = matched_flow_tuple.dl_type
+            match.nw_tos = None  #matched_flow_tuple.nw_tos
+            match.nw_proto = matched_flow_tuple.nw_proto
+            #match.nw_src = matched_flow_tuple.nw_src
+            #match.nw_dst = matched_flow_tuple.nw_dst
+            match.tp_dst = matched_flow_tuple.tp_dst
+            match.tp_src = matched_flow_tuple.tp_src
+            #print match
+            #print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
+            self.install_path(dest[0], dest[1], match, event,mb_locations)
+        else:
+            self.install_path(dest[0], dest[1], match, event,mb_locations)
 
   def disconnect (self):
     if self.connection is not None:

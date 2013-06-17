@@ -11,7 +11,7 @@ from pox.lib.addresses import IPAddr, EthAddr
 import pox.lib.packet as pkt
 import pox.openflow.libopenflow_01 as of
 
-from nox_util.packet_utils import *
+from utils.packet_utils import *
 
 """
     Trigger handling code.

@@ -2,7 +2,7 @@ import networkmaps
 from networkmaps import FunctionMap,Policy,MachineMap
 
 import pox.openflow.libopenflow_01 as of
-from nox_util.packet_utils import *
+from utils.packet_utils import *
 
 # Get source and destination of the flow.
 class RouteCompiler():

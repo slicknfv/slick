@@ -23,11 +23,13 @@ It is somwhat similar to NOX's pyswitch in that it installs
 exact-match rules for each flow.
 """
 
+import time
+import logging
+
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 from pox.lib.util import dpid_to_str
 from pox.lib.util import str_to_bool
-import time
 from pox.lib.recoco import Timer # For timer calls.
 from pox.lib.addresses import *
 
@@ -37,7 +39,7 @@ from msmessageproc import MSMessageProcessor
 from conf import *
 from download import Download
 #from pox_interface import POXInterface
-from nox_util.packet_utils import *
+from utils.packet_utils import *
 
 log = core.getLogger()
 
@@ -81,7 +83,6 @@ class slick_controller (object):
 
     def _handle_ConnectionUp (self, event):
         log.debug("Connection %s" % (event.connection,))
-        print "Connection %s" % (event.connection,)
         self.switches[event.dpid] = self._is_middlebox() # Keep track of switches.
         self.switch_connections[event.dpid] = event.connection
 
@@ -140,13 +141,13 @@ class slick_controller (object):
         self.function_descriptor += 1
         #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
         if(self.route_compiler.is_installed(app_desc)):# We have the application installed
-            print "Creating another function for application: ",app_desc
+            log.debug("Creating another function for application: %d",app_desc)
         mac_addr = self.route_compiler.fmap.get_machine_for_element(function_name)
         if(mac_addr != None):
-            print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"*10,hex(mac_addr)
+            log.debug("MAC Address of middlebox machine %s" % mac_addr)
         ip_addr = self.route_compiler.fmap.get_ip_addr(mac_addr)
         if(mac_addr == None): # There is no machine registerd for function installation.
-            print "Could not find the Middlebox"
+            #print "Could not find the Middlebox"
             return -1
         msg_dst = ip_addr
         #mac_addr = self.route_compiler.fmap.fd_machine_map[ip_addr]
@@ -169,7 +170,6 @@ class slick_controller (object):
 
                 
     #This function takes the src dpid, dst dpid and list of machines .. the
-    #
     def pickMBMachine(self, src, dst, machinelist):
         shortestPath = 0
         shortestPath_MB = machinelist[0]
@@ -191,12 +191,11 @@ class slick_controller (object):
             if(self.route_compiler.is_allowed(app_desc,fd)):
                 msg_dst = self.route_compiler.fmap.get_mac_addr_from_func_desc(fd)
                 app_handle = self.route_compiler.get_application_handle(fd) # not requied by additional check 
-                #print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",str(msg_dst)
                 if((msg_dst != None) and (app_handle != None)):
                     self.ms_msg_proc.send_configure_msg(fd,application_conf_params,msg_dst)
 
     #TODO:
-    def remove_func(self,app_desc,fd):
+    def remove_elem(self,app_desc,fd):
         # roll back
         desc_removed = self.route_compiler.fmap.del_function_desc(fd)
         #update mb_placement_steering for changed elements
@@ -236,7 +235,6 @@ class POXInterface():
             for item in function_descriptors:
                 pass
             pass
-        print "MASJID"*100
         pass
 
 
@@ -259,10 +257,10 @@ class POXInterface():
     def get_generic_flow(self,flow):
         matching_flow = flow
         matched_flow_tuple = self.cntxt.route_compiler.policy.get_matching_flow(flow) # Find the function descriptors.
-        print "MMMMMMMMMMMMMMMMMMMMMMMMMATCHING FLOW: "*4,matched_flow_tuple
+        return matched_flow_tuple
 
         if(matched_flow_tuple != None):
-            #Can't assign port as its assigned by the routing algorithm.
+            #Can't assign in port as its assigned by the routing algorithm.
             #if(matched_flow_tuple.dl_src != None):
             matching_flow.dl_src = matched_flow_tuple.dl_src
             #if(matched_flow_tuple.dl_dst != None):
@@ -287,7 +285,6 @@ class POXInterface():
             matching_flow.tp_src = matched_flow_tuple.tp_src
         else:
             return None # so we know there is no match.
-
         return matching_flow
 
 ##############################
