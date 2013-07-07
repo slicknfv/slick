@@ -197,7 +197,8 @@ class slick_controller (object):
     #TODO:
     def remove_elem(self,app_desc,fd):
         # roll back
-        desc_removed = self.route_compiler.fmap.del_function_desc(fd)
+        if(self.ms_msg_proc.send_remove_msg(fd,parameters,mac_addr)):
+          desc_removed = self.route_compiler.fmap.del_function_desc(fd)
         #update mb_placement_steering for changed elements
 
 from pox.core import core
@@ -206,23 +207,136 @@ import pox.openflow.discovery
 class POXInterface():
     def __init__(self,cntxt):
         self.cntxt = cntxt
+        
+    """ 
+      This interface is for Placement and Steering Algorithm.
+    """
 
-    def get_route(self,src_ip,dst_ip):
+    """
+      @args:
+         List of swiches that represents the path. This includes source and destination switch.
+      @returns:
+         Return the capacituy on the given path.
+    """
+    def GetPathCapacity(self,path):
+      pass
+
+    """
+      @args:
+         List of swiches that represents the path. This includes source and destination switch.
+      @returns:
+         Return the bandwidth on the given path.
+    """
+    def GetPathAvailableBandwidth(self,path):
+      pass
+
+    """
+      @args:
+         Given a link return the capacity.
+         Each location is switch,port
+      @returns:
+         Return the capacity of link.
+    """
+    def GetLinkCapacity(self,loc1,loc2):
         pass
 
-    # Return the capacity for the link
-    def get_link_capacity(self,src_mac,dst_mac):
+    """
+      @args:
+         Given a link return the available bandwidth.
+         Each location is switch,port
+      @returns:
+         Return the bandwidth on the given path.
+    """
+    def GetLinkBandwidth(self,loc1,loc2):
+      pass
+
+    
+    """
+      @args:
+         MAC Address of machine that we want to get the resources about.
+      @returns:
+         Return key:value pair of machine resources.
+    """
+    def GetMachineResource(self,mac_addr):
+      pass
+
+    """
+      @args:
+         MAC Address of machine that we want to get the memory usage.
+      @returns:
+         Return bytes available on the machine.
+    """
+    def GetMemoryUsage(self,mac_addr):
+      pass
+
+    """
+      @args:
+         MAC Address of machine that we want to get the Processor Usage.
+      @returns:
+         Return bytes available on the machine.
+    """
+    def GetProcessorUsage(self,mac_addr):
+      pass
+
+    """
+      @args:
+         Return Network Usage.
+      @returns:
+         Return bytes available on the machine.
+    """
+    def GetNetworkUsage(self,mac_addr):
+      pass
+
+    """
+        Description:
+            Return all available flows that need servicing. These flows are taken from applications.
+            As each flow is registered before being applied.
+    """
+    def GetFlows(self):
+      pass
+
+    """
+        Description:
+            Return flow to Element matching.
+    """
+    def GetElement(self,flow):
+      pass
+
+    """
+        Description:
+            Return the element implementations for the given element name.
+            This information is required by the PSA (Placement and Steering Algorithm) 
+            to instantiate best implmentation of an Element.
+    """
+    def GetElements(self,element_name):
         pass
 
-    # Return link utilization
-    def get_link_utilization(self,src_mac,dst_mac):
+    """
+        List of element instance ids that are currently serving flows. For each
+        new flow a new element instance is instantiated but for element instances that
+        can be shared by multiple applications th
+    """
+    def GetActiveElements(self):
         pass
 
-    # Return the utilization  of the middlebox.
-    def get_machine_utilization(self,middlebox_mac):
+
+    """Get Elements running on the given mac """ 
+    def GetElements(self,machine_mac):
         pass
 
+    """
+        return the  mac addresses that we can use for middlebox machines.
+    """
+    def GetMiddleboxes(self):
+        pass
 
+    """ Given the path return all the middleboxes on the  path """
+    def GetMiddleboxes(self,path):
+        pass
+
+    """ Given the element_id return number of flows that can be redirected to the middlebox """
+    def GetMiddleboxCapacity(self,element_id):
+      pass
     # @args:
     #       List of function descriptors
     # 
@@ -252,6 +366,7 @@ class POXInterface():
             element_macs[func_desc] = mac_addr
         return element_macs
 
+    # This is a utils function.
     # This function returns a matching flow 
     # flow is of type ofp_match
     def get_generic_flow(self,flow):

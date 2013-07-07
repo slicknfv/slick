@@ -128,12 +128,17 @@ class MSMessageProcessor():
 
     # msg_dst == Middlebox MAC address
     def send_configure_msg(self,fd,params_dict,msg_dst):
-        #print type(fd),fd,type(params_dict),params_dict
         if((type(fd) == int) and isinstance(params_dict, dict)):
             msg = {"type":"configure", "fd":fd,"params":params_dict}
             print msg
             self.send_msg(msg_dst,msg)
                 
+    def send_remove_msg(self,fd,params_dict,msg_dst):
+        #print type(fd),fd,type(params_dict),params_dict
+        if((type(fd) == int) and isinstance(params_dict, dict)):
+            msg = {"type":"remove", "fd":fd,"params":params_dict}
+            print msg
+            return self.send_msg(msg_dst,msg)
 
     """
         Function to send messages to Middlebox through jsonmessenger.
