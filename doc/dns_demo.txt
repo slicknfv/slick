@@ -1,0 +1,64 @@
+1- VM Setup:
+    These instructions assumes that you already have mininet VM Image running on virtualbox.Following is the VM image that I am using:
+    https://github.com/downloads/mininet/mininet/mininet-vm-ubuntu11.10-052312.vmware.zip
+
+    1- There will be three interface in the mininet installation.
+    l0,eth2,eth3    or       l0,eth1,eth2
+
+    2- Bring up ethernet last ethernet interface. For example we had l0,eth2,eth3 interfaces appearing there we used command for eth3:
+    ifconfig eth3 up
+
+    3- Assign following ip address to eth3:
+    ifconfig eth3 192.168.56.101
+
+    After this command you should be able to ping the internet from VM.
+
+2- Code Download:
+         Please download the code into /home/openflow/ folder from:
+    svn+ssh://svn.gtnoise.net/srv/svn/sdn_mb/middlesox/
+    This will download slick code and pox code that is required by slick.
+
+3- Dependencies:
+    i- To add support for SSHv3 install paramiko:
+    sudo easy_install paramiko
+ 
+    ii- Install scp.py module.
+    cd middlesox/archive/scp.py/
+    sudo python setup.py install
+
+
+4- Starting the network:
+    Following script will start the network topology configured such that mininet hosts can communicate with hosts on internet. This topology consists of four hosts h1,h2,h3,h4 and one switch.
+    sudo python ~/middlesox/mininet_scripts/internet_ssh.py
+
+    Now you should be able to ping the internet from mininet hosts. For example
+    > h1 ping www.google.com
+    should return ping replies.
+
+5- Starting POX
+    To start the slick controller and  application that runs the dns logging please use following command:
+    sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=10.0.0.254 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
+
+    Applications:
+    Applications are present in the file called applications.py file. This file has different classes for different applications.
+
+6- Shim Layer:
+    To run the shim layer please run following command on one of the hosts. Following is the command on mininet host h3:
+
+    Please ssh into h3:
+    ssh openflow@10.0.0.3
+    password:openflow
+
+    Run shim:
+    sudo python shim.py -i h3-eth0 -o h3-eth0
+
+    This will start the shim layer and will register h3 as a middlebox so that slick controller can redirect traffic to this middlebox.
+
+7- Pinging hosts:
+    Now from h1 or h2 send a ping to www.domain_name.com
+    After sending this message you should be getting the ping replies back. But apart from ping replies please go into h3 host ssh session and see the logged dns messages in /tmp/dns_log file.
+
+    This file will have the domain name flows that are being sent from host h1 or h2 to internet.
+
+
+
