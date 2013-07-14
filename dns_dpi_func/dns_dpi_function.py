@@ -31,6 +31,7 @@ class DnsDpiFunction():
         isblocked = False
         src_ip = None
         domain_name = None
+        print type(buf)
         isblocked,src_ip,bad_domain_name = self.dns_proc.decode(buf)
         if isblocked:
             print "Domain Blocked"
