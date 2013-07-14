@@ -98,9 +98,6 @@ class MSMessageProcessor():
                 machine_ip = socket.inet_aton(msg["machine_ip"]) 
                 machine_ip = msg["machine_ip"]
                 machine_mac = msg["machine_mac"]
-                print "MAAAAAAAAAAAAAAAAAAAAAAAC",machine_ip,hex(machine_mac)
-                print "MAAAAAAAAAAAAAAAAAAAAAAAC",type(machine_ip),type(machine_mac)
-                #self.json_msg_events[machine_ip] = pyevent # To keep the connection open
                 self.tcp_conn_handlers[machine_mac] = socket_name
                 self.cntxt.route_compiler.fmap.update_function_machine(machine_ip,machine_mac,None) # Simply add the record of the shim.
                 print self.cntxt.route_compiler.mmap.ip_dpid
@@ -134,7 +131,6 @@ class MSMessageProcessor():
             self.send_msg(msg_dst,msg)
                 
     def send_remove_msg(self,fd,params_dict,msg_dst):
-        #print type(fd),fd,type(params_dict),params_dict
         if((type(fd) == int) and isinstance(params_dict, dict)):
             msg = {"type":"remove", "fd":fd,"params":params_dict}
             print msg
@@ -158,7 +154,6 @@ class MSMessageProcessor():
     # and the message for sending the information.
     def send_msg(self,mb_mac,msg):
         if (len(self.tcp_conn_handlers) >= 1):
-            print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",mb_mac
             socket_name = self.tcp_conn_handlers[mb_mac]
             msg = json.dumps(msg)+'\n'
             core.TCPTransport.send_mb_msg(socket_name,msg)

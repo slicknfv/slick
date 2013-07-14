@@ -27,8 +27,6 @@ class Triggers():
         raise NotImplementedError( "Must Implement")
 
 
-#from nox.lib.core     import *
-#from nox.lib.packet.ethernet     import ethernet
 class DNSHandlers(Triggers):
     def __init__(self,inst):
         self.cntxt = inst
@@ -70,7 +68,6 @@ class DNSHandlers(Triggers):
 
     def _block_ip_list(self,src_dpid,s_ip,domain_ip_list):
         src_dpid = 5 # Hardcoded for testing the trigger module as self.mmap.update_ip_dpid_mapping() is not called with trigger module.  REMOVE it with live traffic.
-	#src_ip = ipstr_to_int(s_ip)
 	src_ip = s_ip
 	for item in domain_ip_list:
             print type(src_dpid)
@@ -181,7 +178,6 @@ class TriggerAllUnitTest():
 
     def configure_user_params(self):
         if (self.conf < 2): # Need to call configure_func twice since this application has two functions instantiated
-            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
             params = {}
             self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) # Call connfigure_func with same app if and different function descriptors.
             self.conf +=1
@@ -204,7 +200,6 @@ class TriggerAllUnitTest():
             parameters = {}
             fd = self.cntxt.apply_elem(self.app_d,flow_item,"TriggerAll",parameters,self) #sending the object 
             if((fd >0)):#=> we have sucess
-                #self.func_descs.append(fd)
                 self.fd.append(fd)
                 self.installed = True
                 print "TriggerAll Installed with FD", fd
@@ -222,18 +217,15 @@ class LoggerUnitTest2():
         self.app_d = AD
         self.installed = False # To check if the app is installed
         self.conf = 0 # Set this to 0 and increment for each call of configure_func
-        #Configuration specified parameters
         self.flows = flows # Its a list.
         # Conf parameters
         self.file_names = file_names
-        #self.count_thresh = count_thresh
         self.fd =[] # Its the list of function descriptors used by the application.
         self.num_functions = 2 # How many functions this one app instantiates.
 
 
     def configure_user_params(self):
         if (self.conf < self.num_functions): # Need to call configure_func twice since this application has two functions instantiated
-            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
             params = {"file_name":self.file_names[self.conf]}
             self.cntxt.configure_func(self.app_d,self.fd[self.conf],params)
             self.conf +=1
@@ -246,11 +238,8 @@ class LoggerUnitTest2():
     def init(self):
         for index in range(0,self.num_functions): # If the flows are same then it will overwrite the flow to function descriptor
             # read this from policy file.
-            #file_name = self.file_name
             parameters = {"file_name":self.file_names[index]}
-            #print self.flows[index],parameters
             fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"Logger",parameters,self) 
-            #print fd
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
                 self.installed = True
@@ -274,10 +263,7 @@ class DnsDpiFunctionApp():
     def init(self):
         for index in range(0,self.num_functions): # If the flows are same then it will overwrite the flow to function descriptor
             print "apply_elem"
-            # read this from policy file.
-            #file_name = self.file_name
             parameters = {}
-            #print self.flows[index],parameters
             fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"DNS_DPI",parameters,self) 
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
@@ -286,7 +272,6 @@ class DnsDpiFunctionApp():
 
     def configure_user_params(self):
         if (self.conf < self.num_functions): # Need to call configure_func twice since this application has two functions instantiated
-            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
             params = {}
             self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) # Call connfigure_func with same app if and different function descriptors.
             self.conf +=1
@@ -295,12 +280,7 @@ class DnsDpiFunctionApp():
         #src_ip = socket.inet_aton(event["src_ip"])
         src_ip = ipstr_to_int(event["src_ip"])
         bad_domain_name = event["bad_domain_name"]
-        src_dpid = self.cntxt.route_compiler.mmap.get_dpid(src_ip)# Bilal idiot.
-        print "HANDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDLING"
-        #if(app_conf == block):
-        #self._block_ip_list(src_dpid,src_ip,domain_ip_list)
-        #if(app_conf == log)
-        # new_flow[src_ip] = src_ip
+        src_dpid = self.cntxt.route_compiler.mmap.get_dpid(src_ip)
         # DROP-FUNCTION
         flow = {}
         flow["dl_src"] = None; flow["dl_dst"] = None; flow['dl_vlan'] = None; flow['dl_vlan_pcp'] = None; flow['dl_type'] = None; flow['nw_src'] = src_ip; flow['nw_dst'] = None;flow['nw_proto'] = None ;flow['tp_src'] = None;flow['tp_dst'] = None
@@ -313,7 +293,6 @@ class DnsDpiFunctionApp():
         #####################################################################
         # Use Below code to block the ip address
         #####################################################################
-        #print "BLOCKING THE IP ADDRESS", src_ip, "OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
         #actions = []
         #print type(src_dpid)
         #print src_dpid
@@ -342,17 +321,8 @@ class DnsDpiFunctionApp():
 	for item in domain_ip_list:
             print type(src_dpid)
             print src_dpid
-	    #dst_ip = ipstr_to_int(item)
 	    dst_ip = item
 	    print src_ip,dst_ip
-	    ## Make sure we get the full DNS packet at the Controller
-	    #actions = []
-	    #self.cntxt.install_datapath_flow(src_dpid, 
-	    #    		{ core.DL_TYPE : ethernet.IP_TYPE,
-	    #    		    core.NW_SRC : src_ip,
-	    #    		   core.NW_DST:dst_ip },
-            #                       self.DNS_BLOCK_TIMEOUT,self.DNS_BLOCK_TIMEOUT, #
-            #                       actions,buffer_id = None, priority=0xffff)
             msg = of.ofp_flow_mod()
             msg.priority = 42
             msg.match.dl_type = pkt.ethernet.IP_TYPE
@@ -400,7 +370,6 @@ class P0fFunctionApp():
 
     def configure_user_params(self):
         if (self.conf < self.num_functions): 
-            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
             params = {}
             self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) 
             self.conf +=1
@@ -413,7 +382,6 @@ class P0fFunctionApp():
 
     def _handle_OSDetection(self,fd,msg):
         if(msg.has_key("p0f_trigger_type")):
-            #if(msg["OS"] == "WindowsXP"): #This OS string matching should be done according to function which is p0f in this case.
             if(msg["OS"] == "Linux"): #Don't have windows traffic. 
                 src_ip = msg["src_ip"]
                 if(self.block_ports.has_key("Linux")):
@@ -443,8 +411,6 @@ class P0fFunctionApp():
             msg.idle_timeout = 120 
             msg.hard_timeout = 120
             # Not specifying action to drop the packets.
-            #dst_port = of.OFPP_NONE
-            #msg.actions.append(of.ofp_action_output(dst_port))
             connection = self.cntxt.get_connection(src_dpid)
             connection.send(msg)
 
@@ -488,10 +454,7 @@ class BloomFilterFunctionApp():
 
     def configure_user_params(self):
         if (self.conf < self.num_functions): 
-            print "CONFIGURE_CALLEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
             params = {"bf_size":"1000","error_rate":"0.01"}
-            print self.conf
-            print self.fd
             self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) 
             self.conf +=1
 
@@ -499,6 +462,5 @@ class BloomFilterFunctionApp():
         #print msg
         if(msg.has_key("BF_trigger_type")):
             if(msg["BF_trigger_type"] == "VAL_DETECTED"):
-                print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
                 print "Bloom Filter Detected Value"
 

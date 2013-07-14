@@ -358,7 +358,7 @@ class POXInterface():
         element_macs = {}
         function_descriptors = self.cntxt.route_compiler.policy.get_flow_functions(flow.in_port,flow) # Find the function descriptors.
         for func_desc,function_name in function_descriptors.iteritems():
-            print func_desc,function_name
+            #print func_desc,function_name
             mac_addr_temp = self.cntxt.route_compiler.fmap.get_mac_addr_from_func_desc(func_desc) 
             # Convert MAC in Long to EthAddr
             mac_str = mac_to_str(mac_addr_temp)

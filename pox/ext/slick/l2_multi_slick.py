@@ -223,6 +223,10 @@ class WaitingPath (object):
             action=of.ofp_action_output(port=of.OFPP_TABLE))
         #if not (buffer_sent.has_key((event.dpid,msg.buffer_id))): # Clean this buffer after some time
         #buffer_sent[(event.dpid,msg.buffer_id)] = True
+        print "NOTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTIFY",msg.xid,msg.buffer_id
+        print type(self.packet), self.packet
+
+        #msg.buffer_id = None # does not work
         core.openflow.sendToDPID(self.first_switch, msg)
 
       core.l2_multi_slick.raiseEvent(PathInstalled(self.path))
@@ -285,17 +289,16 @@ class Switch (EventMixin):
     msg.hard_timeout = FLOW_HARD_TIMEOUT
     msg.actions.append(of.ofp_action_output(port = out_port))
     msg.buffer_id = buf
-    print "Installing path for ",switch," and inport and out_port::::::::::::::::",in_port,out_port#,msg.match
+    print "Installing path for ",switch," and inport and out_port::::::::::::::::",in_port,out_port,msg.xid
     switch.connection.send(msg)
 
   def _install_path (self, p, match, packet_in=None):
     wp = WaitingPath(p, packet_in)
     for sw,in_port,out_port in p:
-      print "U"*100, sw,in_port,out_port
       self._install(sw, in_port, out_port, match)
       msg = of.ofp_barrier_request()
       sw.connection.send(msg)
-      #print "Sending Barrier Request::::::::::::::::::::::::: ",msg.xid
+      print "Sending Barrier Request::::::::::::::::::::::::: ",msg.xid
       wp.add_xid(sw.dpid,msg.xid)
 
   def install_path (self, dst_sw, last_port, match, event,mb_locations):
@@ -309,10 +312,8 @@ class Switch (EventMixin):
     mb_locations.insert(0,(self,event.port)) # prepend
     mb_locations.append((dst_sw,last_port))
     print mb_locations
-    #for index,location in enumerate(mb_locations):
     for index in range(0,len(mb_locations)-1): #For n nodes we need n-1 paths installed.
-      print "A"*100,index
-      #loc = (self, event.port) # Place we saw this ethaddr
+      # Place we saw this ethaddr   -> loc = (self, event.port) 
       switch1 = mb_locations[index][0]
       switch2 = mb_locations[index+1][0]
       switch1_port = mb_locations[index][1]
@@ -371,8 +372,16 @@ class Switch (EventMixin):
       log.debug("Installing path for %s -> %s (%i hops)",
           switch1, switch2, len(p))
 
-      # We have a path -- install it
-      self._install_path(p, match, event.ofp)
+      #BILAL
+      print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+      print middleboxes
+      print self
+      if(self in middleboxes):
+        print "WEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+        self._install_path(p,match,None)
+      else:
+        # We have a path -- install it
+        self._install_path(p, match, event.ofp)
 
       # Now reverse it and install it backwards
       # (we'll just assume that will work)
