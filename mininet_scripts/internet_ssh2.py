@@ -6,7 +6,9 @@ through eth0 on the host.
  
 Glen Gibb, February 2011
  
-(slight modifications by BL, 5/13)
+- slight modifications by BL, 5/13
+- fixes by Nick Feamster, July 2013
+
 """
  
 from mininet.cli import CLI
@@ -115,6 +117,7 @@ def connectToInternet( network, switch='s1', rootip='10.254', subnet='10.0.0.0/8
         i = i + 1
 
     start_sshd(network)
+
     return root
 
 def start_sshd( network, cmd='/usr/sbin/sshd', opts='-D' ):
@@ -122,12 +125,17 @@ def start_sshd( network, cmd='/usr/sbin/sshd', opts='-D' ):
     for host in network.hosts:
         host.cmd( cmd + ' ' + opts + '&' )
     print
-    print "*** Hosts are running sshd at the following addresses:"
-    print
-    for host in network.hosts:
-        print host.name, host.IP()
+    print "*** Hosts are running sshd ***"
     print
 
+# HACK: This is busted until we fix host.setIP above
+#    for host in network.hosts:
+#        print host.name, host.IP()
+#    print
+
+
+############################################################
+# MAIN
  
 if __name__ == '__main__':
     lg.setLogLevel( 'info')
@@ -151,9 +159,18 @@ if __name__ == '__main__':
     # Pick a network that is different from your 
     # NAT'd network if you are behind a NAT
     rootnode = connectToInternet( net, 's1', '192.168.100.1', '192.168.100.0/24')
+
     print "*** Hosts are running and should have internet connectivity"
     print "*** Type 'exit' or control-D to shut down network"
+    # Command Line
     CLI( net )
+
     # Shut down NAT
     stopNAT( rootnode )
+
+    print "**** Cleaning up ssh background jobs..."
+    # HACK: This assumes ssh is the only thing in the background on these hosts
+    for host in net.hosts:
+        host.cmd('kill %1')
+
     net.stop()
