@@ -175,7 +175,8 @@ class slick_controller (object):
         #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
 
         if(self.download.add_mb_client(mac_addr,ip_addr,None,None)):
-            if(self.download.put_file(mac_addr,function_name)): #Given the function name send the files to the middlebox.
+            # Given the function name send the files to the middlebox.
+            if(self.download.put_file(mac_addr,function_name)): 
                 if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,mac_addr)):
                     #if(is_last_call):
                     #    self.controller_interface.mb_placement_steering(mac_addr,flow,self.function_descriptor)

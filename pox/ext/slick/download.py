@@ -62,7 +62,6 @@ class Download():
             password = MB_PASSWORD
         port = 22
         ssh = self._create_MB_ssh_client(server_ip,port,user,password)
-        #scp = SCPClient(ssh.get_transport())
         self._update_record(mac_address,server_ip,ssh)
         return True
 

@@ -80,7 +80,8 @@ class MSMessageProcessor():
         #self.app_handles.append(self.bf_handlers)
 
         # Add One Application to the Controller
-        self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow6) # AD,file_name,threshold,user parameters
+        # AD,file_name,threshold,user parameters
+        self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow6) 
         self.logger_unit2 = LoggerUnitTest(self.cntxt,101,"/tmp/http_log",1000,flow3)
         self.app_handles.append(self.logger_unit2)
 
@@ -121,6 +122,7 @@ class MSMessageProcessor():
                 reply["dummy"]="connected"
                 return reply
 
+    ### Messages for Controller -> Element
 
     # Return True for sucess False for failure
     def send_install_msg(self,fd,flow,function_name,params,msg_dst):
