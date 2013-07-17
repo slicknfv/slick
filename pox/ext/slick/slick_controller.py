@@ -352,7 +352,7 @@ class POXInterface():
         pass
 
 
-    # Wrapper for slick contrller interface.
+    # Wrapper for slick controller interface.
     # returns the dictionary 
     def get_element_descriptors(self,flow):
         element_macs = {}

@@ -11,9 +11,14 @@ Glen Gibb, February 2011
  
 from mininet.cli import CLI
 from mininet.log import lg, info
+
 from mininet.node import Node
-from mininet.topolib import TreeNet
+from mininet.net import Mininet
+
+from mininet.topo import Topo
+from mininet.topolib import TreeNet, TreeTopo
 from mininet.util import quietRun
+from mininet.node import OVSController, Controller
  
 #################################
 def startNAT( root, inetIntf='eth0', subnet='10.0/8' ):
@@ -93,6 +98,8 @@ def connectToInternet( network, switch='s1', rootip='10.254', subnet='10.0.0.0/8
     network.start()
  
     # Start NAT and establish forwarding
+    # HACK: eth1 is the interface in the root context that connects
+    # to the Internet.  Should be a parameter.
     startNAT( root, 'eth1', subnet )
  
     # Establish routes from end hosts
@@ -106,16 +113,43 @@ def connectToInternet( network, switch='s1', rootip='10.254', subnet='10.0.0.0/8
         host.cmd( 'route add -net', subnet, 'dev', host.defaultIntf() )
         host.cmd( 'route add default gw', rootip )
         i = i + 1
- 
+
+    start_sshd(network)
     return root
+
+def start_sshd( network, cmd='/usr/sbin/sshd', opts='-D' ):
+    "Start a network, connect it to root ns, and run sshd on all hosts."
+    for host in network.hosts:
+        host.cmd( cmd + ' ' + opts + '&' )
+    print
+    print "*** Hosts are running sshd at the following addresses:"
+    print
+    for host in network.hosts:
+        print host.name, host.IP()
+    print
+
  
 if __name__ == '__main__':
     lg.setLogLevel( 'info')
-    net = TreeNet( depth=1, fanout=4 )
+
+# This sets the controller port to 6634 by default, which can conflict
+# if we also start up another controller.  We should have this listen
+# somewher else since it is just for the NAT.
+#    net = TreeNet( depth=1, fanout=4)
+
+    net = Mininet()
+    net.addController('c0', port=6639)
+    s1 = net.addSwitch('s1')
+
+    for hostNum in range(1,4):
+        node = net.addHost( 'h%s' % hostNum )
+        net.addLink(node,s1)
+
     # Configure and start NATted connectivity
     #rootnode = connectToInternet( net )
 
-    # Pick a network that is different from your NAT'd network if you are behind a NAT
+    # Pick a network that is different from your 
+    # NAT'd network if you are behind a NAT
     rootnode = connectToInternet( net, 's1', '192.168.100.1', '192.168.100.0/24')
     print "*** Hosts are running and should have internet connectivity"
     print "*** Type 'exit' or control-D to shut down network"

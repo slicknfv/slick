@@ -40,7 +40,7 @@ class TCPTransport (Task, Transport):
   def run (self):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    print "OOOOOOOOOOOOOOOOOO",self._addr
+    #print "OOOOOOOOOOOOOOOOOO",self._addr
     listener.bind(self._addr)
     listener.listen(0)
 
@@ -135,7 +135,7 @@ class TCPConnection (Connection, Task):
           def IsNotNull(value):
             return value is not None and len(value) > 0
           if(IsNotNull(line)):
-            raise Exception("Unable to Parse a string receveid")
+            raise Exception("Unable to Parse a string received")
 
   def get_socket_name(self):
     return self._socket_name
