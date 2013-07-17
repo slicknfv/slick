@@ -1,3 +1,5 @@
+INSTALLING SLICK
+----------------
 1- VM Setup:
     These instructions assumes that you already have mininet VM Image running on virtualbox.Following is the VM image that I am using:
     https://github.com/downloads/mininet/mininet/mininet-vm-ubuntu11.10-052312.vmware.zip
@@ -38,6 +40,9 @@
 3b- Ensure that PYTHONPATH environment variable is set:
 export PYTHONPATH=/home/mininet/middlesox/pox:/home/mininet/mininet/:/home/mininet/pox
 
+
+RUNNING SLICK
+-------------
 
 4- Starting the network:
     Following script will start the network topology configured such that mininet hosts can communicate with hosts on internet. This topology consists of four hosts h1,h2,h3,h4 and one switch.
