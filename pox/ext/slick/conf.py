@@ -1,7 +1,7 @@
 # This file should have the configuration for the slick controller.
 
 # Application configuration referesh rate in seconds.
-APPCONF_REFRESH_RATE = 1
+APPCONF_REFRESH_RATE = 10
 
 
 # Number of function instances per machine.
@@ -12,7 +12,8 @@ MAX_FUNCTION_INSTANCES = 10
 
 # Middlebox Settings
 # Username and Password for the Middleboxes
-MB_USERNAME = "openflow"
-MB_PASSWORD = "openflow"
+MB_USERNAME = "mininet"
+MB_PASSWORD = "mininet"
+
 # Default location to download code if the location by the user is not provided.
 DEFAULT_CODE_LOCATION = "/tmp/"

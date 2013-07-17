@@ -41,43 +41,48 @@ class MSMessageProcessor():
         dns_flows=[]
         dns_flows.append(flow1)
         self.dns_handlers = DnsDpiFunctionApp(self.cntxt,50,dns_flows)
+
         #########
         #p0f code
         #########
         p0f_flows = []
         p0f_flows.append(flow7) # All port80 traffic.[We need tcp only but lets only do http for now.
         self.p0f_handlers = P0fFunctionApp(self.cntxt,51,p0f_flows)
+
+
         #########
         #BloomFilterFunctionApp code
         #########
         bf_flows = []
         bf_flows.append(flow8) # All port80 traffic.[We need tcp only but lets only do http for now.
         self.bf_handlers = BloomFilterFunctionApp(self.cntxt,52,bf_flows)
-
-        self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow6) # AD,file_name,threshold,user parameters
-        self.logger_unit2 = LoggerUnitTest(self.cntxt,101,"/tmp/http_log",1000,flow3)
-
+        
+        # Trigger All Apps
         self.trigger_all_test = TriggerAllUnitTest(self.cntxt)
 
+        # Logger Unit Test 2
         file_names = ["/tmp/dns_dst.txt","/tmp/dns_src.txt"]
         flows = []
         flows.append(flow1);flows.append(flow2);
-        #print flows
+
         self.logger2_obj1 = LoggerUnitTest2(self.cntxt,1001,file_names,flows)
         file_names = ["/tmp/http_dst.txt","/tmp/http_src.txt"]
         flows1 = []
         flows1.append(flow3);flows1.append(flow4);
-        #print flows1
         self.logger2_obj2 = LoggerUnitTest2(self.cntxt,1002,file_names,flows1)
 
         #self.app_handles.append(self.dns_handlers)
         #self.app_handles.append(self.p0f_handlers)
-        self.app_handles.append(self.logger_unit1)
         #self.app_handles.append(self.logger_unit2)
         #self.app_handles.append(self.trigger_all_test)
         #self.app_handles.append(self.logger2_obj1)
         #self.app_handles.append(self.logger2_obj2)
         #self.app_handles.append(self.bf_handlers)
+
+        # Add One Application to the Controller
+        self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow6) # AD,file_name,threshold,user parameters
+        self.logger_unit2 = LoggerUnitTest(self.cntxt,101,"/tmp/http_log",1000,flow3)
+        self.app_handles.append(self.logger_unit2)
 
     # --
     # Function processes the JSON messages and returns a reply.

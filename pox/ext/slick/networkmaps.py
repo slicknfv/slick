@@ -162,10 +162,10 @@ class FunctionMap():
             if(func_desc in self.fd_map[mac_addr]):
                 return mac_addr
 
-    # Returns the shim machine with the mac _addr
+    # Returns the shim machine with the mac_addr
     def get_machine_for_element(self,element_name):
         element_spec = self.element_specs.get_element_spec(element_name)
-        print "fd_map",self.fd_map
+        #print "get_machine_for_element: fd_map",self.fd_map
         for mac_addr in self.fd_map:
             if(mac_addr != None):
                 # TODO: Add recurrent optimization algorithm call here.

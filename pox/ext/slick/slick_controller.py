@@ -71,7 +71,11 @@ class slick_controller (object):
         self.route_compiler =  RouteCompiler(self)
         # JSON Messenger Handlers
         self.json_msg_events = {}
+
+        # Message Processor.  Where App Handles are Initialized.
         self.ms_msg_proc = MSMessageProcessor(self)
+
+        #
         self.app_initialized = False
         self.switches = {} # A dictionary of switch ids and if the mac is a middlebox or not. 
         self.switch_connections = {}
@@ -97,6 +101,7 @@ class slick_controller (object):
         """
         # Handle the functions
         self.route_compiler.handle_functions(event)
+
         # Setup routes for the flow to pass through
 
     # This box is for the middlebox.
@@ -117,11 +122,11 @@ class slick_controller (object):
     def timer_callback(self):
         # initialize the applications.
         for app in self.ms_msg_proc.app_handles:
+            log.debug("timer_callback %s", str(app))
             if not (app.installed):
                 app.init()
-                print app
 
-        #Configure/ Read the configurations again and again
+        #Configure/Read the configurations again and again
         for fd in self.route_compiler.application_handles:
             app_handle = self.route_compiler.get_application_handle(fd)
             app_handle.configure_user_params()
@@ -137,24 +142,30 @@ class slick_controller (object):
     #   -2 : Error in downloading the files to middlebox.
     #   -3 : Error in adding a middlebox client.
     def apply_elem(self, app_desc,flow, function_name,parameters,application_object):
+
         is_last_call = True # Should be argument of the apply_elem functions
         self.function_descriptor += 1
+
         #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
         if(self.route_compiler.is_installed(app_desc)):# We have the application installed
             log.debug("Creating another function for application: %d",app_desc)
         mac_addr = self.route_compiler.fmap.get_machine_for_element(function_name)
+
         if(mac_addr != None):
             log.debug("MAC Address of middlebox machine %s" % mac_addr)
         ip_addr = self.route_compiler.fmap.get_ip_addr(mac_addr)
-        if(mac_addr == None): # There is no machine registerd for function installation.
-            #print "Could not find the Middlebox"
+
+        if(mac_addr == None): # There is no machine registered for function installation.
+            print "Warning: Could not find a middlebox for function " + function_name + "(" + str(app_desc) + ")"
             return -1
         msg_dst = ip_addr
+
         #mac_addr = self.route_compiler.fmap.fd_machine_map[ip_addr]
         self.route_compiler.fmap.update_function_machine(ip_addr,mac_addr,self.function_descriptor)
         self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name}) #Function descriptor 
         self.route_compiler.update_application_handles(self.function_descriptor,application_object,app_desc)
         #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
+
         if(self.download.add_mb_client(mac_addr,ip_addr,None,None)):
             if(self.download.put_file(mac_addr,function_name)): #Given the function name send the files to the middlebox.
                 if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,mac_addr)):
