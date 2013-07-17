@@ -11,7 +11,7 @@ from mininet.cli import CLI
 from mininet.log import lg, info
 from mininet.node import Node, OVSKernelSwitch,UserSwitch
 from mininet.topolib import TreeNet
-from mininet.util import createLink
+from mininet.topo import Topo
 
 #################################
 def startNAT( inetIntf, root ):
@@ -32,11 +32,11 @@ def startNAT( inetIntf, root ):
     root.cmd( 'iptables -P FORWARD DROP' )
     
     # Configure NAT
-    root.cmd( 'iptables -A INPUT -p tcp -i ' + localIntf + ' -d 127.0.0.1 -j ACCEPT' )
-    root.cmd( 'iptables -I FORWARD -i ' + localIntf + ' -d 10.0.0.0/255.255.255.0 -j DROP' )
-    root.cmd( 'iptables -A FORWARD -i ' + localIntf + ' -s 10.0.0.0/255.255.255.0 -j ACCEPT' )
-    root.cmd( 'iptables -A FORWARD -i ' + inetIntf + ' -d 10.0.0.0/255.255.255.0 -j ACCEPT' )
-    root.cmd( 'iptables -t nat -A POSTROUTING -o ' + inetIntf + ' -j MASQUERADE' )
+    root.cmd( 'iptables -A INPUT -p tcp -i ' + str(localIntf) + ' -d 127.0.0.1 -j ACCEPT' )
+    root.cmd( 'iptables -I FORWARD -i ' + str(localIntf) + ' -d 10.0.0.0/255.255.255.0 -j DROP' )
+    root.cmd( 'iptables -A FORWARD -i ' + str(localIntf) + ' -s 10.0.0.0/255.255.255.0 -j ACCEPT' )
+    root.cmd( 'iptables -A FORWARD -i ' + str(inetIntf) + ' -d 10.0.0.0/255.255.255.0 -j ACCEPT' )
+    root.cmd( 'iptables -t nat -A POSTROUTING -o ' + str(inetIntf) + ' -j MASQUERADE' )
     
     # Instruct the kernel to perform forwarding
     root.cmd( 'sysctl net.ipv4.ip_forward=1' )
@@ -60,8 +60,8 @@ def connectToInternet( network ):
 
     # Create a node in root namespace and link to switch 0
     root = Node( 'root', inNamespace=False )
-    intf = createLink( root, switch )[ 0 ]
-    root.setIP( intf, ip, prefixLen )
+    intf = network.addLink( root, switch )
+    root.setIP( ip, prefixLen )
 
     # Start network that now includes link to root namespace
     network.start()
@@ -71,8 +71,8 @@ def connectToInternet( network ):
 
     # Establish routes from end hosts
     for host in network.hosts:
-        host.cmd( 'ep route flush root 0/0' )
-        host.cmd( 'route add -net 10.0.0.0/24 dev ' + host.intfs[0] )
+        host.cmd( 'ip route flush root 0/0' )
+        host.cmd( 'route add -net 10.0.0.0/24 dev ' + str(host.intfs[0]) )
         host.cmd( 'route add default gw ' + ip )
 
     sshd(network)
