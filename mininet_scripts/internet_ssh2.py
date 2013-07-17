@@ -101,7 +101,7 @@ def connectToInternet( network, switch='s1', rootip='10.254', subnet='10.0.0.0/8
         j = i + 10
 
         # HACK: We should set the IP according to 'subnet', and probably using setIP
-        host.cmd( 'ifconfig h' + str(i) + '-eth0 192.168.0.' + str(j) )
+        host.cmd( 'ifconfig h' + str(i) + '-eth0 192.168.100.' + str(j) )
         host.cmd( 'ip route flush root 0/0' )
         host.cmd( 'route add -net', subnet, 'dev', host.defaultIntf() )
         host.cmd( 'route add default gw', rootip )
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     #rootnode = connectToInternet( net )
 
     # Pick a network that is different from your NAT'd network if you are behind a NAT
-    rootnode = connectToInternet( net, 's1', '192.168.0.1', '192.168.0.0/16')
+    rootnode = connectToInternet( net, 's1', '192.168.100.1', '192.168.100.0/24')
     print "*** Hosts are running and should have internet connectivity"
     print "*** Type 'exit' or control-D to shut down network"
     CLI( net )
