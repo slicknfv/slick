@@ -61,6 +61,8 @@ class slick_controller (object):
     """
     def __init__ (self, transparent):
         self.transparent = transparent
+
+        # add the standard OpenFlow event handlers
         core.openflow.addListeners(self)
         #self.connection.addListeners(self)
 
@@ -146,6 +148,9 @@ class slick_controller (object):
         is_last_call = True # Should be argument of the apply_elem functions
         self.function_descriptor += 1
 
+        ##
+        # STEP 1: Find the middlebox where this function should be installed.
+
         #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
         if(self.route_compiler.is_installed(app_desc)):# We have the application installed
             log.debug("Creating another function for application: %d",app_desc)
@@ -159,6 +164,9 @@ class slick_controller (object):
             print "Warning: Could not find a middlebox for function " + function_name + "(" + str(app_desc) + ")"
             return -1
         msg_dst = ip_addr
+
+        ##
+        # STEP 2: Install the function.
 
         #mac_addr = self.route_compiler.fmap.fd_machine_map[ip_addr]
         self.route_compiler.fmap.update_function_machine(ip_addr,mac_addr,self.function_descriptor)
