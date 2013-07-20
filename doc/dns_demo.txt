@@ -34,7 +34,7 @@ INSTALLING SLICK
 
     iii- Install other dependencies
 	* sudo easy_install jsonpickle
-	* sudo easy_install dpkt
+	* sudo apt-get python-dpkt
 
 
 3b- Ensure that PYTHONPATH environment variable is set:
