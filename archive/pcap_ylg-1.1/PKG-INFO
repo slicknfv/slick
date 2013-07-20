@@ -1,0 +1,11 @@
+Metadata-Version: 1.0
+Name: pcap_ylg
+Version: 1.1
+Summary: PCAP library wrapper
+Home-page: http://www.pps.univ-paris-diderot.fr/~ylg/python/
+Author: Yves Legrandgerard
+Author-email: ylg@pps.jussieu.fr
+License: DWTFYWT
+Description: see file README.txt
+Platform: Linux
+Platform: FreeBSD
