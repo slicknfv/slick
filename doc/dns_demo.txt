@@ -36,6 +36,10 @@ INSTALLING SLICK
 	* sudo easy_install jsonpickle
 	* sudo apt-get python-dpkt
 
+    iv- Installing pcap.(for shim code.)
+    Please go into archive/pcap_ylg-1.1/ and use this command to build pcap.so
+    python setup.py build
+    Then place pcap.so file in the lib/ folder.
 
 3b- Ensure that PYTHONPATH environment variable is set:
 export PYTHONPATH=/home/mininet/middlesox/pox:/home/mininet/mininet/:/home/mininet/pox
