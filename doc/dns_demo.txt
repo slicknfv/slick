@@ -41,6 +41,15 @@ INSTALLING SLICK
     python setup.py build
     Then place pcap.so file in the middlesox/lib/ folder.
 
+    v- Intall scapy for p0f module.
+    Please extract scapy package in middlesox/archive/
+    cd into middlesox/archive/scapy-2.1.0 and use this command to install scapy.
+    sudo python setup.py install
+    
+    
+    vi- Install the pybloomfilter library:
+    sudo easy_install pybloomfilter
+
 3b- Ensure that PYTHONPATH environment variable is set:
 export PYTHONPATH=/home/mininet/middlesox/pox:/home/mininet/mininet/:/home/mininet/pox
 
