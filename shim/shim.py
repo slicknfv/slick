@@ -9,7 +9,7 @@ import getopt
 
 import sys
 #sys.path.insert(0, '.')
-sys.path.append('../lib/')
+sys.path.insert(0,'../lib/')
 import pcap
 
 
