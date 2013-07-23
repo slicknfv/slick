@@ -1,44 +1,38 @@
 # This class can be used to collect data from different sources.
 
+import sys
+import os
+
+
+parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0,parentdir) 
+
+sys.path.insert(0,'../lib/')
+import pcap as pcap
+
 import socket
 import dpkt
-import sys
-#import pcap
 import getopt
-
-
-import sys
-#sys.path.insert(0, '.')
-sys.path.insert(0,'../lib/')
-import pcap
-
-
-
 import select
-
-import re # Need this regular expression to search through 
+import re 
 import time
 import datetime
-import os
+import string
+import json
 
 from collections import defaultdict
 from collections import deque
 from sets import Set
 
 from time import gmtime, strftime
-import string
 from uuid import getnode as get_mac
 
-import json
-
-parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0,parentdir) 
+############################################################
+# Slick Packages
 from comm.clientcomm import ClientComm
 from mb_api import ClientService
 from shim_table import ShimTable
-#import socket, AF_PACKET, SOCK_RAW
 import shim
-
 
 from dynamic_load import MiddleboxModules
 
