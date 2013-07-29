@@ -62,7 +62,9 @@ def shim_loop_helper(sh, hdr, pkt):
 	sh.decode(hdr,pkt)
 
 class Shim:
+
     def __init__(self,iface,oface,filename):
+
         self.iface = iface
         self.oface = oface
         print self.iface
@@ -70,25 +72,29 @@ class Shim:
         self.pcap_file = ""
         self.start_time = datetime.datetime.now()
         self.prev_ts = 0
+
         # This IP Address is used to see if its a configure packet or data-plane packet.
         self.mb_ip = socket.gethostbyname(socket.gethostname())
         self.mac = get_mac()
+
         # Create new connection
+        # HACK: This should not be hardcoded to the OF controller.
         self.client = ClientComm()
         self.register_machine()
+
         # These are needed to maintain the state.
-        self.fuction_code_map = {} # dictionary which keeps track what code is downloaded on the machine hard disk and what is not present.
+        # dictionary that keeps track of what code is downloaded on the machine 
+        # hard disk and what is not present.
+        self.fuction_code_map = {} 
         self.fd_to_object_map = {}
         inst = self
         self.client_service = ClientService(inst)
         self.forward_data_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
-        #self.forward_data_sock.setsockopt(socket.AF_PACKET,socket.PACKET_OTHERHOST,1)
-        #self.send_data_sock.bind(("eth0", 0))
+
         if(self.oface != None):
             self.forward_data_sock.bind((self.oface, 0))
         else:
             self.forward_data_sock.bind(("eth1", 0))
-
 
     def register_machine(self):
         print "MAC Address: ",self.mac, "Machine IP Address:",self.mb_ip
@@ -118,7 +124,7 @@ class Shim:
             src_mac = (eth.src).encode("hex")
             print "Source MAC:", util.add_colons_to_mac(src_mac)
             print "Dst MAC:",util.add_colons_to_mac(dst_mac)
-            #print `dpkt.ethernet.Ethernet(pkt)`
+
             ip = eth.data
             print ip.p
             if(ip.p == dpkt.ip.IP_PROTO_TCP):
@@ -233,6 +239,7 @@ class Shim:
     #   Can be shared memory pointer.
     # What if MUX/DEMUX is implemented on a NIC.
     #   if implemented on NIC hardware then it can be interface Tx queue,where a process reads the interface for incoming packet.
+
     def demux(self,buf):
         packet = dpkt.ethernet.Ethernet(buf)
         flow = self.extract_flow(packet)
@@ -356,6 +363,9 @@ def main(argv):
         print "Option error!"
         usage()
         sys.exit(2)
+
+    # should change this to use the OptionParser class
+
     for opt, arg in opts:
         print opt
         if opt in ("-h","--help"):
@@ -369,17 +379,17 @@ def main(argv):
             iface = str(arg)
         elif opt in("-o","--oface"):
             oface = str(arg)
-            #cd_pcap = Shim(iface,oface,None)
-            #cd_pcap.sniff() # hopefully you have done all the hw
             print "Listening on the interface: ",iface
         else:
             assert False, "Unhandled Option"
             usage()
+
     if(iface):
         print "Listening on the interface: ",iface
         print "Sending on the interface: ",oface
         cd_pcap = Shim(iface,oface,None)
         cd_pcap.sniff() # hopefully you have done all the hw
+
     if(file_name):
         print "Sending on the interface: ",oface
         cd_pcap = Shim(None,oface,file_name)

@@ -81,9 +81,10 @@ class MSMessageProcessor():
 
         # Add One Application to the Controller
         # AD,file_name,threshold,user parameters
+        # LoggerUnitTest is an example of an *Application*
         self.logger_unit1 = LoggerUnitTest(self.cntxt,100,"/tmp/dns_log",100,flow6) 
         self.logger_unit2 = LoggerUnitTest(self.cntxt,101,"/tmp/http_log",1000,flow3)
-        self.app_handles.append(self.logger_unit2)
+        self.app_handles.append(self.logger_unit1)
 
     # --
     # Function processes the JSON messages and returns a reply.

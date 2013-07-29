@@ -410,12 +410,21 @@ class Switch (EventMixin):
         event.ofp.buffer_id = None # Mark is dead
         msg.in_port = event.port
         self.connection.send(msg)
-    #slick
+
+    ############################################################
+    # Slick processing starts here
+
     packet = event.parsed
     #print packet.src, "->",packet.dst, "type:",packet.type#, packet.srcip,"->", packet.dstip, "proto:",packet.protocol
     flow_match = of.ofp_match.from_packet(packet) # extract flow fields
 
+    ############################################################
+    # Optimization should happen behind the scenes here
+    # (takes information from placement, as well as steering)
+    # TODO: Let's get the refactoring language straight here.  Is this module 2 or module 3?
+
     element_descriptors = slick_controller_interface.get_element_descriptors(flow_match)
+
     # Order of this list is important.
     # This is the same order in which we want the packets to traverse.
     mb_locations = [] 

@@ -9,8 +9,15 @@ class RouteCompiler():
     def __init__(self,cntxt):
         self.cntxt = cntxt
         # networkmaps
+
+        # Keep track of which MAC addresses/MBs have which elements installed
+        # MAC -> list elements (and element IDs)
         self.fmap = FunctionMap(None)
+
+        # 
         self.policy = Policy(None)
+        
+
         self.mmap = MachineMap()
         self.application_handles = {}
 

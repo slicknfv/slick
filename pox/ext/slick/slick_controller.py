@@ -122,13 +122,17 @@ class slick_controller (object):
     #    self.register_handler(JSONMsg_event.static_get_name(), self.json_message_handler)
 
     def timer_callback(self):
-        # initialize the applications.
+        # Periodically initialize the applications.
+        # Calling repeatedly allows for dynamic app loading (in theory)
         for app in self.ms_msg_proc.app_handles:
             log.debug("timer_callback %s", str(app))
             if not (app.installed):
                 app.init()
 
-        #Configure/Read the configurations again and again
+        # Configure/Read the configurations again and again
+        # Call configuration on the application repeatedly so
+        # we can change configuration on the fly
+
         for fd in self.route_compiler.application_handles:
             app_handle = self.route_compiler.get_application_handle(fd)
             app_handle.configure_user_params()
@@ -154,6 +158,9 @@ class slick_controller (object):
         #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
         if(self.route_compiler.is_installed(app_desc)):# We have the application installed
             log.debug("Creating another function for application: %d",app_desc)
+
+        # Note: Optimization should be happening here, but right now we're just pulling
+        # the first middlebox that implements the function
         mac_addr = self.route_compiler.fmap.get_machine_for_element(function_name)
 
         if(mac_addr != None):
@@ -371,20 +378,33 @@ class POXInterface():
             pass
         pass
 
-
     # Wrapper for slick controller interface.
-    # returns the dictionary 
+    # returns the dictionary of function descriptors to MAC addresses
+    # Note: This assumes that the placement of elements is already fixed.
+    # The updates to element placement could happen on a slower timescale.
+
+    # This should ultimately:
+    # 1. Determine the right set of middleboxes
+    # 2. Determine the right ordering for the middleboxes
+    # (doesn't do this right now)
+
     def get_element_descriptors(self,flow):
         element_macs = {}
-        function_descriptors = self.cntxt.route_compiler.policy.get_flow_functions(flow.in_port,flow) # Find the function descriptors.
+
+        # Find the function descriptors.
+        # TODO: can you remove a level of indirection here?
+        function_descriptors = self.cntxt.route_compiler.policy.get_flow_functions(flow.in_port,flow) 
+
         for func_desc,function_name in function_descriptors.iteritems():
             #print func_desc,function_name
             mac_addr_temp = self.cntxt.route_compiler.fmap.get_mac_addr_from_func_desc(func_desc) 
+
             # Convert MAC in Long to EthAddr
             mac_str = mac_to_str(mac_addr_temp)
             mac_addr = EthAddr(mac_str)
             element_macs[func_desc] = mac_addr
         return element_macs
+
 
     # This is a utils function.
     # This function returns a matching flow 
