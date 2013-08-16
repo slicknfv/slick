@@ -1,91 +1,143 @@
+This document has been updated to work for mininet 2.0
+
 INSTALLING SLICK
 ----------------
-1- VM Setup:
-    These instructions assumes that you already have mininet VM Image running on virtualbox.Following is the VM image that I am using:
-    https://github.com/downloads/mininet/mininet/mininet-vm-ubuntu11.10-052312.vmware.zip
+1. VM Setup:
+	- These instructions assume that you already have a mininet VM Image
+	  running on VirtualBox.
 
-    1- There will be three interface in the mininet installation.
-    l0,eth2,eth3    or       l0,eth1,eth2
+	- It has been tested with the following image:
+		https://github.com/downloads/mininet/mininet/mininet-2.0.0-113012-amd64-ovf.zip
 
-    2- Bring up ethernet last ethernet interface. For example we had l0,eth2,eth3 interfaces appearing there we used command for eth3:
-    ifconfig eth3 up
+	- Note that, since it is AMD64, if you are using an Intel machine,
+	  you may have to modify your BIOS settings to turn on AMD
+	  emulation
 
-    3- Assign following ip address to eth3:
-    ifconfig eth3 192.168.56.101
+	- Also, you will want to be able to ssh into the mininet VM from
+	  your host.  Follow the relevant instructions provided here:
+		http://www.openflow.org/wk/index.php/OpenFlow_Tutorial#Set_Up_Network_Access
 
-    After this command you should be able to ping the internet from VM.
 
+2. Code Download:
+	- From within your mininet VM, in the default /home/mininet folder,
+	  download the following:
 
-*** update above here to talk about Mininet 2.0 ***
------------
+		svn+ssh://svn.gtnoise.net/srv/svn/sdn_mb/middlesox/
 
-2- Code Download:
-         Please download the code into /home/mininet/ folder from:
-    svn+ssh://svn.gtnoise.net/srv/svn/sdn_mb/middlesox/
-    This will download slick code and pox code that is required by slick.
+    - This will download slick code and pox code that is required by slick.
 
-3a- Dependencies:
-    i- To add support for SSHv3 install paramiko:
-    sudo easy_install paramiko
- 
-    ii- Install scp.py module.
-    cd middlesox/archive/scp.py/
-    sudo python setup.py install
+3. Installing dependencies:
+	- Run the following commands from within your mininet VM:
 
-    iii- Install other dependencies
-	* sudo easy_install jsonpickle
-	* sudo apt-get python-dpkt
+		$ cd ~/middlesox
+		$ ./install-slick.sh
 
-    iv- Installing pcap.(for shim code.)
-    Please go into middlesox/archive/pcap_ylg-1.1/ and use this command to build pcap.so
-    python setup.py build
-    Then place pcap.so file in the middlesox/lib/ folder.
+	- This will install various dependencies:
+		* paramiko (for SSHv3 support)
+		* scp.py module.
+		* pcap (for shim)
+		* rpyc (also for shim)
+		* scapy (for p0f module)
+		* pybloomfilter library
+    	* other dependencies
 
-    v- Intall scapy for p0f module.
-    Please extract scapy package in middlesox/archive/
-    cd into middlesox/archive/scapy-2.1.0 and use this command to install scapy.
-    sudo python setup.py install
-    
-    
-    vi- Install the pybloomfilter library:
-    sudo easy_install pybloomfilter
+	- The install-slick.sh script does not currently check exit
+	  statuses; please scroll up and look for any failures, and address
+	  accordingly (though, if your VM is set up correctly and you are
+	  connected to the Internet, it should be fine).
 
-3b- Ensure that PYTHONPATH environment variable is set:
-export PYTHONPATH=/home/mininet/middlesox/pox:/home/mininet/mininet/:/home/mininet/pox
+	- As the script says at the end, add the following line to .bashrc
+	  (or whatever shell you decide to use):
+
+	    export PYTHONPATH=/home/mininet/middlesox/pox:/home/mininet/mininet/:/home/mininet/pox
 
 
 RUNNING SLICK
 -------------
+The script to set up the topology and start running mininet treats our
+controller as a "Remote Controller" (so as to play nice with mininet
+2.0).  When mininet starts up, it will try to contact the controller;
+as a result, we need to start up the Slick controller (by means of
+starting POX) first.
 
-4- Starting the network:
-    Following script will start the network topology configured such that mininet hosts can communicate with hosts on internet. This topology consists of four hosts h1,h2,h3,h4 and one switch.
-    sudo python ~/middlesox/mininet_scripts/internet_ssh2.py
+4. Starting the controller:
+	- Open up a new terminal on your host machine and ssh into your
+	  mininet VM (recall that the user/pass is mininet/mininet).
 
-    Now you should be able to ping the internet from mininet hosts. For example
-    > h1 ping www.google.com
-    should return ping replies.
+	- Running the following commands will start the Slick controller:
 
-5- Starting POX
-    To start the slick controller and  application that runs the dns logging please use following commands:
-	* cd middlesox/pox/pox/
-	* sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=0.0.0.0 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
+		$ cd middlesox/pox/pox/
+		$ sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=0.0.0.0 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
 
-[ you can also bind to the TCP address of whatever interface is the NAT IP
-  address in the root context.]
 
-    Applications:
-    Applications are present in the file called applications.py file. This file has different classes for different applications.
+	- An older version of this document said:
+		[ you can also bind to the TCP address of whatever interface is the NAT IP
+	    address in the root context.]
+	  but I am not sure if this is still true
 
-6- Shim Layer:
-    To run the shim layer please run following command on one of the hosts. Following is the command on mininet host h3:
+5. Starting the network:
+	- Open up another terminal on your host machine and again ssh into
+	  your mininet VM.  This time, be sure to include the -X option to
+	  ssh so that you can open up xterms for the various mininet hosts.
 
-    mininet> xterm h3 
-    h3# sudo python middlesox/shim/shim.py -i h3-eth0 -o h3-eth0
+	- Running the following script will create a network topology, and
+	  will set up NAT so that mininet hosts can communicate with hosts
+	  on the Internet:
 
-    This will start the shim layer and will register h3 as a middlebox so that slick controller can redirect traffic to this middlebox.
+		$ sudo python ~/middlesox/mininet_scripts/internet_ssh3.py
 
-7- Pinging hosts:
-    Now from h1 or h2 send a ping to www.domain_name.com
-    After sending this message you should be getting the ping replies back. But apart from ping replies please go into h3 host ssh session and see the logged dns messages in /tmp/dns_log file.
+	- This will drop this terminal into a mininet CLI.
 
-    This file will have the domain name flows that are being sent from host h1 or h2 to internet.
+
+6. Sanity checking the network
+	- You should be able to ping hosts on the Internet from the mininet
+	  hosts.  You do this from within the mininet CLI; the following
+	  should return typical ping output:
+
+		mininet> h1 ping google.com
+
+7. Setting up the shim
+	- If you flip back over to the controller terminal, you'll see that
+	  it is failing to find middlebox machines on which to place
+	  elements.  This is because the shims aren't running on the
+	  mininet hosts yet.
+
+	- Open up a terminal to h3:
+
+		mininet> xterm h3
+
+	- From this terminal, run:
+
+		h3# sudo python ~/middlesox/shim/shim.py -i h3-eth0 -o h3-eth0
+
+	  This will start the shim layer and will register h3 as a
+	  middlebox so that slick controller can redirect traffic to this
+	  middlebox.
+
+	- This should print some debug output showing that it has
+	  successfully connected to the Slick controller.  The Slick
+	  controller should by now say that it has successfully installed
+	  Logger.
+
+8. Pinging hosts:
+	- As a final test, you should be able to use h1 or h2 to ping
+	  external hosts:
+
+		mininet> h1 ping google.com
+
+	- Please check:
+
+		(1) that you get the ping replies back.
+		(2) that h3:/tmp/dns_log has logged the DNS messages (i.e.,
+			that the Logger element worked)
+
+	  The dns_log file should have the DNS flows that are being sent
+	  from host h1 or h2 to the Internet.
+
+APPLICATIONS
+------------
+
+	Applications are present in the file called applications.py file.
+	This file has different classes for different applications.
+
+
