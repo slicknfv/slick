@@ -118,6 +118,9 @@ def mac_to_oui(a):
         return ""
 
 def mac_to_str(a, resolve_name = False):
+    # dml - in the mininet 2.0 install, these are getting returned as 'int's
+    if type(a) == type(1):
+        a = long(a)
     if type(a) == type(1L):
         a = struct.pack('!Q', a)[2:]
     if type(a) == type(''):
