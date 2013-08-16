@@ -1,0 +1,141 @@
+INSTALLING SLICK
+----------------
+1. VM Setup:
+	- These instructions assume that you already have a mininet VM Image
+	  running on VirtualBox.
+
+	- It has been tested with the following image:
+		https://github.com/downloads/mininet/mininet/mininet-2.0.0-113012-amd64-ovf.zip
+
+	- Note that, since it is AMD64, if you are using an Intel machine,
+	  you may have to modify your BIOS settings to turn on AMD
+	  emulation
+
+	- Also, you will want to be able to ssh into the mininet VM from
+	  your host.  Follow the relevant instructions provided here:
+		http://www.openflow.org/wk/index.php/OpenFlow_Tutorial#Set_Up_Network_Access
+
+
+2. Code Download:
+	- From within your mininet VM, in the default /home/mininet folder,
+	  download the following:
+
+		svn+ssh://svn.gtnoise.net/srv/svn/sdn_mb/middlesox/
+
+    - This will download slick code and pox code that is required by slick.
+
+3. Installing dependencies:
+	- Run the following commands from within your mininet VM:
+
+		$ cd ~/middlesox
+		$ ./install-slick.sh
+
+	- This will install various dependencies:
+		* paramiko (for SSHv3 support)
+		* scp.py module.
+		* pcap (for shim)
+		* rpyc (also for shim)
+		* scapy (for p0f module)
+		* pybloomfilter library
+    	* other dependencies
+
+	- The install-slick.sh script does not currently check exit
+	  statuses; please scroll up and look for any failures, and address
+	  accordingly (though, if your VM is set up correctly and you are
+	  connected to the Internet, it should be fine).
+
+	- As the script says at the end, add the following line to .bashrc
+	  (or whatever shell you decide to use):
+
+	    export PYTHONPATH=/home/mininet/middlesox/pox:/home/mininet/mininet/:/home/mininet/pox
+
+
+RUNNING SLICK
+-------------
+The script to set up the topology and start running mininet treats our
+controller as a "Remote Controller" (so as to play nice with mininet
+2.0).  When mininet starts up, it will try to contact the controller;
+as a result, we need to start up the Slick controller (by means of
+starting POX) first.
+
+4. Starting the controller:
+	- Open up a new terminal on your host machine and ssh into your
+	  mininet VM (recall that the user/pass is mininet/mininet).
+
+	- Running the following commands will start the Slick controller:
+
+		$ cd middlesox/pox/pox/
+		$ sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=0.0.0.0 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
+
+
+	- An older version of this document said:
+		[ you can also bind to the TCP address of whatever interface is the NAT IP
+	    address in the root context.]
+	  but I am not sure if this is still true
+
+5. Starting the network:
+	- Open up another terminal on your host machine and again ssh into
+	  your mininet VM.  This time, be sure to include the -X option to
+	  ssh so that you can open up xterms for the various mininet hosts.
+
+	- Running the following script will create a network topology, and
+	  will set up NAT so that mininet hosts can communicate with hosts
+	  on the Internet:
+
+		$ sudo python ~/middlesox/mininet_scripts/internet_ssh3.py
+
+	- This will drop this terminal into a mininet CLI.
+
+
+6. Sanity checking the network
+	- You should be able to ping hosts on the Internet from the mininet
+	  hosts.  You do this from within the mininet CLI; the following
+	  should return typical ping output:
+
+		mininet> h1 ping google.com
+
+7. Setting up the shim
+	- If you flip back over to the controller terminal, you'll see that
+	  it is failing to find middlebox machines on which to place
+	  elements.  This is because the shims aren't running on the
+	  mininet hosts yet.
+
+	- Open up a terminal to h3:
+
+		mininet> xterm h3
+
+	- From this terminal, run:
+
+		h3# sudo python ~/middlesox/shim/shim.py -i h3-eth0 -o h3-eth0
+
+	  This will start the shim layer and will register h3 as a
+	  middlebox so that slick controller can redirect traffic to this
+	  middlebox.
+
+	- This should print some debug output showing that it has
+	  successfully connected to the Slick controller.  The Slick
+	  controller should by now say that it has successfully installed
+	  Logger.
+
+8. Pinging hosts:
+	- As a final test, you should be able to use h1 or h2 to ping
+	  external hosts:
+
+		mininet> h1 ping google.com
+
+	- Please check:
+
+		(1) that you get the ping replies back.
+		(2) that h3:/tmp/dns_log has logged the DNS messages (i.e.,
+			that the Logger element worked)
+
+	  The dns_log file should have the DNS flows that are being sent
+	  from host h1 or h2 to the Internet.
+
+APPLICATIONS
+------------
+
+	Applications are present in the file called applications.py file.
+	This file has different classes for different applications.
+
+
