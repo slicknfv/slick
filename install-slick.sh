@@ -61,6 +61,12 @@ cd $ARCHIVE_DIR/pcap_ylg-1.1/
 sudo python setup.py install
 cp $ARCHIVE_DIR/pcap_ylg-1.1/pcap.so $LIB_DIR
 
+
+echo ""
+echo ""
+echo "*** Installing rpyc (for shim)"
+sudo easy_install rpyc
+
 echo ""
 echo ""
 echo "*** Installing scapy..."
