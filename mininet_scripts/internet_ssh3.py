@@ -102,8 +102,9 @@ def connectToInternet( network, switch='s1', rootip='10.254', subnet='10.0.0.0/8
     network.start()
  
     # Start NAT and establish forwarding
-    # HACK: eth1 is the interface in the root context that connects
+    # HACK: eth0 is the interface in the root context that connects
     # to the Internet.  Should be a parameter.
+    # dml: This used to be eth1.
     startNAT( root, 'eth0', subnet )
  
     # Establish routes from end hosts
@@ -111,8 +112,9 @@ def connectToInternet( network, switch='s1', rootip='10.254', subnet='10.0.0.0/8
     for host in network.hosts:
         j = i + 10
 
-        # HACK: We should set the IP according to 'subnet', and probably using setIP
-        host.cmd( 'ifconfig h' + str(i) + '-eth0 192.168.100.' + str(j) )
+        # HACK: We should set the IP according to 'subnet'
+        # dml: note that using ifconfig will not update mininet's bindings of h1, etc.; setIP is necessary
+        host.setIP( '192.168.100.' + str(j) )
         host.cmd( 'ip route flush root 0/0' )
         host.cmd( 'route add -net', subnet, 'dev', host.defaultIntf() )
         host.cmd( 'route add default gw', rootip )
