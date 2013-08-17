@@ -133,6 +133,20 @@ starting POX) first.
 APPLICATIONS
 ------------
 
+    You can now specify an application to run as a commandline option to pox.
+    It goes after "slick_controller" and before "messenger", as in:
+
+        --application=TriggerAllUnitTest
+
+    If no application is specified on the commandline, it will default to
+    running the TwoLoggers application.
+
+    As you develop new applications, please do the following:
+
+        - Place them in ~/middlesox/pox/ext/slick/apps/
+        - Name the file the same as the class (it is case sensitive for now)
+        - Add the name of the app to ~/middlesox/pox/ext/slick/apps/__init__.py
+
 	Applications are present in the file called applications.py file.
 	This file has different classes for different applications.
 
