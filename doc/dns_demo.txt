@@ -69,11 +69,7 @@ starting POX) first.
 		$ cd middlesox/pox/pox/
 		$ sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=0.0.0.0 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
 
-
-	- An older version of this document said:
-		[ you can also bind to the TCP address of whatever interface is the NAT IP
-	    address in the root context.]
-	  but I am not sure if this is still true
+    - Alternatively, you can bind to the NAT IP address in the root context (192.168.56.101)
 
 5. Starting the network:
 	- Open up another terminal on your host machine and again ssh into
