@@ -6,9 +6,9 @@
 # ############################################################################################################################################
 """
 class TriggerAllUnitTest():
-    def __init__(self,inst):
+    def __init__(self,inst,AD):
         self.cntxt = inst
-        self.app_d = 100
+        self.app_d = AD
         self.fd =[]# Its the list of function descriptors used by the application.
         self.installed = False # To check if the app is installed
         self.conf = 0 # Set this to true to update the configure
@@ -39,34 +39,37 @@ class TriggerAllUnitTest():
         flow2['tp_src'] = None
         flow2['tp_dst'] = 80
         self.flows.append(flow2)
-        self.f1 = open("1_trigger.txt","w")
-        self.f2 = open("2_trigger.txt","w")
 
     def configure_user_params(self):
-        if (self.conf < 2): # Need to call configure_func twice since this application has two functions instantiated
-            params = {}
-            self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) # Call connfigure_func with same app if and different function descriptors.
-            self.conf +=1
+        pass
+        #if (self.conf < 2): # Need to call configure_func twice since this application has two functions instantiated
+            #params = {}
+            #self.cntxt.configure_func(self.app_d,self.fd[self.conf],params) # Call connfigure_func with same app if and different function descriptors.
+            #self.conf +=1
 
     # This handle Trigger will be called twice for 2 functions.
     def handle_trigger(self,fd,msg):
-        if(fd == self.fd[0]):
-            print "TriggerAll handle_trigger function descriptor",fd
-            print "TriggerAll handle_trigger called",msg
-            self.f1.write(str(msg))
-            self.f1.write('\n')
-        if(fd == self.fd[1]):
-            print "TriggerAll handle_trigger function descriptor",fd
-            print "TriggerAll handle_trigger called",msg
-            self.f2.write(str(msg))
-            self.f2.write('\n')
+        if self.installed:
+            if(fd == self.fd[0]):
+                print "TriggerAll handle_trigger function descriptor",fd
+                print "TriggerAll handle_trigger called",msg
+                self.f1.write(str(msg))
+                self.f1.write('\n')
+            if(fd == self.fd[1]):
+                print "TriggerAll handle_trigger function descriptor",fd
+                print "TriggerAll handle_trigger called",msg
+                self.f2.write(str(msg))
+                self.f2.write('\n')
 
     def init(self):
         for flow_item in self.flows:
             parameters = {}
-            fd = self.cntxt.apply_elem(self.app_d,flow_item,"TriggerAll",parameters,self) #sending the object 
+            fd = self.cntxt.apply_elem(self.app_d,flow_item,"trigger_all",parameters,self) #sending the object 
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
+                if not self.installed:
+                    self.f1 = open("1_trigger.txt","w")
+                    self.f2 = open("2_trigger.txt","w")
                 self.installed = True
                 print "TriggerAll Installed with FD", fd
 

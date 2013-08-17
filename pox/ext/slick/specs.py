@@ -24,9 +24,11 @@ class ElementSpec():
                     self.element_specs[item] = json_data_dict
 
     # Returns a dictionary
+    # dml: I got rid of the check to see whether element_specs contained
+    #      element_name so that the KeyError will just bump up (otherwise we
+    #      get a difficult to track NoneType error later in the execution)
     def get_element_spec(self,element_name):
-        if(self.element_specs.has_key(element_name)):
-            return self.element_specs[element_name]
+        return self.element_specs[element_name]
 
 
 # This class is used to read the machine specifications.

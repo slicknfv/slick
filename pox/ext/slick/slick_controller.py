@@ -25,6 +25,7 @@ exact-match rules for each flow.
 
 import time
 import logging
+import sys  # for loading the application from commandline
 
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
@@ -40,6 +41,8 @@ from conf import *
 from download import Download
 #from pox_interface import POXInterface
 from utils.packet_utils import *
+
+from apps import *
 
 log = core.getLogger()
 
@@ -59,7 +62,9 @@ class slick_controller (object):
     """
     Waits for OpenFlow switches to connect 
     """
-    def __init__ (self, transparent):
+    def __init__ (self, transparent, application):
+        print "INITIALIZING SLICK with application '" + application + "'"
+
         self.transparent = transparent
 
         # add the standard OpenFlow event handlers
@@ -74,8 +79,19 @@ class slick_controller (object):
         # JSON Messenger Handlers
         self.json_msg_events = {}
 
+        # Application descriptor
+        self._latest_app_descriptor = 100
+
         # Message Processor.  Where App Handles are Initialized.
         self.ms_msg_proc = MSMessageProcessor(self)
+
+        # TODO Initialize the application
+        
+        app_class = sys.modules['slick.apps.'+application].__dict__[application]
+        self.app_instance = app_class( self, self._get_unique_app_descriptor() )
+        self.ms_msg_proc.add_application( self.app_instance )
+
+        print "Successfully loaded",application,"application"
 
         #
         self.app_initialized = False
@@ -86,6 +102,10 @@ class slick_controller (object):
 
         # Application Initialization and Configuration.
         Timer(APPCONF_REFRESH_RATE, self.timer_callback, recurring = True)
+
+    def _get_unique_app_descriptor(self):
+        self._latest_app_descriptor += 1
+        return self._latest_app_descriptor
 
     def _handle_ConnectionUp (self, event):
         log.debug("Connection %s" % (event.connection,))
@@ -445,6 +465,6 @@ class POXInterface():
 ##############################
 # POX Launch the application.
 ##############################
-def launch (transparent=False):
+def launch (transparent=False, application="TwoLoggers"):
     # The second component is argument for slick_controller.
-    core.registerNew(slick_controller, str_to_bool(transparent))
+    core.registerNew(slick_controller, str_to_bool(transparent), application)
