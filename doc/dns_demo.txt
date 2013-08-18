@@ -69,7 +69,7 @@ starting POX) first.
 		$ cd middlesox/pox/pox/
 		$ sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=0.0.0.0 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
 
-    - Alternatively, you can bind to the NAT IP address in the root context (192.168.56.101)
+    - Alternatively, you can bind to the NAT IP address in the root context (--tcp_address=192.168.56.101)
 
 5. Starting the network:
 	- Open up another terminal on your host machine and again ssh into
@@ -137,18 +137,22 @@ APPLICATIONS
 ------------
 
     You can now specify an application to run as a commandline option to pox.
-    It goes after "slick_controller" and before "messenger", as in:
+    It goes after "slick_controller" and before "messenger".  For example, to
+    run an application the tests out triggers:
 
-        --application=TriggerAllUnitTest
+		$ cd middlesox/pox/pox/
+		$ sudo ./pox.py --verbose slick.slick_controller --application=TriggerAllUnitTest messenger slick.tcp_transport --tcp_address=0.0.0.0 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
 
     If no application is specified on the commandline, it will default to
-    running the TwoLoggers application.
+    running the TwoLoggers application (which logs both port 53 and port 80
+    traffic).
 
     As you develop new applications, please do the following:
 
         - Place them in ~/middlesox/pox/ext/slick/apps/
         - Name the file the same as the class (it is case sensitive for now)
         - Add the name of the app to ~/middlesox/pox/ext/slick/apps/__init__.py
+        - Reflect the case sensitive naming in your applications .spec file
 
     Applications can be found in:
         ~/middlesox/pox/ext/slick/apps/
