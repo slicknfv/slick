@@ -12,6 +12,7 @@ from TriggerAll.TriggerAll import TriggerAll
 from dns_dpi.dns_dpi_function import DnsDpiFunction
 from p0f.p0ftriggers import P0F
 from Drop.Drop import Drop
+from Noop.Noop import Noop
 #from bloomfilter.bloomfilter import BloomFilter
 
 """
@@ -65,6 +66,9 @@ class ClientService(rpyc.Service):
         if(function_name == "BloomFilter"):
             function_handle = BloomFilter(self.shim,fd)
             function_handle.init(params_dict)
+        if(function_name == "Noop"):
+            function_handle = Noop(self.shim,fd)#start the function
+            function_handle.init(params_dict)# init invoked on the application.
 
         try:
             if(isinstance(flow['nw_src'],unicode)): #BAD HACK
