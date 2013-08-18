@@ -5,8 +5,8 @@ import dpkt
 
 class Element():
     def __init__( self, shim, ed ):
-        self.ed =  ed
         self.shim = shim
+        self.ed =  ed
 
     def init( self, params):
         pass
@@ -29,5 +29,5 @@ class Element():
     def raise_trigger( self, trigger ):
         self.shim.client_service.raise_trigger( trigger )
 
-    def fwd_pkt( self, packet ):
-        self.shim.client_service.fwd_pkt( packet )
+    def fwd_pkt( self, buf ):
+        self.shim.client_service.fwd_pkt( buf )

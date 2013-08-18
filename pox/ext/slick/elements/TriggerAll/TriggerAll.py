@@ -7,13 +7,14 @@ class TriggerAll(Element):
         Element.__init__( self, shim, ed )
 
     # For DNS print fd and flow but for all other only print fd
-    def process_pkt(self, buf):
+    def process_pkt( self, buf ):
+        # Extracting the flow is currently unnecessary in this example; 
+        #   we include it here to demonstrate that you could place flow
+        #   information into the trigger
         flow = self.extract_flow(buf)
-        trigger = {
-                    "type":"trigger",
+        trigger = { "type":"trigger",
                     "subtype":"trigger_all",
-                    "ed":self.ed
-                  }
+                    "ed":self.ed }
         self.raise_trigger( trigger )
         self.fwd_pkt( buf )
 
