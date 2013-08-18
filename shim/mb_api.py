@@ -8,7 +8,7 @@ from shim_table import ShimTable
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir+"/pox/ext/slick/elements") 
 from logger.logger_func import Logger
-from trigger_all.trigger_all import TriggerAll
+from TriggerAll.TriggerAll import TriggerAll
 from dns_dpi.dns_dpi_function import DnsDpiFunction
 from p0f.p0ftriggers import P0F
 from drop.drop import Drop

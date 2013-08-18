@@ -233,7 +233,7 @@ class slick_controller (object):
                 shortestPath_MB = mb
         return mb
 
-    def configure_func(self,app_desc,fd,application_conf_params):
+    def configure_elem(self,app_desc,fd,application_conf_params):
         if(self.route_compiler.application_handles.has_key(fd)):
             if(self.route_compiler.is_allowed(app_desc,fd)):
                 msg_dst = self.route_compiler.fmap.get_mac_addr_from_func_desc(fd)

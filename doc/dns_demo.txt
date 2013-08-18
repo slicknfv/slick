@@ -104,11 +104,14 @@ starting POX) first.
 
 	- From this terminal, run:
 
-		h3# sudo python ~/middlesox/shim/shim.py -i h3-eth0 -o h3-eth0
+		h3# sudo python ~/middlesox/shim/shim.py
 
 	  This will start the shim layer and will register h3 as a
 	  middlebox so that slick controller can redirect traffic to this
 	  middlebox.
+
+    - You can optionally specify input and output interfaces (though the
+      default should do the right thing)
 
 	- This should print some debug output showing that it has
 	  successfully connected to the Slick controller.  The Slick
@@ -147,7 +150,8 @@ APPLICATIONS
         - Name the file the same as the class (it is case sensitive for now)
         - Add the name of the app to ~/middlesox/pox/ext/slick/apps/__init__.py
 
-	Applications are present in the file called applications.py file.
-	This file has different classes for different applications.
+    Applications can be found in:
+        ~/middlesox/pox/ext/slick/apps/
 
-
+    Elements can be found in
+        ~/middlesox/pox/ext/slick/elements/

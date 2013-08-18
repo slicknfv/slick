@@ -8,7 +8,7 @@ class TriggerAll(Element):
 
     # For DNS print fd and flow but for all other only print fd
     def process_pkt(self, buf):
-        flow = self.extract_flow(packet)
+        flow = self.extract_flow(buf)
         trigger = {
                     "type":"trigger",
                     "subtype":"trigger_all",

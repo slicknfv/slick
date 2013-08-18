@@ -54,7 +54,7 @@ class MSMessageProcessor():
             if(msg["type"] == "BadDomainEvent"):
                 self.dns_handlers.handle_trigger(msg)
             if(msg["type"] == "trigger"):
-                fd = msg["fd"]
+                fd = msg["ed"]
                 if(type(fd) == int):
                     application_handle = self.cntxt.route_compiler.get_application_handle(fd)
                     application_handle.handle_trigger(fd,msg)
