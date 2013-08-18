@@ -1,5 +1,5 @@
 {
-    "trigger_all": {
+    "TriggerAll": {
         "processor_type": "x86",
         "os": "Linux",
         "os_flavor": "Ubuntu",

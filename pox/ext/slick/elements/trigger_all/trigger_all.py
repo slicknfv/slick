@@ -1,48 +1,33 @@
 # This class is used to implement trigger generator.
-import os.path
-import dpkt
 
-class TriggerAll():
-    def __init__(self,shim):
-        self.function_desc =  None # should not be oo dependent therefore moving it to install.
-        # Need this to call the trigger.
-        self.shim = shim
+from slick.Element import Element
 
-    def init(self,fd,params):
-        self.function_desc =  fd
-
-    # Paramters
-    def configure(self,params):
-        pass
+class TriggerAll(Element):
+    def __init__( self, shim, ed ):
+        Element.__init__( self, shim, ed )
 
     # For DNS print fd and flow but for all other only print fd
     def process_pkt(self, buf):
-        """
-            NOTE: Calling extract_flow(packet) from shim, but it can easily be implemented in the Function.
-            And it should be. 
-            flow = self.extract_flow(packet)
-        """
-        packet = dpkt.ethernet.Ethernet(buf)
-        flow = self.shim.extract_flow(packet)
-        trigger = {"fd":self.function_desc}
-        self.shim.client_service.raise_trigger(trigger)
-        self.shim.client_service.fwd_pkt(buf)
-
-    def shutdown(self):
-        print "Shutting down function with function descriptor:",self.fd
-        return True
+        flow = self.extract_flow(packet)
+        trigger = {
+                    "type":"trigger",
+                    "subtype":"trigger_all",
+                    "ed":self.ed
+                  }
+        self.raise_trigger( trigger )
+        self.fwd_pkt( buf )
 
 
 #Testing
 def main():
-    triggers = TriggerAll()
-    triggers.init(12,None)
-    triggers.configure('/tmp/msox1.txt')
+    pass
+    triggers = TriggerAll(None,12)
+    #triggers.configure('/tmp/msox1.txt')
     flow = {}
     flow["dl_src"] = 1 
     flow["dl_dst"] = 2
     packet = None
-    logger.process_pkt(flow,packet)
+    triggers.process_pkt(flow,packet)
 
 if __name__ == "__main__":
     main()

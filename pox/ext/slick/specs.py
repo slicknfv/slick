@@ -21,7 +21,8 @@ class ElementSpec():
                 with open(file_path) as f:
                     logging.debug("Loading Element Specification File: %s",file_path)
                     json_data_dict = json.load(f)
-                    self.element_specs[item] = json_data_dict
+                    #self.element_specs[item] = json_data_dict
+                    self.element_specs[json_data_dict.keys()[0]] = json_data_dict
 
     # Returns a dictionary
     # dml: I got rid of the check to see whether element_specs contained

@@ -1,5 +1,5 @@
 {
-    "dns_dpi": {
+    "DNS_DPI": {
         "processor_type": "x86",
         "os": "Linux",
         "os_flavor": "Ubuntu",

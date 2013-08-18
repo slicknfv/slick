@@ -5,7 +5,7 @@ import os
 class LoadCache:
 	"""LoadCache for laoding the blocked domain names."""
 	def __init__(self):
-		DNS_BLOCK_LIST_DIR = os.getcwd()+"/../dns_dpi_func/blacklists" # Make it programmable.
+		DNS_BLOCK_LIST_DIR = os.getcwd()+"/../dns_dpi/blacklists" # Make it programmable.
 		self.data = defaultdict(list) # A dictionary with Domain Name as key and IP address list as resolved addresses.
 		self.block_dir = DNS_BLOCK_LIST_DIR
 		self.block_domain_dict = {}

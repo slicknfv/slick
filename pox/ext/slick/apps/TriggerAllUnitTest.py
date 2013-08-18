@@ -64,7 +64,7 @@ class TriggerAllUnitTest():
     def init(self):
         for flow_item in self.flows:
             parameters = {}
-            fd = self.cntxt.apply_elem(self.app_d,flow_item,"trigger_all",parameters,self) #sending the object 
+            fd = self.cntxt.apply_elem(self.app_d,flow_item,"TriggerAll",parameters,self) #sending the object 
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
                 if not self.installed:

@@ -2,10 +2,12 @@
 
 import sys
 import os
+import commands # for getting the default interface
 
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir) 
+sys.path.insert(0,"/home/mininet/middlesox/pox/ext") 
 
 sys.path.insert(0,'../lib/')
 import pcap as pcap
@@ -352,8 +354,9 @@ def usage():
 
             
 def main(argv):
-    iface = ""
-    oface = ""
+    default_interface = commands.getoutput("ifconfig -s | grep eth0 | awk '{print $1}'")
+    iface = default_interface
+    oface = default_interface
     freq = 0
     mode = 2
     file_name = None
@@ -397,7 +400,3 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv[1:])
-
-
-
-

@@ -107,7 +107,7 @@ class DnsDpiFunctionApp():
         flow["dl_src"] = None; flow["dl_dst"] = None; flow['dl_vlan'] = None; flow['dl_vlan_pcp'] = None; flow['dl_type'] = None; flow['nw_src'] = src_ip; flow['nw_dst'] = None;flow['nw_proto'] = None ;flow['tp_src'] = None;flow['tp_dst'] = None
         parameters = {}
         if not self.trigger_function_installed:
-            fd= self.cntxt.apply_elem(self.app_d,flow,"DROP",parameters,self) 
+            fd= self.cntxt.apply_elem(self.app_d,flow,"Drop",parameters,self) 
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
                 self.trigger_function_installed = True

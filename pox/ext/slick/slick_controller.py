@@ -188,7 +188,7 @@ class slick_controller (object):
         ip_addr = self.route_compiler.fmap.get_ip_addr(mac_addr)
 
         if(mac_addr == None): # There is no machine registered for function installation.
-            print "Warning: Could not find a middlebox for function " + function_name + "(" + str(app_desc) + ")"
+            print "Warning: Could not find a middlebox for function " + function_name + " for application with descriptor (" + str(app_desc) + ")"
             return -1
         msg_dst = ip_addr
 

@@ -1,7 +1,7 @@
 # This class is used to implement a simple log function.
 import os.path
 import dpkt
-from dns_dpi_func.dns_process import DNSProcess
+from dns_dpi.dns_process import DNSProcess
 #import collect_data
 import socket
 

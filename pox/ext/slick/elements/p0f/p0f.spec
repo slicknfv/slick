@@ -1,5 +1,5 @@
 {
-    "os_dpi": {
+    "P0F": {
         "processor_type": "x86",
         "os": "Linux",
         "os_flavor": "Ubuntu",

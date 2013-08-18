@@ -6,10 +6,10 @@ from collections import defaultdict
 from shim_table import ShimTable
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0,parentdir) 
+sys.path.insert(0,parentdir+"/pox/ext/slick/elements") 
 from logger.logger_func import Logger
 from trigger_all.trigger_all import TriggerAll
-from dns_dpi_func.dns_dpi_function import DnsDpiFunction
+from dns_dpi.dns_dpi_function import DnsDpiFunction
 from p0f.p0ftriggers import P0F
 from drop.drop import Drop
 #from bloomfilter.bloomfilter import BloomFilter
@@ -47,24 +47,24 @@ class ClientService(rpyc.Service):
         #self.flow_to_fd_map[flow] = fd
         function_handle = None
         if(function_name == "Logger"):
-            function_handle = Logger(self.shim)#start the function but pass the shim reference to invoke trigger.
-            function_handle.init(fd,params_dict)# init invoked on the application.
+            function_handle = Logger(self.shim,fd)#start the function but pass the shim reference to invoke trigger.
+            function_handle.init(params_dict)# init invoked on the application.
         if(function_name == "TriggerAll"):
-            function_handle = TriggerAll(self.shim)#start the function
-            function_handle.init(fd,params_dict)# init invoked on the application.
+            function_handle = TriggerAll(self.shim,fd)#start the function
+            function_handle.init(params_dict)# init invoked on the application.
         if(function_name == "DNS_DPI"):
-            print "DNS-DPI Installed"
-            function_handle = DnsDpiFunction(self.shim)#start the function
-            function_handle.init(fd,params_dict)# init invoked on the application.
-        if(function_name == "DROP"):
-            function_handle = Drop(self.shim)#start the function
-            function_handle.init(fd,params_dict)# init invoked on the application.
-        if(function_name == "p0f"):
-            function_handle = P0F(self.shim)
-            function_handle.init(fd,params_dict)
-        if(function_name == "BF"):
-            function_handle = BloomFilter(self.shim)
-            function_handle.init(fd,params_dict)
+            print "DNS_DPI Installed"
+            function_handle = DnsDpiFunction(self.shim,fd)#start the function
+            function_handle.init(params_dict)# init invoked on the application.
+        if(function_name == "Drop"):
+            function_handle = Drop(self.shim,fd)#start the function
+            function_handle.init(params_dict)# init invoked on the application.
+        if(function_name == "P0F"):
+            function_handle = P0F(self.shim,fd)
+            function_handle.init(params_dict)
+        if(function_name == "BloomFilter"):
+            function_handle = BloomFilter(self.shim,fd)
+            function_handle.init(params_dict)
 
         try:
             if(isinstance(flow['nw_src'],unicode)): #BAD HACK

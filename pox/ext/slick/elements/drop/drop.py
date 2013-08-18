@@ -1,36 +1,22 @@
-# This class is used to implement a simple log function.
-import os.path
-import dpkt
+"""
+    Drop: Simply drops all packets
+"""
+from slick.Element import Element
 
-class Drop():
-    def __init__(self,shim):
-        self.function_desc =  None # should not be oo dependent therefore moving it to install.
-        # Need this to call the trigger.
-        self.shim = shim
+class Drop(Element):
+    def __init__( self, shim, fd ):
+        Element.__init__(self, shim, ed )
 
-
-    def init(self,fd,params):
-        self.function_desc =  fd
-
-    def configure(self,params):
-        pass
-
-    # For DNS print fd and flow but for all other only print fd
     def process_pkt(self, buf):
-        print "DROPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"
+        print "*** Drop element with descriptor", self.ed, "dropping packet ***"
         pass
-
-    def shutdown(self):
-        print "Shutting down function with function descriptor:",self.fd
-        return True
 
 
 
 #Testing
 def main():
-    dropper = Drop(None)
-    dropper.init(100,{})
-    print dropper.function_desc
+    dropper = Drop(None,100)
+    print dropper.ed
 
 if __name__ == "__main__":
     main()

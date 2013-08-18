@@ -18,7 +18,7 @@ class BloomFilterFunctionApp():
         for index in range(0,self.num_functions): 
             print "apply_elem"
             parameters = {}
-            fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"BF",parameters,self) #Bloom Filter
+            fd= self.cntxt.apply_elem(self.app_d,self.flows[index],"BloomFilter",parameters,self) #Bloom Filter
             print fd
             if((fd >0)):#=> we have sucess
                 self.fd.append(fd)
