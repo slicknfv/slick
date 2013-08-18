@@ -1,5 +1,5 @@
 """
-    Logger: Element that loggs all packets it receives to a specified file
+    Logger: an element that copies each packet it receives to a configurable file, then forwards the packet along
 """
 import os.path
 from slick.Element import Element
@@ -12,14 +12,9 @@ class Logger(Element):
     def init( self, params ):
         filename = params["file_name"]
         if(filename):
-            if(os.path.isfile(filename)):
-                self.file_handle = open( filename, 'a' )
-            else:
-                self.file_handle = open( filename, 'w' )
+            self.file_handle = open( filename, 'a+' )
 
-    # For DNS print fd and flow but for all other only print fd
     def process_pkt( self, buf ):
-        print "INSIDE Logger's process_pkt"
         flow = self.extract_flow( buf )
         self.file_handle.write( str(flow) + '\n' )
         self.fwd_pkt( buf )
