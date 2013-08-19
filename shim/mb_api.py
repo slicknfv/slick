@@ -10,10 +10,10 @@ sys.path.insert(0,parentdir+"/pox/ext/slick/elements")
 from Logger.Logger import Logger
 from TriggerAll.TriggerAll import TriggerAll
 from dns_dpi.dns_dpi_function import DnsDpiFunction
-from p0f.p0ftriggers import P0F
+from P0f.P0f import P0f
 from Drop.Drop import Drop
 from Noop.Noop import Noop
-#from bloomfilter.bloomfilter import BloomFilter
+from BloomFilter.BloomFilter import BloomFilter
 
 """
     These are the functions supported by the Shim  to the controller.
@@ -60,8 +60,8 @@ class ClientService(rpyc.Service):
         if(function_name == "Drop"):
             function_handle = Drop(self.shim,fd)#start the function
             function_handle.init(params_dict)# init invoked on the application.
-        if(function_name == "P0F"):
-            function_handle = P0F(self.shim,fd)
+        if(function_name == "P0f"):
+            function_handle = P0f(self.shim,fd)
             function_handle.init(params_dict)
         if(function_name == "BloomFilter"):
             function_handle = BloomFilter(self.shim,fd)

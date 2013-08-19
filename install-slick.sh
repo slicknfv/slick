@@ -79,6 +79,18 @@ echo ""
 echo ""
 echo "*** Installing pybloomfilter..."
 sudo easy_install pybloomfilter
+echo "*** Installing c-algorithms for pybloomfilter..."
+cd $ARCHIVE_DIR
+tar xzf c-algorithms-1.2.0.tar.gz
+cd $ARCHIVE_DIR/c-algorithms-1.2.0
+./configure
+make
+sudo make install
+
+echo ""
+echo ""
+echo "*** Creating/Updating links to libraries..."
+sudo ldconfig
 
 echo ""
 echo ""

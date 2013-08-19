@@ -1,6 +1,8 @@
 ############
 # BloomFilter Application
 ############
+import logging
+
 from slick.Application import Application
 
 class BloomFilterUnitTest(Application):
@@ -18,7 +20,7 @@ class BloomFilterUnitTest(Application):
             if( ed > 0 ):#=> we have sucess
                 self.eds.append(ed)
                 self.installed = True
-                print "BloomFilter application Installed."
+                logger.info("BloomFilter application Installed.")
 
     def configure_user_params(self):
         if (self.conf < self.num_functions): 

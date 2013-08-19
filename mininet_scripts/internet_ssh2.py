@@ -21,7 +21,11 @@ from mininet.topo import Topo
 from mininet.topolib import TreeNet, TreeTopo
 from mininet.util import quietRun
 from mininet.node import OVSController, Controller
+from mininet.node import RemoteController
+
  
+from poxmininet import POX
+
 #################################
 def startNAT( root, inetIntf='eth0', subnet='10.0/8' ):
     """Start NAT/forwarding between Mininet and external network
@@ -145,8 +149,12 @@ if __name__ == '__main__':
 # somewher else since it is just for the NAT.
 #    net = TreeNet( depth=1, fanout=4)
 
-    net = Mininet()
-    net.addController('c0', port=6639)
+    #net = Mininet()
+    #net.addController('c0', port=6639)
+    #s1 = net.addSwitch('s1')
+    topology = TreeTopo( depth=2, fanout=2 )
+    net = Mininet(topo=topology, controller=lambda name: RemoteController(name, defaultIP='127.0.0.1'),listenPort=6666)
+    net.addController('c0')
     s1 = net.addSwitch('s1')
 
     for hostNum in range(1,4):

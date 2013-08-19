@@ -10,6 +10,8 @@ sys.path.insert(0,parentdir)
 sys.path.insert(0,"/home/mininet/middlesox/pox/ext") 
 
 sys.path.insert(0,'../lib/')
+print sys.path
+print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 import pcap as pcap
 
 import socket
@@ -66,7 +68,6 @@ def shim_loop_helper(sh, hdr, pkt):
 class Shim:
 
     def __init__(self,iface,oface,filename):
-
         self.iface = iface
         self.oface = oface
         print self.iface

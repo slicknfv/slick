@@ -12,7 +12,7 @@ class Logger(Element):
     def init( self, params ):
         filename = params["file_name"]
         if(filename):
-            self.file_handle = open( filename, 'a+' )
+            self.file_handle = open( filename, 'a+' , 0)
 
     def process_pkt( self, buf ):
         flow = self.extract_flow( buf )

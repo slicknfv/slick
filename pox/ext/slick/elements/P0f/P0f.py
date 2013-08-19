@@ -1,26 +1,26 @@
 # This file reads the triggers from the p0f detector and generates the triggers for the controller.
 import os.path
 import dpkt
-import p0f
 import socket
 
+import p0f
 
-class P0F():
-    def __init__(self,shim):
-        self.function_desc =  None #
-        # Need this to call the trigger.
-        self.shim = shim
+from slick.Element import Element
 
 
-    def init(self,fd,params):
-        self.function_desc =  fd
+class P0f(Element):
+    def __init__(self, shim, ed):
+        Element.__init__(self, shim, ed )
+
+
+    def init(self, ed, params):
+	pass
 
     def configure(self,params):
         pass
 
     def process_pkt(self, buf):
-        #print "Inside p0f"
-        trigger = {"fd":self.function_desc}
+        trigger = {"ed":self.ed}
         eth = dpkt.ethernet.Ethernet(buf)
         pkt_len = len(buf)
         if(eth.type== dpkt.ethernet.ETH_TYPE_IP):
@@ -28,6 +28,8 @@ class P0F():
             dst_ip = socket.inet_ntoa(ip.dst)
             src_ip = socket.inet_ntoa(ip.src)
             if(ip.p == dpkt.ip.IP_PROTO_TCP):
+		# Call the actual p0f module to make the 
+		# decision for the packets.
                 result = p0f.p0f(buf)
                 if(len(result)):
                     item = result[0] # Assign highest confience result.
@@ -42,21 +44,10 @@ class P0F():
         self.shim.client_service.fwd_pkt(buf)
                         
 
-    def shutdown(self):
-        print "Shutting down function with function descriptor:",self.fd
-        return True
-
-
-
 #Testing
 def main():
     dropper = Drop(None)
     dropper.init(100,{})
-    print dropper.function_desc
 
 if __name__ == "__main__":
     main()
-
-
-
-

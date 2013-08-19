@@ -465,6 +465,7 @@ class POXInterface():
 ##############################
 # POX Launch the application.
 ##############################
-def launch (transparent=False, application="TwoLoggers"):
+#def launch (transparent=False, application="TwoLoggers"):
+def launch (transparent=False, application="BloomFilterUnitTest"):
     # The second component is argument for slick_controller.
     core.registerNew(slick_controller, str_to_bool(transparent), application)

@@ -1,7 +1,7 @@
 ############
 # p0f
 ############
-class P0fFunctionApp():
+class P0f():
     def __init__(self,inst,AD,flows):
         self.cntxt = inst
         self.num_functions = 1
