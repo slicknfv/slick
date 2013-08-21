@@ -26,7 +26,16 @@ class Element():
         packet = dpkt.ethernet.Ethernet( buf )
         return self.shim.extract_flow( packet )
 
-    def raise_trigger( self, trigger ):
+    def raise_trigger( self, trigger_params ):
+        """After attaching the required values send element trigger.
+
+        Args:
+          trigger:
+            Key:Value pairs of the values to be sent to controller.
+        """
+        trigger = {"ed": self.ed, "type":"trigger"}
+        for key, value in trigger_params.iteritems():
+          trigger[key] = value
         self.shim.client_service.raise_trigger( trigger )
 
     def fwd_pkt( self, buf ):

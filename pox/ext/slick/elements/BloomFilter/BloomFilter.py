@@ -74,7 +74,6 @@ class BloomFilter(Element):
     Returns:
         None
     """
-    trigger = {"ed": self.ed}
     flow = self.extract_flow(buf)
     eth = dpkt.ethernet.Ethernet(buf)
     pkt_len = len(buf)
@@ -84,14 +83,13 @@ class BloomFilter(Element):
       src_ip = socket.inet_ntoa(ip.src)
       if(ip.p == dpkt.ip.IP_PROTO_TCP):
         tcp =ip.data
-        #bloom filters value to match
+        # bloom filters value to match
         val = str(tcp.dport)
-        #Check if value is present in the filter
+        # Check if value is present in the filter
         val_present = val in self.lib_object
         logging.info('Matched the port number: %s', val)
         if(val_present):
-          trigger["type"] = "trigger"
-          trigger["BF_trigger_type"] = "VAL_DETECTED"
+          trigger = {"BF_trigger_type":"VAL_DETECTED"}
           # Call base class raise trigger.
           self.raise_trigger(trigger)
     # This must be called to forward the packet.
