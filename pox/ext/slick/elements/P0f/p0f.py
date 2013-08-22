@@ -10,10 +10,10 @@ from scapy.packet import NoPayload
 from scapy.packet import Packet # Convert buf into packet.
 from scapy.layers.l2 import Ether 
 
-conf.p0f_base ="../p0f/p0f.fp"
-conf.p0fa_base ="../p0f/p0fa.fp"
-conf.p0fr_base ="../p0f/p0fr.fp"
-conf.p0fo_base ="../p0f/p0fo.fp"
+conf.p0f_base  = "../pox/ext/slick/elements/P0f/p0f.fp"
+conf.p0fa_base = "../pox/ext/slick/elements/P0f/p0fa.fp"
+conf.p0fr_base = "../pox/ext/slick/elements/P0f/p0fr.fp"
+conf.p0fo_base = "../pox/ext/slick/elements/P0f/p0fo.fp"
 
 
 ###############
