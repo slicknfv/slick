@@ -9,7 +9,7 @@ parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,parentdir+"/pox/ext/slick/elements") 
 from Logger.Logger import Logger
 from TriggerAll.TriggerAll import TriggerAll
-from dns_dpi.dns_dpi_function import DnsDpiFunction
+from DnsDpi.DnsDpi import DnsDpi
 from P0f.P0f import P0f
 from Drop.Drop import Drop
 from Noop.Noop import Noop
@@ -40,7 +40,7 @@ class ClientService(rpyc.Service):
         Initialize the code.
         params is used to provide boot time paramter for the function installation.
     """
-    def exposed_install_function(self,msg):
+    def exposed_install_function(self, msg):
         fd = int(msg["fd"])
         flow = msg["flow"]
         function_name = str(msg["function_name"])
@@ -48,30 +48,30 @@ class ClientService(rpyc.Service):
         #self.flow_to_fd_map[flow] = fd
         function_handle = None
         if(function_name == "Logger"):
-            function_handle = Logger(self.shim,fd)#start the function but pass the shim reference to invoke trigger.
+            function_handle = Logger(self.shim, fd)#start the function but pass the shim reference to invoke trigger.
             function_handle.init(params_dict)# init invoked on the application.
         if(function_name == "TriggerAll"):
-            function_handle = TriggerAll(self.shim,fd)#start the function
+            function_handle = TriggerAll(self.shim, fd)#start the function
             function_handle.init(params_dict)# init invoked on the application.
-        if(function_name == "DNS_DPI"):
+        if(function_name == "DnsDpi"):
             print "DNS_DPI Installed"
-            function_handle = DnsDpiFunction(self.shim,fd)#start the function
+            function_handle = DnsDpi(self.shim, fd)#start the function
             function_handle.init(params_dict)# init invoked on the application.
         if(function_name == "Drop"):
-            function_handle = Drop(self.shim,fd)#start the function
+            function_handle = Drop(self.shim, fd)#start the function
             function_handle.init(params_dict)# init invoked on the application.
         if(function_name == "P0f"):
-            function_handle = P0f(self.shim,fd)
+            function_handle = P0f(self.shim, fd)
             function_handle.init(params_dict)
         if(function_name == "BloomFilter"):
-            function_handle = BloomFilter(self.shim,fd)
+            function_handle = BloomFilter(self.shim, fd)
             function_handle.init(params_dict)
         if(function_name == "Noop"):
             function_handle = Noop(self.shim,fd)#start the function
             function_handle.init(params_dict)# init invoked on the application.
 
         try:
-            if(isinstance(flow['nw_src'],unicode)): #BAD HACK
+            if(isinstance(flow['nw_src'], unicode)): #BAD HACK
                 flow['nw_src'] = flow['nw_src'].encode('ascii','replace')
                 #flow['nw_src'] = socket.inet_aton(flow['nw_src'])
                 print flow['nw_src']
@@ -136,11 +136,6 @@ class ClientService(rpyc.Service):
     def get_function_handle_from_flow(self,flow):
         #fd = self.flow_to_fd_map[flow]
         fd = self.shim_table.lookup_flow(flow) #Update flow to fd mapping.
-        if(fd != None):
-            pass
-            #print flow
-            #print fd #fd == None means no match.
-            #print flow
         if(fd !=None):
             if not (self.fd_to_object_map.has_key(fd)):
                 return None
