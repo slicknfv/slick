@@ -95,12 +95,12 @@ class DNSProcess:
             if not broadcast:
                 if(ip.p == dpkt.ip.IP_PROTO_TCP):
                     pass
-                    #tcp =ip.data
                 elif(ip.p == dpkt.ip.IP_PROTO_UDP):
                     udp =ip.data
                     #print "dst port:", udp.dport
                     if((udp.dport == 53) or (udp.sport == 53)): # A request. 
                         if(udp.dport == 53): # A request. 
+                            print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX BILALLLLLLLLLLLLL"
                             return self.dns_handler.handle_dns_request(ip.src,ip.dst,ip.p,udp.sport,udp.dport,udp.data)
                         if(udp.sport == 53): # A DNS response
                             self.dns_handler.handle_dns_response(ip.src,ip.dst,ip.p,udp.sport,udp.dport,udp.data)
