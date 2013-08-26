@@ -4,9 +4,6 @@ import socket
 import dpkt
 import sys
 import pcap
-import constants
-import util
-#import packet.dns
 
 import re # Need this regular expression to search through 
 import time

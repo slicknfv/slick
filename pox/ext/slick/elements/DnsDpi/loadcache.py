@@ -1,6 +1,5 @@
 import glob
 from collections import defaultdict
-import os
 
 class LoadCache:
 	"""LoadCache for laoding the blocked domain names."""
@@ -24,13 +23,9 @@ class LoadCache:
 			f = open(item,'r')
 			for domain in f.readlines():
 				self.block_domain_dict[domain.rstrip()] = True
-		print "Length of domain names: " ,len(self.block_domain_dict)
-                print self.block_domain_dict
 
 	def is_blocked_domain(self,domain_name):
-		print "Looking up:................................................................. ",domain_name
 		if(self.block_domain_dict.has_key(domain_name)):
-                        print "......................................................................."
 			return True
 		else:
 			return False
