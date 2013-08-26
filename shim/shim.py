@@ -10,8 +10,6 @@ sys.path.insert(0,parentdir)
 sys.path.insert(0,"/home/mininet/middlesox/pox/ext") 
 
 sys.path.insert(0,'../lib/')
-print sys.path
-print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 import pcap as pcap
 
 import socket
@@ -60,8 +58,6 @@ NW_TOS     = "nw_tos"
 TP_SRC     = "tp_src"
 TP_DST     = "tp_dst"
 
-DEBUG_COLLECTION = False
-
 def shim_loop_helper(sh, hdr, pkt):
 	sh.decode(hdr,pkt)
 
@@ -100,7 +96,7 @@ class Shim:
             self.forward_data_sock.bind(("eth1", 0))
 
     def register_machine(self):
-        print "MAC Address: ",self.mac, "Machine IP Address:",self.mb_ip
+        print "Registering middlebox machine at MAC Address: ",self.mac, "and IP Address:",self.mb_ip
         register_msg = {"type":"register","machine_mac":self.mac,"machine_ip":self.mb_ip}
         self.client.send_data_basic(register_msg)
 
@@ -108,7 +104,7 @@ class Shim:
     # Opens and gives a handle of pcap file.
     # --
     def loadpcap(self):
-        print self.filename
+        print 'Reading pcap dump from file:', self.filename
         if(self.filename):
             f = open(self.filename)
             self.pcap_file = dpkt.pcap.Reader(f)
@@ -219,7 +215,6 @@ class Shim:
                 msg = self.client.recv_data_basic()
                 if(msg):
                     self.decode_msg_and_call(msg)
-                    print "YYYYYYYYYYYYYYYYYYYYYYYYYYYYY",msg
                 pass
             self.demux(buf)
 
@@ -249,13 +244,9 @@ class Shim:
         if(flow[NW_DST] == socket.inet_aton(self.mb_ip)):
             print "NOT USING IT"
         else:
-            #print "This is a data packet"
-            #print flow
             func_handle = self.client_service.get_function_handle_from_flow(flow)
-            #print func_handle
             if(func_handle):
                 # Based on the function_hadle 
-                #print "This is a data packet"
                 print flow,func_handle
                 func_handle.process_pkt(buf)
             else:
@@ -263,7 +254,6 @@ class Shim:
                 reverse_flow = self.get_reverse_flow(flow)
                 func_handle = self.client_service.get_function_handle_from_flow(reverse_flow)
                 if(func_handle):
-                    print "FOUND REVERSE FLOW"
                     func_handle.process_pkt(buf)
                 else:
                     pass
