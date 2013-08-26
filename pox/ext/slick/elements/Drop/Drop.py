@@ -4,7 +4,7 @@
 from slick.Element import Element
 
 class Drop(Element):
-    def __init__( self, shim, fd ):
+    def __init__( self, shim, ed ):
         Element.__init__( self, shim, ed )
 
     def process_pkt( self, buf ):
