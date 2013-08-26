@@ -3,6 +3,7 @@
 import sys
 import os
 import commands # for getting the default interface
+import signal
 
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -60,6 +61,10 @@ TP_DST     = "tp_dst"
 
 def shim_loop_helper(sh, hdr, pkt):
 	sh.decode(hdr,pkt)
+
+def signal_handler(unused_signal, unused_frame):
+    print 'Shutting Down Shim.'
+    sys.exit(0)
 
 class Shim:
 
@@ -345,6 +350,7 @@ def usage():
 
             
 def main(argv):
+    signal.signal(signal.SIGINT, signal_handler)
     default_interface = commands.getoutput("ifconfig -s | grep eth0 | awk '{print $1}'")
     iface = default_interface
     oface = default_interface
