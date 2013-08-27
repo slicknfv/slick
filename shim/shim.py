@@ -7,27 +7,20 @@ import signal
 
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0,parentdir) 
-sys.path.insert(0,"/home/mininet/middlesox/pox/ext") 
+sys.path.insert(0, parentdir) 
+sys.path.insert(0, "/home/mininet/middlesox/pox/ext") 
 
-sys.path.insert(0,'../lib/')
+sys.path.insert(0, '../lib/')
 import pcap as pcap
 
 import socket
 import dpkt
 import getopt
-import select
-import re 
 import time
 import datetime
 import string
 import json
 
-from collections import defaultdict
-from collections import deque
-from sets import Set
-
-from time import gmtime, strftime
 from uuid import getnode as get_mac
 
 ############################################################
@@ -38,11 +31,6 @@ from shim_table import ShimTable
 import shim
 
 from dynamic_load import MiddleboxModules
-
-def ip_to_str(a):
-    return "%d.%d.%d.%d" % ((a >> 24) & 0xff, (a >> 16) & 0xff, \
-                            (a >> 8) & 0xff, a & 0xff)
-
 
 IN_PORT    = "in_port"
 DL_SRC     = "dl_src"
@@ -60,7 +48,7 @@ TP_SRC     = "tp_src"
 TP_DST     = "tp_dst"
 
 def shim_loop_helper(sh, hdr, pkt):
-	sh.decode(hdr,pkt)
+	sh.decode(hdr, pkt)
 
 def signal_handler(unused_signal, unused_frame):
     print 'Shutting Down Shim.'
@@ -68,7 +56,7 @@ def signal_handler(unused_signal, unused_frame):
 
 class Shim:
 
-    def __init__(self,iface,oface,filename):
+    def __init__(self, iface, oface, filename):
         self.iface = iface
         self.oface = oface
         print self.iface
@@ -101,26 +89,25 @@ class Shim:
             self.forward_data_sock.bind(("eth1", 0))
 
     def register_machine(self):
-        print "Registering middlebox machine at MAC Address: ",self.mac, "and IP Address:",self.mb_ip
-        register_msg = {"type":"register","machine_mac":self.mac,"machine_ip":self.mb_ip}
+        """Registers the middlebox with slick controller."""
+        print "Registering middlebox machine at MAC Address: ", self.mac, "and IP Address:", self.mb_ip
+        register_msg = {"type":"register", "machine_mac":self.mac, "machine_ip":self.mb_ip}
         self.client.send_data_basic(register_msg)
 
-    # --
-    # Opens and gives a handle of pcap file.
-    # --
     def loadpcap(self):
+        """Opens and gives a handle of pcap file.
+        """
         print 'Reading pcap dump from file:', self.filename
         if(self.filename):
             f = open(self.filename)
             self.pcap_file = dpkt.pcap.Reader(f)
             for ts, buf in self.pcap_file:
-                self.decode(None,buf)
+                self.decode(None, buf)
     
 
-    # --
-    # This function is for development and debugging from pcap files.
-    # --
     def printpcap(self):
+        """This function is for development and debugging from pcap files.
+        """
         for ts, buf in self.pcap_file:
             print ts,len(buf)
             eth = dpkt.ethernet.Ethernet(buf)
@@ -139,16 +126,13 @@ class Shim:
                 udp = ip.data
                 print "source port:", udp.sport
                 print "dst port:", udp.dport
-                
             print "Source IP:", ip.src.encode("hex")
             print "Dst IP:",ip.dst.encode("hex")
 
-
-    # --
-    # This function is used to sniff from wire
-    # TODO: Add Code for different formats of streams if required.
-    # --
     def sniff(self):
+        """This function is used to sniff from wire
+            TODO: Add Code for different formats of streams if required.
+        """
         # <dave>
         try:
 	    promiscuousMode = True
@@ -168,8 +152,6 @@ class Shim:
         # For further details: http://wiki.wireshark.org/SLL or man page of packet 7
 
         pc = pcap.pcap(self.iface)
-        #pc = pcap.pcap("eth0")
-        #print 'Listening on %s: With filter %s' % (pc.name, pc.filter)
         try:
             decode = {  pcap.DLT_LOOP:dpkt.loopback.Loopback,
                         pcap.DLT_NULL:dpkt.loopback.Loopback,
@@ -185,36 +167,23 @@ class Shim:
             nrecv, ndrop, nifdrop = pc.stats()
             print '\n%d packets received by filter' % nrecv
             print '%d packets dropped by kernel' % ndrop
-            
     
-    def decode_msg_and_call(self,data):
+    def decode_msg_and_call(self, data):
         message_list = data.split('\n')
         print message_list
-        for index,m in enumerate(message_list):
+        for index, m in enumerate(message_list):
             if(index < len(message_list)-1):
-                print index,m
                 msg = json.loads(m)
-                #print "XXXXXXXXXXXXXXX",m
-                print "YYYYYYYYYYYYYYY",msg
-                #print len(message_list)
                 if(msg["type"] == "install"):
-                    #if (self.client_service.fd_to_object_map.has_key(fd)):
-                    #    print "ERROR: We re trying to install a function with fd which is already being used."
-                    #else:
-                    #    self.client_service.exposed_install_function(flow,fd,function_name,params_dict)
                     self.client_service.exposed_install_function(msg)
                 if(msg["type"] == "configure"):
                     self.client_service.exposed_configure_function(msg)
                 if(msg["type"] == "stop"):
                     self.client_service.exposed_stop_function(msg)
-                
 
-
-    # --
     # This function is used to decode the packets received from wire
     #   pc: pcap stream of packets
-    # --
-    def old_decode(self,pc):
+    def old_decode(self, pc):
         for ts, buf in pc:
             if(self.client):
                 msg = self.client.recv_data_basic()
@@ -228,22 +197,28 @@ class Shim:
             msg = self.client.recv_data_basic()
             if(msg):
                 self.decode_msg_and_call(msg)
-                print "YYYYYYYYYYYYYYYYYYYYYYYYYYYYY",msg
         self.demux(buf)
 
-    # This method demuxes the traffic.
-    # It takes a packet.
-    # extracts the flow.
-    #   If flow belongs to configure traffic then does not touch it and passes it up.
-    #   else: look up the function handle using the flow information.
-    # Function handle is used to call process packet.
-    #   Process packet can be another method of a class
-    #   Can be a socket, where another process is reading the packets to depcrypt it.
-    #   Can be shared memory pointer.
-    # What if MUX/DEMUX is implemented on a NIC.
-    #   if implemented on NIC hardware then it can be interface Tx queue,where a process reads the interface for incoming packet.
 
-    def demux(self,buf):
+    def demux(self, buf):
+        """Demuxes the traffic. 
+
+        It takes a packet and extracts the flow.
+           If flow belongs to configure traffic then does not touch it and passes it up.
+           else: look up the function handle using the flow information.
+         Function handle is used to call process packet.
+           Process packet can be another method of a class
+           Can be a socket, where another process is reading the packets to depcrypt it.
+           Can be shared memory pointer.
+         What if MUX/DEMUX is implemented on a NIC.
+           If implemented on NIC hardware then it can be interface Tx queue,
+           where a process reads the interface for incoming packet.
+
+        Args:
+            buf: Ethernet frame from pcap library.
+        Returns:
+            None
+        """
         packet = dpkt.ethernet.Ethernet(buf)
         flow = self.extract_flow(packet)
         if(flow[NW_DST] == socket.inet_aton(self.mb_ip)):
@@ -252,7 +227,6 @@ class Shim:
             func_handle = self.client_service.get_function_handle_from_flow(flow)
             if(func_handle):
                 # Based on the function_hadle 
-                print flow,func_handle
                 func_handle.process_pkt(buf)
             else:
                 #try reverse_flow
@@ -260,18 +234,14 @@ class Shim:
                 func_handle = self.client_service.get_function_handle_from_flow(reverse_flow)
                 if(func_handle):
                     func_handle.process_pkt(buf)
-                else:
-                    pass
-                #print "WARNING: We don't have a handler for the packet"
 
-    # --
-    # Utility functions
-    # --
-    # use this to extract openflow flow.
-    def extract_flow(self,eth):
-        """
-        Extracts and returns flow attributes from the given 'ethernet' packet.
-        The caller is responsible for setting IN_PORT itself.
+    def extract_flow(self, eth):
+        """Extracts and returns flow attributes from the given 'ethernet' packet.
+
+        Args:
+            Ethernet frame from pcap library.
+        Retruns:
+            Returns a flow dict.
         """
         attrs = {}
         attrs[DL_SRC] = eth.src
@@ -284,45 +254,34 @@ class Shim:
     
         if(eth.type== dpkt.ethernet.ETH_TYPE_IP):
             ip = eth.data
-            #print "Source IP: ",int(ip.src.encode("hex"),16)
-            #print "Destination IP: ",int(ip.dst.encode("hex"),16)
+            # "Source IP: ",int(ip.src.encode("hex"),16)
+            # "Destination IP: ",int(ip.dst.encode("hex"),16)
             attrs[NW_SRC] = socket.inet_ntoa(ip.src)
             attrs[NW_DST] = socket.inet_ntoa(ip.dst)
             attrs[NW_PROTO] = ip.p
             attrs[NW_TOS] = ip.tos
             p = ip.data
-            #print "BBBBBBBBBBBBBBB"
-            #print attrs[NW_SRC]
-            #print attrs[NW_DST]
-            #print "XXXXXXXXXX"
     
             if((ip.p == dpkt.ip.IP_PROTO_TCP) or (ip.p ==dpkt.ip.IP_PROTO_UDP)): 
                 attrs[TP_SRC] = p.sport
                 attrs[TP_DST] = p.dport
             else:
-                #if isinstance(p, icmp):
-                #    attrs[TP_SRC] = p.type
-                #    attrs[TP_DST] = p.code
-                #else:
                 attrs[TP_SRC] = 0
                 attrs[TP_DST] = 0
         else:
             attrs[NW_SRC] = 0
             attrs[NW_DST] = 0
-            #if isinstance(p, arp):
-            #    attrs[NW_PROTO] = p.opcode
-            #else:
-            #    attrs[NW_PROTO] = 0
-            #attrs[NW_TOS] = 0
-            #attrs[TP_SRC] = 0
-            #attrs[TP_DST] = 0
-        #print attrs
         return attrs
 
-    # Return a reverse flow for the given flow.
-    def get_reverse_flow(self,flow):
+    def get_reverse_flow(self, flow):
+        """Return a reverse flow for the given flow.
+
+        Args:
+            flow: Flow dict
+        Returns:
+            Reverse flow dict.
+        """
         attrs = {}
-        #attrs[in_port] = None
         attrs[DL_SRC] = flow[DL_DST]
         attrs[DL_DST] = flow[DL_SRC]
         attrs[DL_TYPE] = flow[DL_TYPE]
@@ -348,7 +307,6 @@ def usage():
     pass
 
 
-            
 def main(argv):
     signal.signal(signal.SIGINT, signal_handler)
     default_interface = commands.getoutput("ifconfig -s | grep eth0 | awk '{print $1}'")
@@ -358,41 +316,37 @@ def main(argv):
     mode = 2
     file_name = None
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hdi:f:o:", ["help","debug","iface","file","oface"])
+        opts, args = getopt.getopt(sys.argv[1:], "hdi:f:o:", ["help", "debug", "iface", "file", "oface"])
     except getopt.GetoptError:
         print "Option error!"
         usage()
         sys.exit(2)
-
     # should change this to use the OptionParser class
-
     for opt, arg in opts:
         print opt
-        if opt in ("-h","--help"):
+        if opt in ("-h", "--help"):
             usage()
             sys.exit()
-        elif opt in("-d","--debug"):
+        elif opt in("-d", "--debug"):
             mode = constants.DEBUG_MODE
-        elif opt in("-f","--file"): 
+        elif opt in("-f", "--file"): 
             file_name = arg
-        elif opt in("-i","--iface"):
+        elif opt in("-i", "--iface"):
             iface = str(arg)
-        elif opt in("-o","--oface"):
+        elif opt in("-o", "--oface"):
             oface = str(arg)
-            print "Listening on the interface: ",iface
+            print "Listening on the interface: ", iface
         else:
             assert False, "Unhandled Option"
             usage()
-
     if(iface):
-        print "Listening on the interface: ",iface
-        print "Sending on the interface: ",oface
-        cd_pcap = Shim(iface,oface,None)
+        print "Listening on the interface: ", iface
+        print "Sending on the interface: ", oface
+        cd_pcap = Shim(iface, oface, None)
         cd_pcap.sniff() # hopefully you have done all the hw
-
     if(file_name):
-        print "Sending on the interface: ",oface
-        cd_pcap = Shim(None,oface,file_name)
+        print "Sending on the interface: ", oface
+        cd_pcap = Shim(None, oface, file_name)
         cd_pcap.loadpcap()
 
 if __name__ == "__main__":
