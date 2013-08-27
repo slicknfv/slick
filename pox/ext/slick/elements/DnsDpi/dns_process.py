@@ -1,20 +1,7 @@
-# This class can be used to collect data from different sources.
-
+"""This class has packet decoding.
+"""
 import socket
 import dpkt
-import sys
-import pcap
-
-import re # Need this regular expression to search through 
-import time
-import datetime
-
-import select
-from collections import defaultdict
-from collections import deque
-from sets import Set
-
-from time import gmtime, strftime
 import string
 
 from loadcache import LoadCache
@@ -24,7 +11,7 @@ from handledns import HandleDNS
 class DNSProcess:
     def __init__(self):
         self.load_cache = LoadCache()
-        self.load_cache.load_files() # need to do this during init as its part of init.
+        self.load_cache.load_files()
         self.dns_handler = HandleDNS(self.load_cache)
 
     def decode(self,buf):
@@ -57,5 +44,3 @@ class DNSProcess:
                             self.dns_handler.handle_dns_response(ip.src,ip.dst,ip.p,udp.sport,udp.dport,udp.data)
                     else:
                         pass
-
-

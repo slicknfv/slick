@@ -15,14 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-An L2 learning switch.
-
-It is derived from one written live for an SDN crash course.
-It is somwhat similar to NOX's pyswitch in that it installs
-exact-match rules for each flow.
-"""
-
 import time
 import logging
 import sys  # for loading the application from commandline
@@ -45,17 +37,6 @@ from utils.packet_utils import *
 from apps import *
 
 log = core.getLogger()
-
-
-## This class has information about the Slick Controller initialization.
-#class SlickInit (object):
-#    def __init__ (self, connection, transparent):
-#        # Switch we'll be adding L2 learning switch capabilities to
-#        self.connection = connection
-#        # We want to hear PacketIn messages, so we listen
-#        # to the connectio
-#        # But we also need datapath_join event and the datapath_leave event.i.e. connectionUP and connectionDown
-#        self.connection.addListeners(self)
 
 
 class slick_controller (object):
@@ -136,11 +117,6 @@ class slick_controller (object):
         if(self.switch_connections.has_key(dpid)):
             return self.switch_connections[dpid]
     
-    #def app_installations(self):
-    #    # For the  MSManager for JSONMsgs
-    #    JSONMsg_event.register_event_converter(self.ctxt)
-    #    self.register_handler(JSONMsg_event.static_get_name(), self.json_message_handler)
-
     def timer_callback(self):
         # Periodically initialize the applications.
         # Calling repeatedly allows for dynamic app loading (in theory)
@@ -203,7 +179,7 @@ class slick_controller (object):
 
         if(self.download.add_mb_client(mac_addr,ip_addr,None,None)):
             # Given the function name send the files to the middlebox.
-            if(self.download.put_file(mac_addr,function_name)): 
+            if(self.download.put_file(mac_addr,function_name)):
                 if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,mac_addr)):
                     #if(is_last_call):
                     #    self.controller_interface.mb_placement_steering(mac_addr,flow,self.function_descriptor)
@@ -214,24 +190,6 @@ class slick_controller (object):
                 return -2
         else:
             return -3
-
-                
-    #This function takes the src dpid, dst dpid and list of machines .. the
-    def pickMBMachine(self, src, dst, machinelist):
-        shortestPath = 0
-        shortestPath_MB = machinelist[0]
-        for mb in machinelist:
-            mb_dpid = XXXXXXXXXXXXXXXXXXXXXX
-            route1 = pyrouting.Route()
-            route1.id.src = src
-            route1.id.dst = mb_dpid
-            route2 = pyrouting.Route()
-            route2.id.src = mb_dpid
-            route2.id.dst = dst
-            if( len(route1.path) + len(route2.path) < shortestPath):
-                shortestPath = len(route1.path) + len(route2.path)
-                shortestPath_MB = mb
-        return mb
 
     def configure_elem(self,app_desc,fd,application_conf_params):
         if(self.route_compiler.application_handles.has_key(fd)):
@@ -436,27 +394,16 @@ class POXInterface():
 
         if(matched_flow_tuple != None):
             #Can't assign in port as its assigned by the routing algorithm.
-            #if(matched_flow_tuple.dl_src != None):
             matching_flow.dl_src = matched_flow_tuple.dl_src
-            #if(matched_flow_tuple.dl_dst != None):
             matching_flow.dl_dst = matched_flow_tuple.dl_dst
-            #if(matched_flow_tuple.dl_vlan != None):
             matching_flow.dl_vlan = matched_flow_tuple.dl_vlan
-            #if(matched_flow_tuple.dl_vlan_pcp != None):
             matching_flow.dl_vlan_pcp = matched_flow_tuple.dl_vlan_pcp
-            #if(matched_flow_tuple.dl_type != None):
             matching_flow.dl_type = matched_flow_tuple.dl_type
-            #if(matched_flow_tuple.nw_tos != None):
             matching_flow.nw_tos = None  #matched_flow_tuple.nw_tos
-            #if(matched_flow_tuple.nw_proto != None):
             matching_flow.nw_proto = matched_flow_tuple.nw_proto
-            #if(matched_flow_tuple.nw_src != None):
             matching_flow.nw_src = matched_flow_tuple.nw_src
-            #if(matched_flow_tuple.nw_dst != None):
             matching_flow.nw_dst = matched_flow_tuple.nw_dst
-            #if(matched_flow_tuple.tp_dst != None):
             matching_flow.tp_dst = matched_flow_tuple.tp_dst
-            #if(matched_flow_tuple.tp_src != None):
             matching_flow.tp_src = matched_flow_tuple.tp_src
         else:
             return None # so we know there is no match.
@@ -465,7 +412,6 @@ class POXInterface():
 ##############################
 # POX Launch the application.
 ##############################
-#def launch (transparent=False, application="TwoLoggers"):
-def launch (transparent=False, application="BloomFilterUnitTest"):
+def launch (transparent=False, application="TwoLoggers"):
     # The second component is argument for slick_controller.
     core.registerNew(slick_controller, str_to_bool(transparent), application)
