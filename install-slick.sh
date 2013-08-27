@@ -75,17 +75,19 @@ tar xzf scapy-latest.tar.gz
 cd $ARCHIVE_DIR/scapy-2.1.0
 sudo python setup.py install
 
-echo ""
-echo ""
-echo "*** Installing pybloomfilter..."
-sudo easy_install pybloomfilter
-echo "*** Installing c-algorithms for pybloomfilter..."
+echo "*** Installing c-algorithms for pybloomfiltermmap..."
 cd $ARCHIVE_DIR
 tar xzf c-algorithms-1.2.0.tar.gz
 cd $ARCHIVE_DIR/c-algorithms-1.2.0
 ./configure
 make
 sudo make install
+sudo ldconfig
+
+echo ""
+echo ""
+echo "*** Installing pybloomfiltermmap..."
+sudo easy_install pybloomfiltermmap
 
 echo ""
 echo ""
