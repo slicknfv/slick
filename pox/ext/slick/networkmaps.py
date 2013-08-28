@@ -10,20 +10,6 @@ from specs import MachineSpec
 from specs import ElementSpec
 from utils.packet_utils import *
 
-IN_PORT    = "in_port"
-DL_SRC     = "dl_src"
-DL_DST     = "dl_dst"
-DL_VLAN    = "dl_vlan"
-DL_VLAN_PCP = "dl_vlan_pcp"
-DL_TYPE    = "dl_type"
-NW_SRC     = "nw_src"
-NW_SRC_N_WILD = "nw_src_n_wild"
-NW_DST     = "nw_dst"
-NW_DST_N_WILD = "nw_dst_n_wild"
-NW_PROTO   = "nw_proto"
-NW_TOS     = "nw_tos"
-TP_SRC     = "tp_src"
-TP_DST     = "tp_dst"
 """
 	This class provides the function map for each dpid.
         We need to update the location of functions once they are installed or removed.
@@ -46,7 +32,6 @@ class FunctionMap():
         self.machine_specs = MachineSpec()
     
     def read_json(self):
-    	print self.function_map_file
     	json_data = open(self.function_map_file);
     	json_data_dict = json.load(json_data)
     	json_data.close() # Close the file and return
@@ -93,9 +78,6 @@ class FunctionMap():
                 if(len(f_list) >= 1):
                     if(f_list[0] == function_name):
                         function_locations[(dpid,port)] = function_name
-                    pass
-                pass
-            pass
         return function_locations
 
     # TODO: Implement the closest box optimization.
@@ -103,7 +85,6 @@ class FunctionMap():
     # return the dpid with the function_name installed on it.
     def get_closest_location(self,dpid,function_name):
         return dpid
-    
     # -- 
     # Given the dpid and function name return the port number.
     # --
@@ -122,15 +103,11 @@ class FunctionMap():
                 if(len(f_list) > 1):
                     if(f_list[0] not in func_list):
                         func_list.append(f_list[0])
-                    pass
-                pass
-            pass
         return func_list
 
 
     # IP address should be a string and function_desc is an integer.
     def update_function_machine(self,ip_addr,machine_mac,function_desc):
-        print function_desc, machine_mac
         if((function_desc != None) and (machine_mac !=None)):
             self.fd_map[machine_mac].append(function_desc)
             print "fd_map: populating existing",self.fd_map
@@ -291,7 +268,6 @@ class Policy():
         self.FlowTuple = namedtuple("FlowTuple",["in_port","dl_src","dl_dst","dl_vlan","dl_vlan_pcp","dl_type","nw_src","nw_dst","nw_proto","tp_src","tp_dst"])
         self.flow_to_function_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
         self.flow_to_fd_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
-        #self.init_tuples()
     
     """
      These three functions: 
@@ -301,12 +277,6 @@ class Policy():
 	# Given a in_port,flow and dictionary of functions{key=number:value=function_name}
     """
     def add_flow(self,in_port,flow,functions):
-		""" Debug
-		for k,v in flow.iteritems():
-			print k,v
-		"""
-		# TypeError: unhashable type: 'array.array'
-                #print flow['dl_src'],flow['dl_dst']
                 src_mac =None
                 dst_mac = None
                 if(flow['dl_src'] != None):
@@ -367,7 +337,6 @@ class Policy():
         rf = self.FlowTuple(in_port=None,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src=None,nw_dst=None,nw_proto=None,tp_src=53,tp_dst=None) # For incoming.
         self.flow_to_function_mapping[f] = {1:"DNS-DPI",2:"DROP"}
         self.flow_to_function_mapping[rf] = {1:"DNS-DPI",2:"DROP"}
-        #print self.flow_to_function_mapping
 
     # Return a reverse flow for the given flow.
     def get_reverse_flow(self,flow):
@@ -461,8 +430,6 @@ class Policy():
         src_mac = mac_to_int(flow.dl_src.toRaw())
         dst_mac = mac_to_int(flow.dl_dst.toRaw())
         f = self.FlowTuple(in_port=inport,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow.dl_vlan,dl_vlan_pcp=flow.dl_vlan_pcp,dl_type= flow.dl_type,nw_src=flow.nw_src,nw_dst=flow.nw_dst,nw_proto=flow.nw_proto,tp_src=flow.tp_src,tp_dst=flow.tp_dst)
-        #print f
-        print self.flow_to_function_mapping
         function_dict = self.lookup_flow(f)
         if(len(function_dict) > 0):
         	print "There is a match"
@@ -470,7 +437,7 @@ class Policy():
         else:
         	return function_dict
 
-    # Returns a mtching flow of type ofp_match
+    # Returns a matching flow of type ofp_match
     # else returns a None
     def get_matching_flow(self,in_flow):
         src_mac = in_flow.dl_src
@@ -483,70 +450,58 @@ class Policy():
             if(item.in_port!=None):#If its not a don't care.
             	if(item.in_port == ft.in_port):
             		item_match = True 
-                        #matching_flow.in_port = item.in_port
             	else: 
             		continue
             if(item.dl_src!=None):#If its not a don't care.
             	if(item.dl_src == ft.dl_src):
             		item_match = True 
-                        #matching_flow.dl_src = item.dl_src
             	else:# If its not a don't care and we have not matched then its not what we are looking for. 
             		continue
             if(item.dl_dst!=None):
             	if(item.dl_dst == ft.dl_dst):
             		item_match = True 
-                        #matching_flow.dl_dst = item.dl_dst
             	else:
             		continue
             if(item.dl_vlan!=None):
             	if(item.dl_vlan == ft.dl_vlan):
             		item_match = True 
-                        #matching_flow.dl_vlan = item.dl_vlan
             	else:
             		continue
             if(item.dl_vlan_pcp!=None):
             	if(item.dl_vlan_pcp == ft.dl_vlan_pcp):
             		item_match = True 
-                        #matching_flow.dl_vlan_pcp = item.dl_vlan_pcp
             	else:
             		continue
             if(item.dl_type!=None):
             	if(item.dl_type == ft.dl_type):
             		item_match = True 
-                        #matching_flow.dl_type = item.dl_type
             	else:
             		continue
             if(item.nw_src!=None):
             	if(item.nw_src == ft.nw_src):
             		item_match = True 
-                        #matching_flow.nw_src = item.nw_src
             	else:
             		continue
             if(item.nw_dst!=None):
             	if(item.nw_dst == ft.nw_dst):
             		item_match = True 
-                        #matching_flow.nw_dst = item.nw_dst
             	else:
             		continue
             if(item.nw_proto!=None):
             	if(item.nw_proto == ft.nw_proto):
             		item_match = True 
-                        #matching_flow.nw_proto = item.nw_proto
             	else:
             		continue
             if(item.tp_src!=None):
                 if(item.tp_src == ft.tp_src):
                     item_match = True 
-                    #matching_flow.tp_src = item.tp_src
                 else:
                     continue
             if(item.tp_dst!=None):
                 if(item.tp_dst == ft.tp_dst):
                     item_match = True 
-                    #matching_flow.tp_dst = item.tp_dst
                 else:
                     continue
             if(item_match == True):
                 return item
-                #return matching_flow
         return None
