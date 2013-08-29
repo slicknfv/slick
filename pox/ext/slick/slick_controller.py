@@ -56,7 +56,7 @@ class slick_controller (object):
         self.function_descriptor = int(1)
         self.prev_time = 0
         #routing
-        self.route_compiler =  RouteCompiler(self)
+        self.route_compiler =  RouteCompiler()
         # JSON Messenger Handlers
         self.json_msg_events = {}
 
@@ -92,20 +92,6 @@ class slick_controller (object):
         log.debug("Connection %s" % (event.connection,))
         self.switches[event.dpid] = self._is_middlebox() # Keep track of switches.
         self.switch_connections[event.dpid] = event.connection
-
-    def _handle_PacketIn (self, event):
-        """
-        Handle packet in messages from the switch to implement above algorithm.
-        """
-        packet = event.parsed
-        """
-        print packet.src
-        print packet.dst
-        """
-        # Handle the functions
-        self.route_compiler.handle_functions(event)
-
-        # Setup routes for the flow to pass through
 
     # This box is for the middlebox.
     # Can one MAC be a middlebox and an IP address.
@@ -172,7 +158,7 @@ class slick_controller (object):
         # STEP 2: Install the function.
 
         #mac_addr = self.route_compiler.fmap.fd_machine_map[ip_addr]
-        self.route_compiler.fmap.update_function_machine(ip_addr,mac_addr,self.function_descriptor)
+        self.route_compiler.fmap.update_element_machine(ip_addr,mac_addr,self.function_descriptor)
         self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name}) #Function descriptor 
         self.route_compiler.update_application_handles(self.function_descriptor,application_object,app_desc)
         #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
@@ -194,7 +180,7 @@ class slick_controller (object):
     def configure_elem(self,app_desc,fd,application_conf_params):
         if(self.route_compiler.application_handles.has_key(fd)):
             if(self.route_compiler.is_allowed(app_desc,fd)):
-                msg_dst = self.route_compiler.fmap.get_mac_addr_from_func_desc(fd)
+                msg_dst = self.route_compiler.fmap.get_mac_addr_from_element_desc(fd)
                 app_handle = self.route_compiler.get_application_handle(fd) # not requied by additional check 
                 if((msg_dst != None) and (app_handle != None)):
                     self.ms_msg_proc.send_configure_msg(fd,application_conf_params,msg_dst)
@@ -203,7 +189,7 @@ class slick_controller (object):
     def remove_elem(self,app_desc,fd):
         # roll back
         if(self.ms_msg_proc.send_remove_msg(fd,parameters,mac_addr)):
-          desc_removed = self.route_compiler.fmap.del_function_desc(fd)
+          desc_removed = self.route_compiler.fmap.del_element_desc(fd)
         #update mb_placement_steering for changed elements
 
 from pox.core import core
@@ -375,7 +361,7 @@ class POXInterface():
 
         for func_desc,function_name in function_descriptors.iteritems():
             #print func_desc,function_name
-            mac_addr_temp = self.cntxt.route_compiler.fmap.get_mac_addr_from_func_desc(func_desc) 
+            mac_addr_temp = self.cntxt.route_compiler.fmap.get_mac_addr_from_element_desc(func_desc) 
 
             # Convert MAC in Long to EthAddr
             mac_str = mac_to_str(mac_addr_temp)

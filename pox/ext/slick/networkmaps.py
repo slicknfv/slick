@@ -1,4 +1,5 @@
 import os,sys
+import logging
 from time import time
 from socket import htons
 from struct import unpack
@@ -30,73 +31,16 @@ class FunctionMap():
         self.mac_to_ip = {} # Key= MAC -> ip_address
         self.element_specs = ElementSpec()
         self.machine_specs = MachineSpec()
-    
-    def read_json(self):
-    	json_data = open(self.function_map_file);
-    	json_data_dict = json.load(json_data)
-    	json_data.close() # Close the file and return
-    	self.function_map = json_data_dict
-    	return self.function_map
-    
-    # Return the list of connected ports.
-    def get_connected_ports(self,dpid):
-    	if(self.function_map.has_key(str(dpid))):
-    		return self.function_map.keys() 
-    
-    def init_switch(self,dpid,port,function):
-    	self.function_map[dpid][port] = function
-
-    # Add a newly discovered/added function on the switch's port.
-    def add_port(self,dpid,port,function):
-    	if(self.function_map.has_key(str(dpid))):
-    		if not self.function_map[dpid].has_key(port):
-    			self.function_map[dpid][port] = function
-    		else:
-    			raise Exception("Switch ",dpid," and port ",port," has an existing function")
-    	else:
-    		raise Exception("Switch ",dpid," does not have any middlebox attached to it")
-
-    # Remove a function from the port
-    def del_port(self,dpid,port):
-    	if(self.function_map.has_key(str(dpid))):
-    		if (self.function_map[dpid].has_key(port)):
-    			del self.function_map[dpid][port] 
-    		else:
-    			raise Exception("Switch ",dpid," and port ",port," has NO existing function")
-    	else:
-    		raise Exception("Switch ",dpid," does not have any middlebox attached to it")
-    """
-    # Given the function name.
-    # returns function_locations[(dpid,port)] = function_name dict where we have function available.
-    # Instead of function_names dict it should be dictionary of function descriptors.
-    # Thus we can have multiple instances of the same function on the same dpid,port
-    """
-    def get_function_locations(self,function_name):
-        function_locations = {}
-        for dpid,dictionary in self.function_map.iteritems():
-            for port,f_list in dictionary.iteritems():
-                if(len(f_list) >= 1):
-                    if(f_list[0] == function_name):
-                        function_locations[(dpid,port)] = function_name
-        return function_locations
 
     # TODO: Implement the closest box optimization.
     # or placement optimization here.
     # return the dpid with the function_name installed on it.
     def get_closest_location(self,dpid,function_name):
         return dpid
-    # -- 
-    # Given the dpid and function name return the port number.
-    # --
-    def get_function_port(self,dpid,function_name):
-        func_locs = self.get_function_locations(function_name)
-        for item in func_locs:
-            if(item[0] == dpid):
-                return item[1]
-    # --
-    # Simply get different functions available in the network.
-    # --
+
     def get_available_functions(self):
+        """Simply get different functions available in the network.
+        """
         func_list = []
         for dpid,dictionary in self.function_map.iteritems():
             for port,flist in dictionary.iteritems():
@@ -106,14 +50,15 @@ class FunctionMap():
         return func_list
 
 
-    # IP address should be a string and function_desc is an integer.
-    def update_function_machine(self,ip_addr,machine_mac,function_desc):
-        if((function_desc != None) and (machine_mac !=None)):
-            self.fd_map[machine_mac].append(function_desc)
-            print "fd_map: populating existing",self.fd_map
+    def update_element_machine(self, ip_addr, machine_mac, element_desc):
+        """IP address should be a string and element_desc is an integer.
+        """
+        if((element_desc != None) and (machine_mac !=None)):
+            self.fd_map[machine_mac].append(element_desc)
+            logging.info("fd_map: populating existing %s", self.fd_map)
         elif(machine_mac !=None):
-            print "fd_map: Creating New",self.fd_map
-            self.fd_map[machine_mac] = []
+            logging.info("fd_map: Creating New %s",self.fd_map)
+            self.fd_map[machine_mac] = [ ]
         if((machine_mac != None) and (ip_addr != None)):
             if (not self.mac_to_ip.has_key(machine_mac)):
                 self.mac_to_ip[machine_mac] = ip_addr
@@ -122,44 +67,50 @@ class FunctionMap():
     def get_ip_addr(self,mac):
         if(mac != None):
             return self.mac_to_ip[mac]
-    
-    def del_function_desc(self,function_desc):
-        if(function_desc != None):
-            if(function_desc in self.fd_map[mac_addr]):
-                self.fd_map[mac_addr].remove(function_desc)
+
+    def del_element_desc(self, element_desc):
+        if(element_desc != None):
+            if(element_desc in self.fd_map[mac_addr]):
+                self.fd_map[mac_addr].remove(element_desc)
                 return True
             else:
-                print "Function descriptor does not exist:",function_desc
+                logging.warn("Element descriptor does not exist:", element_desc)
                 return False
 
-    # Given the function desc. return the mac address [used by configure function]
-    def get_mac_addr_from_func_desc(self,func_desc):
-        print "fd_map",self.fd_map
+    def get_mac_addr_from_element_desc(self, element_desc):
+        """Given the element desc. return the mac address.
+
+        Args:
+              element_desc: Element descriptor assidned for the element instance.
+        Returns:
+              MAC address at which the element instance exists.
+        [used by configure function]
+        """
         for mac_addr in self.fd_map:
-            if(func_desc in self.fd_map[mac_addr]):
+            if(element_desc in self.fd_map[mac_addr]):
                 return mac_addr
 
-    # Returns the shim machine with the mac_addr
-    def get_machine_for_element(self,element_name):
+    def get_machine_for_element(self, element_name):
+        """Returns the shim machine with the mac_addr
+        Args:
+            element_name: name of the element, eg, Drop, Noop etc.
+        Returns:
+            mac addr of the machine that has the element instance for element_name.
+        """
         element_spec = self.element_specs.get_element_spec(element_name)
-        #print "get_machine_for_element: fd_map",self.fd_map
         for mac_addr in self.fd_map:
             if(mac_addr != None):
                 # TODO: Add recurrent optimization algorithm call here.
                 if (len(self.fd_map[mac_addr]) < MAX_FUNCTION_INSTANCES): # 10 functions can be added per machine.
                     return mac_addr
-        return None
 
-    """
-    Description:
-        Function to lookup the machine specification.
-    @args:
-        function_spec: Its the function specification
-
-    @returns:
-        list of mac addresses of machines whose spec match with function_spec.
-    """
     def lookup_machines(self,function_spec):
+        """Function to lookup the machine specification.
+        Args:
+            function_spec: Its the function specification
+        Returns:
+            list of mac addresses of machines whose spec match with function_spec.
+        """
         matched_machines = [] 
         #print function_spec
         if(function_spec.has_key("os") and function_spec.has_key("processor_type") and function_spec.has_key("os_flavor") and function_spec.has_key("os_flavor_version")):
@@ -168,97 +119,15 @@ class FunctionMap():
                     if((machine_spec["os"] == function_spec["os"]) and (machine_spec["processor_type"] == function_spec["processor_type"]) and (machine_spec["os_flavor"] == function_spec["os_flavor"]) and (machine_spec["os_flavor_version"] and function_spec["os_flavor_version"])):
                         matched_machines.append(mac)
                 else:
-                    raise Exception(" Invalid Machine Specification")
+                    raise Exception("Invalid Machine Specification")
         else: 
             raise Exception(" Invalid Function Specification")
         return matched_machines
 
 """
-# Tell which machines are hanging to which switches.
-# This is not the topology and not Functions Map, here manage machine specs. related information.
-# Also maintain the machine specification of each of these machines which will be loaded from a database etc.
-"""
-class MachineMap():
-    def __init__(self):
-        self.machine_ip_map = defaultdict(dict) # key=dpid:value=IP address 
-        self.mac_to_dpid_port = defaultdict(tuple)
-        self.ip_to_dpid_port = defaultdict(tuple)
-        self.ip_dpid = {} #keeps a record of the location of IP address. key:ip value: dpid
-        self.ip_port = {} #keeps a record of the location of IP address. key:ip value: port
-        self.element_specs = ElementSpec()
-        self.machine_specs = MachineSpec()
-
-    # Load the machine map from a file or from another module that 
-    # is responsible for routing the packets.
-    def _load_map(self,file_name):
-	if(file_name != None):
-	    json_data = open(file_name)
-	    machine_map = json.load(json_data)
-	    json_data.close() # Close the file and return
-	return machine_map # heavy 
-
-    # Return the machine map for the whole network.
-    def get_machine_map(self):
-	self.machine_ip_map = self._load_map("/home/openflow/noxcore/src/nox/coreapps/examples/tutorial/machine_map.json")
-	if(len(self.machine_ip_map) > 0):
-	    return self.machine_ip_map
-	else:
-	    raise Exception("Machine Map not present")
-
-
-    # Return the list IP addresses attached to the dpid.
-    def get_machine_ips(self,dpid):
-        machine_ips = []
-	if(dpid):
-	    for port,ip in self.machine_ip_map[dpid].iteritems():
-	        # Copied http://stackoverflow.com/questions/6291238/how-can-i-find-the-ips-in-network-in-python
-		ip_addr = reduce(lambda x,y: (x<<8) + y, [ int(x) for x in ip.split('.') ])
-		machine_ips.append(ip_addr)
-	    return machine_ips		 
-
-    """
-    # @args:datapath ID and Destination addr
-    # Return the port # for the desintation addr.
-    """
-    def get_dest_addr_port(self,dpid,ip_addr):
-	switch_addr_list =  self.get_machine_ips(str(dpid))
-	if(addr in switch_addr_list):
-	    ip_str = "%d.%d.%d.%d" % (addr >> 24,(addr & 0xffffff) >> 16,(addr & 0xffff) >> 8,(addr & 0xff))
-	    for port,ip in self.machine_ip_map[dpid].iteritems():
-	        if(ip == ip_str):
-		    return int(port)
-
-    def update_ip_dpid_mapping(self,dpid,port, flow):
-        #flow = extract_flow(packet)
-        src_ip = flow[core.NW_SRC]
-        if not (self.ip_dpid.has_key(src_ip)):
-            self.ip_dpid[src_ip] = dpid
-            #theo you also need to store the port --- or else you wouldn't be able to retrieve it.
-            self.ip_port[src_ip] = port
-        else:
-            if(self.ip_dpid[src_ip] != dpid):
-                print ip_to_str(src_ip), " changed the location, from:",self.ip_dpid[src_ip] ," to:",dpid
-                self.ip_dpid[src_ip] = dpid
-    
-    def get_dpid(self,ip_addr):
-        #debug
-        if(self.ip_dpid.has_key(ip_addr)):
-            return self.ip_dpid[ip_addr]
-        else:
-            return -1
-
-    def get_port(self,ip_addr):
-        #debug
-        if(self.ip_port.has_key(ip_addr)):
-            return self.ip_port[ip_addr]
-        else:
-            return -1
-"""
 TODO: Policy Overlap and Union of actions.
-TODO: Policy Conflict and pick them up based on some user defined criteria, security over performance. Or throughput over latency.
-"""
-
-"""
+TODO: Policy Conflict and pick them up based on some user defined criteria, 
+security over performance. Or throughput over latency.
 	Description: 
 		Keeps a flow to function mapping.
 """
@@ -338,9 +207,11 @@ class Policy():
         self.flow_to_function_mapping[f] = {1:"DNS-DPI",2:"DROP"}
         self.flow_to_function_mapping[rf] = {1:"DNS-DPI",2:"DROP"}
 
-    # Return a reverse flow for the given flow.
-    def get_reverse_flow(self,flow):
+    def get_reverse_flow(self, flow):
         """
+        Reverses the flow description of the given flow.
+
+        This is the formula used:
         r_dl_src = flow.dl_dst
         r_dl_dst = flow.dl_src
         r_dl_vlan = flow.dl_vlan
@@ -351,6 +222,9 @@ class Policy():
         r_nw_proto = flow.nw_proto
         r_tp_src = flow.tp_dst
         r_tp_dst = flow.tp_src
+
+        Returns:
+            flow dict.
         """
         reverse_flow = self.FlowTuple(in_port = None, dl_src = flow.dl_dst, dl_dst = flow.dl_src,
                                         dl_vlan = flow.dl_vlan, dl_vlan_pcp = flow.dl_vlan_pcp, dl_type = flow.dl_type,
