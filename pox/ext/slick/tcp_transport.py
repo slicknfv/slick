@@ -56,7 +56,6 @@ class TCPTransport (Task, Transport):
 
         rc = TCPConnection(self, listener.accept()[0])
         self._connections.add(rc)
-        print "SSSOOOOOOOOOOOOOOOCKKKKKKKKKKK",rc._socket_name
         rc.start()
       except:
         traceback.print_exc()
@@ -70,7 +69,6 @@ class TCPTransport (Task, Transport):
   
 
   def send_mb_msg(self,socket_name,msg):
-    print "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"
     for item in self._connections:
       if(item.get_socket_name() == socket_name):
         item.send_raw(msg)
@@ -86,10 +84,6 @@ class TCPConnection (Connection, Task):
     Connection.__init__(self, transport)
     Task.__init__(self)
 
-    #self.start()
-    #self._send_welcome()
-    #self.send_raw("HEEEEEEEEEEEEEEEEEEEEEEELLLOOOOOOOOOOOO")
-
   def _close (self):
     super(TCPConnection, self)._close()
     try:
@@ -100,7 +94,6 @@ class TCPConnection (Connection, Task):
   def send_raw (self, data):
     try:
       l = self._socket.send(data)
-      print "SSSSSSSSSSSSSSSSSSSSSSSSSSS",data
       if l == len(data): return
     except:
       pass
@@ -153,7 +146,5 @@ import pox.core
 def launch (tcp_address = "0.0.0.0", tcp_port = 7790):
   def start ():
     core.registerNew(TCPTransport,str(tcp_address),int(tcp_port))
-    #t = TCPTransport(tcp_address, tcp_port)
-    #t.start()
     core.TCPTransport.start()
   core.call_when_ready(start, "MessengerNexus", __name__)

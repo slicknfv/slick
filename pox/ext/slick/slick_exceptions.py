@@ -1,4 +1,7 @@
-"""Slick Exceptions."""
+"""Slick Exceptions.
+Exception
+    |_SlickException
+"""
 
 
 class SlickException(Exception):
@@ -12,10 +15,15 @@ class ConnectionNotFound(SlickException):
 
 
 class ElementNotFound(SlickException):
-  """Throw exception if the element is not found."""
+  """Throw exception if invalid element instantiation is requested."""
   pass
 
 
-class ElementInstanceNotFound(SlickException):
-  """Throw exception if the element instance is not found."""
+class ApplicationNotFound(SlickException):
+  """Throw this exception if invalid application name is specified."""
+  pass
+
+
+class InstanceNotFound(SlickException):
+  """Throw exception if the application/element instance is not found."""
   pass

@@ -1,10 +1,12 @@
+import logging
+
 import networkmaps
+import slick_exceptions
 from networkmaps import FunctionMap,Policy
 
 import pox.openflow.libopenflow_01 as of
 from utils.packet_utils import *
 
-# Get source and destination of the flow.
 class RouteCompiler():
     def __init__(self):
         self.fmap = FunctionMap(None)
@@ -23,8 +25,8 @@ class RouteCompiler():
         if (self.application_handles.has_key(ed)):
             return self.application_handles[ed][0] 
         else:
-            print "ERROR: There is no application for the function descriptor:",ed
-            return None
+            logging.error("No application for the element with element descriptor:", ed)
+            raise slick_exceptions.InstanceNotFound("No application handle for element descriptor %d", ed)
 
     def get_application_descriptor(self, ed):
         """Given an element descriptor return the application descriptor.
@@ -49,14 +51,19 @@ class RouteCompiler():
         Returns:
             True if app_desc is registered as application for ed
         """
-        temp_app_desc = self.get_application_descriptor(ed)
-        if(temp_app_desc == app_desc):
+        elem_app_desc = self.get_application_descriptor(ed)
+        if(elem_app_desc == app_desc):
             return True
         else:
             return False
 
     def is_installed(self, app_desc):
         """Return True if app_desc is registered as application.
+
+        Args:
+            app_desc =  Application descriptor to check its installation.
+        Returns:
+            True/False
         """
         for _, app in self.application_handles.iteritems():
             if(app[1] == app_desc):
