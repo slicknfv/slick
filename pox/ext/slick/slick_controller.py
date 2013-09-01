@@ -28,6 +28,7 @@ from pox.lib.addresses import *
 
 
 from route_compiler import RouteCompiler
+from networkmaps import FunctionMap,Policy
 from msmessageproc import MSMessageProcessor
 from conf import *
 from download import Download
@@ -35,6 +36,11 @@ from download import Download
 from utils.packet_utils import *
 
 from apps import *
+
+#from routing import ShortestPathRouting
+#from steering import RandomSteering
+#from placement import RandomPlacement
+#from network_model import NetworkModel
 
 log = core.getLogger()
 
@@ -48,15 +54,25 @@ class slick_controller (object):
 
         self.transparent = transparent
 
+        # Modules
+        #self.network_model = SlickNetworkModel()
+        #self.placement_module = RandomPlacementModule( self.network_model )
+        #self.steering_module = RandomSteeringModule( self.network_model )
+        #self.routing_module = ShortestPathRoutingModule( self.network_model )
+
         # add the standard OpenFlow event handlers
         core.openflow.addListeners(self)
         #self.connection.addListeners(self)
 
-        # Function Descriptors
-        self.function_descriptor = int(1)
+        # Element Descriptors
+        self._latest_element_descriptor = int(1)
         self.prev_time = 0
-        #routing
+
+        # Various mappings between elements, applications, and machines -- TODO Rename
         self.route_compiler =  RouteCompiler()
+        self.fmap = FunctionMap()       # TODO belongs in the controller
+        self.policy = Policy()          # TODO belongs in the controller
+
         # JSON Messenger Handlers
         self.json_msg_events = {}
 
@@ -87,6 +103,10 @@ class slick_controller (object):
     def _get_unique_app_descriptor(self):
         self._latest_app_descriptor += 1
         return self._latest_app_descriptor
+
+    def _get_unique_element_descriptor(self):
+        self._latest_element_descriptor += 1
+        return self._latest_element_descriptor
 
     def _handle_ConnectionUp (self, event):
         log.debug("Connection %s" % (event.connection,))
@@ -129,47 +149,52 @@ class slick_controller (object):
     #   -1 : Error in installing the function
     #   -2 : Error in downloading the files to middlebox.
     #   -3 : Error in adding a middlebox client.
-    def apply_elem(self, app_desc,flow, function_name,parameters,application_object):
+    def apply_elem (self, app_desc, flow, element_name, parameters, application_object):
 
-        is_last_call = True # Should be argument of the apply_elem functions
-        self.function_descriptor += 1
+        elem_desc = self._get_unique_element_descriptor()
 
         ##
         # STEP 1: Find the middlebox where this function should be installed.
 
         #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
+
+        # TODO We need to see if this application is installed some other way;
+        #      the problem with this is that route_compiler won't know anything
+        #      about app_desc until it has applied an element (i.e., this will fail
+        #      the first time an app tries to apply an element)
         if(self.route_compiler.is_installed(app_desc)):# We have the application installed
             log.debug("Creating another function for application: %d",app_desc)
 
         # Note: Optimization should be happening here, but right now we're just pulling
         # the first middlebox that implements the function
-        mac_addr = self.route_compiler.fmap.get_machine_for_element(function_name)
+        mac_addr = self.fmap.get_machine_for_element(element_name)   # TODO this should be get_placement
 
-        if(mac_addr != None):
-            log.debug("MAC Address of middlebox machine %s" % mac_addr)
-        ip_addr = self.route_compiler.fmap.get_ip_addr(mac_addr)
-
-        if(mac_addr == None): # There is no machine registered for function installation.
-            print "Warning: Could not find a middlebox for function " + function_name + " for application with descriptor (" + str(app_desc) + ")"
+        # Return an error if there is no machine registered for function installation.
+        if(mac_addr == None):
+            print "Warning: Could not find a middlebox for function " + element_name + " for application with descriptor (" + str(app_desc) + ")"
             return -1
-        msg_dst = ip_addr
+
+        log.debug("MAC Address of middlebox machine %s" % mac_addr)
+        ip_addr = self.fmap.get_ip_addr(mac_addr)
 
         ##
         # STEP 2: Install the function.
 
-        #mac_addr = self.route_compiler.fmap.fd_machine_map[ip_addr]
-        self.route_compiler.fmap.update_element_machine(ip_addr,mac_addr,self.function_descriptor)
-        self.route_compiler.policy.add_flow(None,flow,{self.function_descriptor:function_name}) #Function descriptor 
-        self.route_compiler.update_application_handles(self.function_descriptor,application_object,app_desc)
-        #msg = {"type":"install", "fd":self.function_descriptor, "flow":flow,"function_name":function_name,"params":{"k1":"dummy"}}
-
         if(self.download.add_mb_client(mac_addr,ip_addr,None,None)):
             # Given the function name send the files to the middlebox.
-            if(self.download.put_file(mac_addr,function_name)):
-                if(self.ms_msg_proc.send_install_msg(self.function_descriptor,flow,function_name,parameters,mac_addr)):
-                    #if(is_last_call):
-                    #    self.controller_interface.mb_placement_steering(mac_addr,flow,self.function_descriptor)
-                    return self.function_descriptor
+            if(self.download.put_file(mac_addr,element_name)):
+                if(self.ms_msg_proc.send_install_msg(elem_desc, flow, element_name, parameters,mac_addr)):
+                    # Now that we've uploaded and installed, we can update our state
+
+                    # Update our internal state of where the element is installed
+                    self.fmap.update_element_machine(ip_addr, mac_addr, elem_desc)
+
+                    # Update our internal state of flow to elements mapping
+                    self.policy.add_flow(None, flow, {elem_desc:element_name}) #Function descriptor 
+
+                    # Update our internal state, noting that app_desc owns elem_desc
+                    self.route_compiler.update_application_handles(elem_desc, application_object, app_desc)
+                    return elem_desc
                 else:
                     return -1
             else:
@@ -180,7 +205,7 @@ class slick_controller (object):
     def configure_elem(self,app_desc,fd,application_conf_params):
         if(self.route_compiler.application_handles.has_key(fd)):
             if(self.route_compiler.is_allowed(app_desc,fd)):
-                msg_dst = self.route_compiler.fmap.get_mac_addr_from_element_desc(fd)
+                msg_dst = self.fmap.get_mac_addr_from_element_desc(fd)
                 app_handle = self.route_compiler.get_application_handle(fd) # not requied by additional check 
                 if((msg_dst != None) and (app_handle != None)):
                     self.ms_msg_proc.send_configure_msg(fd,application_conf_params,msg_dst)
@@ -189,15 +214,31 @@ class slick_controller (object):
     def remove_elem(self,app_desc,fd):
         # roll back
         if(self.ms_msg_proc.send_remove_msg(fd,parameters,mac_addr)):
-          desc_removed = self.route_compiler.fmap.del_element_desc(fd)
+          desc_removed = self.fmap.del_element_desc(fd)
         #update mb_placement_steering for changed elements
 
 from pox.core import core
 import pox.openflow.discovery
 
 class POXInterface():
-    def __init__(self,cntxt):
-        self.cntxt = cntxt
+    def __init__(self,controller):
+        self.controller = controller
+
+    """
+    # DML These can be used by l2_multi
+    def get_element_sequence (self, match):
+        return self.controller.get_element_sequence(match)
+
+    def get_steering (self, element_seequence, src, dst):
+        # TODO if this fails, try to scale out
+        return self.controller.steering.get_steering(element_sequence, src, dst)
+
+    def get_path (self, src, machine_sequence, dst):
+        return self.controller.routing.get_path(src, machine_sequence, dst)
+
+    def path_was_installed (self, match, element_sequence, machine_sequence, path):
+        return self.controller.network_model.path_was_installed(match, element_sequence, machine_sequence, path)
+    """
         
     """ 
       This interface is for Placement and Steering Algorithm.
@@ -357,11 +398,11 @@ class POXInterface():
 
         # Find the function descriptors.
         # TODO: can you remove a level of indirection here?
-        function_descriptors = self.cntxt.route_compiler.policy.get_flow_functions(flow.in_port,flow) 
+        function_descriptors = self.controller.policy.get_flow_functions(flow.in_port,flow) 
 
-        for func_desc,function_name in function_descriptors.iteritems():
-            #print func_desc,function_name
-            mac_addr_temp = self.cntxt.route_compiler.fmap.get_mac_addr_from_element_desc(func_desc) 
+        for func_desc,element_name in function_descriptors.iteritems():
+            #print func_desc,element_name
+            mac_addr_temp = self.controller.fmap.get_mac_addr_from_element_desc(func_desc) 
 
             # Convert MAC in Long to EthAddr
             mac_str = mac_to_str(mac_addr_temp)
@@ -375,7 +416,7 @@ class POXInterface():
     # flow is of type ofp_match
     def get_generic_flow(self,flow):
         matching_flow = flow
-        matched_flow_tuple = self.cntxt.route_compiler.policy.get_matching_flow(flow) # Find the function descriptors.
+        matched_flow_tuple = self.controller.policy.get_matching_flow(flow) # Find the function descriptors.
         return matched_flow_tuple
 
         if(matched_flow_tuple != None):

@@ -3,10 +3,10 @@
 """
 
 class Routing():
-    def __init__( self, network_model ):
+    def __init__ (self, network_model):
         self.network_model = network_model
 
-    def get_path( self, src, machine_sequence, dst ):
+    def get_path (self, src, machine_sequence, dst):
         """
             Inputs:
                 - src/dst: each is a (mac,port) pair
@@ -26,3 +26,4 @@ class Routing():
             After calling this method, the following state in the network model should be updated:
                 - The per-link congestion
         """
+        return None

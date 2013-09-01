@@ -97,7 +97,7 @@ sudo ldconfig
 echo ""
 echo ""
 echo "*** SLICK INSTALL COMPLETE ***"
-echo "Please scroll up to ensure that there were no failures (this script does not yet automatically checking return statuses)"
+echo "Please scroll up to ensure that there were no failures (this script does not yet automatically check return statuses)"
 echo ""
 echo "Be sure to add the following to your appropriate shell setup:"
 echo "export PYTHONPATH=/home/mininet/middlesox/pox:/home/mininet/mininet:/home/mininet/pox"

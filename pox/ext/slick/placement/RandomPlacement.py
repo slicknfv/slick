@@ -6,10 +6,10 @@ from slick.placement.Placement import Placement
 from random import choose
 
 class RandomPlacement(Placement):
-    def __init__( self, network_model ):
-        Placement.__init__( self, network_model )
+    def __init__ (self, network_model):
+        Placement.__init__ (self, network_model)
 
-    def get_placement( self, elements_to_install ):
+    def get_placement (self, elements_to_install):
         """
             Inputs:
                 - elements_to_install: dictionary mapping element *name* to how many instances should be placed

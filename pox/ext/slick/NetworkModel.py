@@ -3,7 +3,7 @@
 """
 
 class NetworkModel():
-    def __init__( self ):
+    def __init__ (self):
         self.element_instances = {}     # element name -> element descriptors
         self.element_placements = {}    # element descriptor -> machine mac/port
         self.element_names = {}         # element descriptor -> element name
@@ -14,7 +14,7 @@ class NetworkModel():
         # TODO put this in the controller
         self.element_sequences = {}     # flow match -> [element names] XXX we may want this to map to descriptors
 
-    def get_element_placements( self, element_name ):
+    def get_element_placements (self, element_name):
         """
             Returns the list of (mac,port) pairs where the element named 'element_name' has been placed
         """
@@ -22,11 +22,11 @@ class NetworkModel():
         for ed in self.element_instances[element_name].iteritems():
             rv.append( self.element_placements[ed] )
 
-    def get_compatible_machines( self, element_name ):
+    def get_compatible_machines (self, element_name):
         # TODO actually look up manifests. For now, just return all machines
         return self.machines
 
-    def path_was_installed( self, flow_match, element_sequence, machine_sequence, path ):
+    def path_was_installed (self, flow_match, element_sequence, machine_sequence, path):
         """
             Inputs:
                 - flow_match: the flow that was installed
@@ -45,7 +45,7 @@ class NetworkModel():
         pass
 
     # Placement state
-    def add_placement( self, element_name, element_desc, place ):
+    def add_placement (self, element_name, element_desc, place):
         # TODO if ((element_desc in self.element_placements) and (self.element_placements[element_desc] != element_desc)) ... error
 
         if(element_name not in self.element_instances.keys()):
@@ -55,14 +55,14 @@ class NetworkModel():
         self.element_placements[element_desc] = place
         self.element_names[element_desc] = element_name
 
-    def remove_placement( self, element_desc ):
+    def remove_placement (self, element_desc):
         # TODO search through self.placements for element_desc and remove it
         if(element_desc in self.element_names.keys())
             element_name = self.element_names[element_desc]
             self.element_instances[element_name].remove( element_desc )
             del self.element_names[element_desc]
 
-    def get_placements( self, element_name ):
+    def get_placements (self, element_name):
         if(element_name not in self.element_instances.keys()): pass
         rv = []
         for ed in self.element_instances[element_name].iteritems():

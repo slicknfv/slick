@@ -11,7 +11,6 @@ class Element():
     def init( self, params):
         pass
 
-    # Paramters
     def configure( self,params ):
         pass
 

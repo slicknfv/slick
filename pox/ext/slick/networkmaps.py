@@ -12,6 +12,23 @@ from specs import ElementSpec
 from utils.packet_utils import *
 
 """
+    A helper function to allow flowtuple comparisons with "wildcards" (None)
+"""
+def _flowtuple_equals (ft1, ft2):
+    return ((ft1.in_port == None or     ft1.in_port == ft2.in_port) and
+            (ft1.dl_src == None or      ft1.dl_src == ft2.dl_src) and
+            (ft1.dl_dst == None or      ft1.dl_dst == ft2.dl_dst) and
+            (ft1.dl_vlan == None or     ft1.dl_vlan == ft2.dl_vlan) and
+            (ft1.dl_vlan_pcp == None or ft1.dl_vlan_pcp == ft2.dl_vlan_pcp) and
+            (ft1.dl_type == None or     ft1.dl_type == ft2.dl_type) and
+            (ft1.nw_src == None or      ft1.nw_src == ft2.nw_src) and
+            (ft1.nw_dst == None or      ft1.nw_dst == ft2.nw_dst) and
+            (ft1.nw_proto == None or    ft1.nw_proto == ft2.nw_proto) and
+            (ft1.tp_src == None or      ft1.tp_src == ft2.tp_src) and
+            (ft1.tp_dst == None or      ft1.tp_dst == ft2.tp_dst))
+
+
+"""
 	This class provides the function map for each dpid.
         We need to update the location of functions once they are installed or removed.
 	What functions are connected with which dpid
@@ -22,33 +39,18 @@ from utils.packet_utils import *
 
         This code assumes one IP address per port.
 """
+# TODO This could use a renaming.  What it does now:
+#       - fd_map : element descriptor -> where it is installed
+#       - mac_to_ip : mac address -> ip
+#       - element/machine_specs - reads and marshalls spec files
+
+
 class FunctionMap():
-    def __init__(self,function_map_file):
-    	self.function_map_file = function_map_file
-    	self.function_map = defaultdict(dict)
+    def __init__(self):
         self.fd_map = defaultdict(list) # Machine MAC Address to function descriptor mapping, if the list is empty then we have shim only.
-        self.fd_machine_map = defaultdict(tuple) #Key=Function_descriptor -> (IP_adddress,MAC)
         self.mac_to_ip = {} # Key= MAC -> ip_address
         self.element_specs = ElementSpec()
         self.machine_specs = MachineSpec()
-
-    # TODO: Implement the closest box optimization.
-    # or placement optimization here.
-    # return the dpid with the function_name installed on it.
-    def get_closest_location(self,dpid,function_name):
-        return dpid
-
-    def get_available_functions(self):
-        """Simply get different functions available in the network.
-        """
-        func_list = []
-        for dpid,dictionary in self.function_map.iteritems():
-            for port,flist in dictionary.iteritems():
-                if(len(f_list) > 1):
-                    if(f_list[0] not in func_list):
-                        func_list.append(f_list[0])
-        return func_list
-
 
     def update_element_machine(self, ip_addr, machine_mac, element_desc):
         """IP address should be a string and element_desc is an integer.
@@ -90,6 +92,7 @@ class FunctionMap():
             if(element_desc in self.fd_map[mac_addr]):
                 return mac_addr
 
+    # TODO this is basically what "Placement" is
     def get_machine_for_element(self, element_name):
         """Returns the shim machine with the mac_addr
         Args:
@@ -104,6 +107,7 @@ class FunctionMap():
                 if (len(self.fd_map[mac_addr]) < MAX_FUNCTION_INSTANCES): # 10 functions can be added per machine.
                     return mac_addr
 
+    # TODO Returns the list of machines that match the function_spec
     def lookup_machines(self,function_spec):
         """Function to lookup the machine specification.
         Args:
@@ -131,12 +135,12 @@ security over performance. Or throughput over latency.
 	Description: 
 		Keeps a flow to function mapping.
 """
+
+# TODO this is the FlowTuple to {elem_desc:elem_name} mapping
 class Policy():
-    def __init__(self,policy_filename):
-        self.policy_file_name = policy_filename
+    def __init__(self):
         self.FlowTuple = namedtuple("FlowTuple",["in_port","dl_src","dl_dst","dl_vlan","dl_vlan_pcp","dl_type","nw_src","nw_dst","nw_proto","tp_src","tp_dst"])
         self.flow_to_function_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
-        self.flow_to_fd_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
     
     """
      These three functions: 
@@ -145,68 +149,81 @@ class Policy():
      A compiler that parses policy language and generates these flow to function mappings.
 	# Given a in_port,flow and dictionary of functions{key=number:value=function_name}
     """
+    # TODO in_port is always None
+    # TODO 'functions' should be an array (though that doesn't seem to change the code here)
+    # XXX Note that 'functions' is now a dictionary of {elem_desc : elem_name}
     def add_flow(self,in_port,flow,functions):
-                src_mac =None
-                dst_mac = None
-                if(flow['dl_src'] != None):
-		    src_mac = mac_to_int(flow['dl_src'])
-                if(flow['dl_dst'] != None):
-		    dst_mac = mac_to_int(flow['dl_dst'])
-		f = self.FlowTuple(in_port=in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
-		if not self.flow_to_function_mapping.has_key(f):
-			self.flow_to_function_mapping[f] = functions
-			print self.flow_to_function_mapping
-			return True
-		else:
-			return False
+        src_mac =None
+        dst_mac = None
+        if(flow['dl_src'] != None):
+            src_mac = mac_to_int(flow['dl_src'])
+        if(flow['dl_dst'] != None):
+            dst_mac = mac_to_int(flow['dl_dst'])
+        f = self.FlowTuple(in_port=in_port,
+                           dl_src=src_mac,
+                           dl_dst=dst_mac,
+                           dl_vlan=flow['dl_vlan'],
+                           dl_vlan_pcp=flow['dl_vlan_pcp'],
+                           dl_type= flow['dl_type'],
+                           nw_src=flow['nw_src'],
+                           nw_dst=flow['nw_dst'],
+                           nw_proto=flow['nw_proto'],
+                           tp_src=flow['tp_src'],
+                           tp_dst=flow['tp_dst'])
+        if not self.flow_to_function_mapping.has_key(f):
+            self.flow_to_function_mapping[f] = functions    # TODO this needs to support taking multiple functions
+            print self.flow_to_function_mapping
+            return True
+        else:
+            return False
 
-    def add_flow_desc(self,flow,fd):
-		src_mac = mac_to_int(flow['dl_src'])
-		dst_mac = mac_to_int(flow['dl_dst'])
-		f = self.FlowTuple(in_port=in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
-		if not self.flow_to_fd_mapping.has_key(f):
-			self.flow_to_fd_mapping[f].append(fd)
-			print self.flow_to_fd_mapping
-			return True
-		else:
-			return False
 
 	# Given a in_port,flow and dictionary of functions{key=number:value=function_name}
-    def del_flow(self,in_port,flow,functions):
+    # TODO this is not getting called anywhere, but should once we add the ability to remove elements
+    def del_flow(self,in_port,flow):
         src_mac = mac_to_int(flow['dl_src'])
         dst_mac = mac_to_int(flow['dl_dst'])
-        f = self.FlowTuple(in_port=in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
+        f = self.FlowTuple(in_port=in_port,
+                           dl_src=src_mac,
+                           dl_dst=dst_mac,
+                           dl_vlan=flow['dl_vlan'],
+                           dl_vlan_pcp=flow['dl_vlan_pcp'],
+                           dl_type= flow['dl_type'],
+                           nw_src=flow['nw_src'],
+                           nw_dst=flow['nw_dst'],
+                           nw_proto=flow['nw_proto'],
+                           tp_src=flow['tp_src'],
+                           tp_dst=flow['tp_dst'])
         if (self.flow_to_function_mapping.has_key(f)):
         	del self.flow_to_function_mapping[f]
         	return True
         else:
         	return False
 
+    # TODO This should probably happen at some point, but it's not
 	def modify_functions(self,in_port,flow,functions):
 		src_mac = mac_to_int(flow['dl_src'])
 		dst_mac = mac_to_int(flow['dl_dst'])
-		f = self.FlowTuple(in_port=in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow['dl_vlan'],dl_vlan_pcp=flow['dl_vlan_pcp'],dl_type= flow['dl_type'],nw_src=flow['nw_src'],nw_dst=flow['nw_dst'],nw_proto=flow['nw_proto'],tp_src=flow['tp_src'],tp_dst=flow['tp_dst'])
+		f = self.FlowTuple(in_port=in_port,
+                           dl_src=src_mac,
+                           dl_dst=dst_mac,
+                           dl_vlan=flow['dl_vlan'],
+                           dl_vlan_pcp=flow['dl_vlan_pcp'],
+                           dl_type= flow['dl_type'],
+                           nw_src=flow['nw_src'],
+                           nw_dst=flow['nw_dst'],
+                           nw_proto=flow['nw_proto'],
+                           tp_src=flow['tp_src'],
+                           tp_dst=flow['tp_dst'])
 		if (self.flow_to_function_mapping.has_key(f)):
 			del self.flow_to_function_mapping[f]
 			return True
 		else:
 			return False
 
-	# A function for initializing tuples.
-	# TODO: read from the configuration file.
-    # Take the policy file:
-    # Verbal Description:
-    #       Block all DNS traffic with gambling websites.
-    #        ^        ^                     ^
-    #        |        |                     |
-    #    func:DROP  match:FLOW          func:DNS-DPI
 
-    def init_tuples(self):
-        f = self.FlowTuple(in_port=None,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src=None,nw_dst=None,nw_proto=None,tp_src=None,tp_dst=53) # For outgoing
-        rf = self.FlowTuple(in_port=None,dl_src=None,dl_dst=None,dl_vlan=None,dl_vlan_pcp=None,dl_type= None,nw_src=None,nw_dst=None,nw_proto=None,tp_src=53,tp_dst=None) # For incoming.
-        self.flow_to_function_mapping[f] = {1:"DNS-DPI",2:"DROP"}
-        self.flow_to_function_mapping[rf] = {1:"DNS-DPI",2:"DROP"}
-
+    # TODO this should be elsewhere; it's not getting used for now
+    # TODO This may be useful for bidrectional affinity
     def get_reverse_flow(self, flow):
         """
         Reverses the flow description of the given flow.
@@ -226,10 +243,17 @@ class Policy():
         Returns:
             flow dict.
         """
-        reverse_flow = self.FlowTuple(in_port = None, dl_src = flow.dl_dst, dl_dst = flow.dl_src,
-                                        dl_vlan = flow.dl_vlan, dl_vlan_pcp = flow.dl_vlan_pcp, dl_type = flow.dl_type,
-                                        nw_src = flow.nw_dst, nw_dst = flow.nw_src, nw_proto = flow.nw_proto,
-                                        tp_src = flow.tp_dst, tp_dst = flow.tp_src) 
+        reverse_flow = self.FlowTuple(in_port = None,
+                            dl_src = flow.dl_dst,
+                            dl_dst = flow.dl_src,
+                            dl_vlan = flow.dl_vlan,
+                            dl_vlan_pcp = flow.dl_vlan_pcp,
+                            dl_type = flow.dl_type,
+                            nw_src = flow.nw_dst,       # Swap
+                            nw_dst = flow.nw_src,       # Swap
+                            nw_proto = flow.nw_proto,
+                            tp_src = flow.tp_dst,       # Swap
+                            tp_dst = flow.tp_src)       # Swap
         return reverse_flow
     """
         TODO:
@@ -238,63 +262,7 @@ class Policy():
     """
     def lookup_flow(self,ft):
         for item in self.flow_to_function_mapping:
-            item_match = False
-            if(item.in_port!=None):#If its not a don't care.
-            	if(item.in_port == ft.in_port):
-            		item_match = True 
-            	else: 
-            		continue
-            if(item.dl_src!=None):#If its not a don't care.
-            	if(item.dl_src == ft.dl_src):
-            		item_match = True 
-            	else:# If its not a don't care and we have not matched then its not what we are looking for. 
-            		continue
-            if(item.dl_dst!=None):
-            	if(item.dl_dst == ft.dl_dst):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.dl_vlan!=None):
-            	if(item.dl_vlan == ft.dl_vlan):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.dl_vlan_pcp!=None):
-            	if(item.dl_vlan_pcp == ft.dl_vlan_pcp):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.dl_type!=None):
-            	if(item.dl_type == ft.dl_type):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.nw_src!=None):
-            	if(item.nw_src == ft.nw_src):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.nw_dst!=None):
-            	if(item.nw_dst == ft.nw_dst):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.nw_proto!=None):
-            	if(item.nw_proto == ft.nw_proto):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.tp_src!=None):
-                if(item.tp_src == ft.tp_src):
-                    item_match = True 
-                else:
-                    continue
-            if(item.tp_dst!=None):
-                if(item.tp_dst == ft.tp_dst):
-                    item_match = True 
-                else:
-                    continue
-            if(item_match == True):
+            if(_flowtuple_equals(item,ft)):
                 return self.flow_to_function_mapping[item]
         return {}
 
@@ -303,7 +271,17 @@ class Policy():
         # Based on the flow figure out the functions and then return a list of functipons available on the port.
         src_mac = mac_to_int(flow.dl_src.toRaw())
         dst_mac = mac_to_int(flow.dl_dst.toRaw())
-        f = self.FlowTuple(in_port=inport,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=flow.dl_vlan,dl_vlan_pcp=flow.dl_vlan_pcp,dl_type= flow.dl_type,nw_src=flow.nw_src,nw_dst=flow.nw_dst,nw_proto=flow.nw_proto,tp_src=flow.tp_src,tp_dst=flow.tp_dst)
+        f = self.FlowTuple(in_port=inport,
+                           dl_src=src_mac,
+                           dl_dst=dst_mac,
+                           dl_vlan=flow.dl_vlan,
+                           dl_vlan_pcp=flow.dl_vlan_pcp,
+                           dl_type= flow.dl_type,
+                           nw_src=flow.nw_src,
+                           nw_dst=flow.nw_dst,
+                           nw_proto=flow.nw_proto,
+                           tp_src=flow.tp_src,
+                           tp_dst=flow.tp_dst)
         function_dict = self.lookup_flow(f)
         if(len(function_dict) > 0):
         	print "There is a match"
@@ -316,66 +294,20 @@ class Policy():
     def get_matching_flow(self,in_flow):
         src_mac = in_flow.dl_src
         dst_mac = in_flow.dl_dst
-        ft = self.FlowTuple(in_port=in_flow.in_port,dl_src=src_mac,dl_dst=dst_mac,dl_vlan=in_flow.dl_vlan,dl_vlan_pcp=in_flow.dl_vlan_pcp,dl_type= in_flow.dl_type,nw_src=in_flow.nw_src,nw_dst=in_flow.nw_dst,nw_proto=in_flow.nw_proto,tp_src=in_flow.tp_src,tp_dst=in_flow.tp_dst)
+        ft = self.FlowTuple(in_port=in_flow.in_port,
+                           dl_src=src_mac,
+                           dl_dst=dst_mac,
+                           dl_vlan=in_flow.dl_vlan,
+                           dl_vlan_pcp=in_flow.dl_vlan_pcp,
+                           dl_type= in_flow.dl_type,
+                           nw_src=in_flow.nw_src,
+                           nw_dst=in_flow.nw_dst,
+                           nw_proto=in_flow.nw_proto,
+                           tp_src=in_flow.tp_src,
+                           tp_dst=in_flow.tp_dst)
 
         print self.flow_to_function_mapping
-        for item in self.flow_to_function_mapping:
-            item_match = False
-            if(item.in_port!=None):#If its not a don't care.
-            	if(item.in_port == ft.in_port):
-            		item_match = True 
-            	else: 
-            		continue
-            if(item.dl_src!=None):#If its not a don't care.
-            	if(item.dl_src == ft.dl_src):
-            		item_match = True 
-            	else:# If its not a don't care and we have not matched then its not what we are looking for. 
-            		continue
-            if(item.dl_dst!=None):
-            	if(item.dl_dst == ft.dl_dst):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.dl_vlan!=None):
-            	if(item.dl_vlan == ft.dl_vlan):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.dl_vlan_pcp!=None):
-            	if(item.dl_vlan_pcp == ft.dl_vlan_pcp):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.dl_type!=None):
-            	if(item.dl_type == ft.dl_type):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.nw_src!=None):
-            	if(item.nw_src == ft.nw_src):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.nw_dst!=None):
-            	if(item.nw_dst == ft.nw_dst):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.nw_proto!=None):
-            	if(item.nw_proto == ft.nw_proto):
-            		item_match = True 
-            	else:
-            		continue
-            if(item.tp_src!=None):
-                if(item.tp_src == ft.tp_src):
-                    item_match = True 
-                else:
-                    continue
-            if(item.tp_dst!=None):
-                if(item.tp_dst == ft.tp_dst):
-                    item_match = True 
-                else:
-                    continue
-            if(item_match == True):
+        for item in self.flow_to_function_mapping.keys():
+            if(_flowtuple_equals(item, ft)):
                 return item
         return None

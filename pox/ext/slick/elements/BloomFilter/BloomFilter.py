@@ -3,7 +3,9 @@ import logging
 import socket
 
 import dpkt
+print "... getting pybloomfilter ..."
 import pybloomfilter
+print "success"
 
 from slick.Element import Element
 

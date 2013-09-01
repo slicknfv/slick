@@ -1,16 +1,14 @@
+# TODO This could use a renaming: it just maintains which apps own which elements
 import logging
 
 import networkmaps
 import slick_exceptions
-from networkmaps import FunctionMap,Policy
 
 import pox.openflow.libopenflow_01 as of
 from utils.packet_utils import *
 
 class RouteCompiler():
     def __init__(self):
-        self.fmap = FunctionMap(None)
-        self.policy = Policy(None)
         self.application_handles = {}
 
     def update_application_handles(self, ed, application_object, app_desc):
