@@ -23,6 +23,6 @@ class RandomSteering(Steering):
         for element_name in element_sequence.iteritems():
             machines = self.network_model.get_element_placements( app_desc, element_name )
             if(len(machines) == 0): return None
-            rv.append(choose(machines))
+            rv.append(choice(machines))
 
         return rv

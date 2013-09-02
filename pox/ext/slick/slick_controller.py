@@ -56,9 +56,9 @@ class slick_controller (object):
 
         # Modules
         self.network_model = NetworkModel()
-        #self.placement_module = RandomPlacementModule( self.network_model )
-        #self.steering_module = RandomSteeringModule( self.network_model )
-        #self.routing_module = ShortestPathRoutingModule( self.network_model )
+        #self.placement_module = RandomPlacement( self.network_model )
+        #self.steering_module = RandomSteering( self.network_model )
+        #self.routing_module = ShortestPathRouting( self.network_model )
 
         # add the standard OpenFlow event handlers
         core.openflow.addListeners(self)

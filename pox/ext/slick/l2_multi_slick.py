@@ -14,6 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Modifications by Bilal Anwer
 
 """
 A shortest-path forwarding application.
@@ -176,7 +178,6 @@ def _get_path (src, dst, first_port, final_port):
 def _is_valid_buffer(mac_addr,buffer_id):
     for switch in middleboxes:
         if(switch.dpid == mac_addr):
-            print "RETURNING TRUE:::::::::::::::::::::::::::::::::::::::::::"
             return True
 
 class WaitingPath (object):
@@ -213,20 +214,11 @@ class WaitingPath (object):
     self.xids.discard((event.dpid,event.xid))
     if len(self.xids) == 0: # First wait for barrier replies and then send the packet out
       # Done!
-      #print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM:::::::::::::::::::::::::::",middleboxes
-      #print event.dpid
-      #if not (_is_middlebox_switch(event.dpid)): #Don't send the packet out if its not there.
       if self.packet:
         log.debug("Sending delayed packet out %s"
                   % (dpid_to_str(self.first_switch),))
         msg = of.ofp_packet_out(data=self.packet,
             action=of.ofp_action_output(port=of.OFPP_TABLE))
-        #if not (buffer_sent.has_key((event.dpid,msg.buffer_id))): # Clean this buffer after some time
-        #buffer_sent[(event.dpid,msg.buffer_id)] = True
-        print "NOTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTIFY",msg.xid,msg.buffer_id
-        print type(self.packet), self.packet
-
-        #msg.buffer_id = None # does not work
         core.openflow.sendToDPID(self.first_switch, msg)
 
       core.l2_multi_slick.raiseEvent(PathInstalled(self.path))
@@ -289,7 +281,6 @@ class Switch (EventMixin):
     msg.hard_timeout = FLOW_HARD_TIMEOUT
     msg.actions.append(of.ofp_action_output(port = out_port))
     msg.buffer_id = buf
-    print "Installing path for ",switch," and inport and out_port::::::::::::::::",in_port,out_port,msg.xid
     switch.connection.send(msg)
 
   def _install_path (self, p, match, packet_in=None):
@@ -298,7 +289,6 @@ class Switch (EventMixin):
       self._install(sw, in_port, out_port, match)
       msg = of.ofp_barrier_request()
       sw.connection.send(msg)
-      print "Sending Barrier Request::::::::::::::::::::::::: ",msg.xid
       wp.add_xid(sw.dpid,msg.xid)
 
   def install_path (self, dst_sw, last_port, match, event,mb_locations):
@@ -311,7 +301,6 @@ class Switch (EventMixin):
     switch2_port = None
     mb_locations.insert(0,(self,event.port)) # prepend
     mb_locations.append((dst_sw,last_port))
-    print mb_locations
     for index in range(0,len(mb_locations)-1): #For n nodes we need n-1 paths installed.
       # Place we saw this ethaddr   -> loc = (self, event.port) 
       switch1 = mb_locations[index][0]
@@ -326,9 +315,10 @@ class Switch (EventMixin):
 
       # source_switch,destination_switch,source_port,destination_port
       p = _get_path(switch1, switch2, switch1_port, switch2_port)
-      print p
-      print match.dl_src, "->", match.dl_dst, "type:" ,match.dl_type, "proto:",match.nw_proto, 
-      print "IPs:",match.nw_src,"->",match.nw_dst,"Transport: ",match.tp_src,"->", match.tp_dst
+      #print "Path :",p
+      #print "Middlebox Locations:",mb_locations
+      #print match.dl_src, "->", match.dl_dst, "type:" ,match.dl_type, "proto:",match.nw_proto, 
+      #print "IPs:",match.nw_src,"->",match.nw_dst,"Transport: ",match.tp_src,"->", match.tp_dst
       if p is None:
         log.warning("Can't get from %s to %s", switch1, switch2)
 
@@ -372,17 +362,14 @@ class Switch (EventMixin):
       log.debug("Installing path for %s -> %s (%i hops)",
           switch1, switch2, len(p))
 
-      #BILAL
-      print "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
-      print middleboxes
-      print self
-      if(self in middleboxes):
-        print "WEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
-        self._install_path(p,match,None)
-      else:
-        # We have a path -- install it
-        self._install_path(p, match, event.ofp)
+      #if(self in middleboxes):
+      #  print "WEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
+      #  self._install_path(p,match,None)
+      #else:
+      #  # We have a path -- install it
+      #  self._install_path(p, match, event.ofp)
 
+      self._install_path(p, match, event.ofp)
       # Now reverse it and install it backwards
       # (we'll just assume that will work)
       p = [(sw,out_port,in_port) for sw,in_port,out_port in p]
@@ -424,7 +411,6 @@ class Switch (EventMixin):
     # TODO: Let's get the refactoring language straight here.  Is this module 2 or module 3?
 
     element_descriptors = slick_controller_interface.get_element_descriptors(flow_match)
-
     # Order of this list is important.
     # This is the same order in which we want the packets to traverse.
     mb_locations = [] 
@@ -448,6 +434,7 @@ class Switch (EventMixin):
     if oldloc is None:
       if packet.src.is_multicast == False:
         mac_map[packet.src] = loc # Learn position for ethaddr
+        slick_controller_interface.add_machine_location(packet.src, loc)
         log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
     elif oldloc != loc:
       # ethaddr seen at different place!
@@ -458,6 +445,7 @@ class Switch (EventMixin):
                   dpid_to_str(   loc[0].connection.dpid),    loc[1])
         if packet.src.is_multicast == False:
           mac_map[packet.src] = loc # Learn position for ethaddr
+          slick_controller_interface.add_machine_location(packet.src, loc)
           log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
       elif packet.dst.is_multicast == False:
         # New place is a switch-to-switch port!
@@ -481,12 +469,8 @@ class Switch (EventMixin):
         dest = mac_map[packet.dst]
         match = of.ofp_match.from_packet(packet)
         match_copy = copy.copy(match)
-        #print match_copy
         matched_flow_tuple = slick_controller_interface.get_generic_flow(match_copy)
         if(matched_flow_tuple != None):
-            #print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
-            #print match
-            #print matched_flow_tuple
             """
                 dl_type,src_ip,dst_ip are the required field. Without these forwarding
                 does not work.
@@ -502,8 +486,6 @@ class Switch (EventMixin):
             #match.nw_dst = matched_flow_tuple.nw_dst
             match.tp_dst = matched_flow_tuple.tp_dst
             match.tp_src = matched_flow_tuple.tp_src
-            #print match
-            #print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
             self.install_path(dest[0], dest[1], match, event,mb_locations)
         else:
             self.install_path(dest[0], dest[1], match, event,mb_locations)
@@ -612,6 +594,7 @@ class l2_multi_slick (EventMixin):
             bad_macs.add(mac)
       for mac in bad_macs:
         del mac_map[mac]
+        slick_controller_interface.del_machine_location(mac)
 
   def _handle_ConnectionUp (self, event):
     sw = switches.get(event.dpid)

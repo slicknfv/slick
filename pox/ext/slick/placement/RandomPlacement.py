@@ -3,7 +3,7 @@
 """
 
 from slick.placement.Placement import Placement
-from random import choose
+from random import choice
 
 class RandomPlacement(Placement):
     def __init__ (self, network_model):
@@ -23,5 +23,5 @@ class RandomPlacement(Placement):
             for i in range( elements_to_install[elem_name] ):
                 machines = get_compatible_machines( elem_name )
                 if (len(machines) == 0): return None
-                rv[elem_name].append(choose(machines))
+                rv[elem_name].append(choice(machines))
         return rv
