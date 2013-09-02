@@ -27,8 +27,8 @@ from pox.lib.recoco import Timer # For timer calls.
 from pox.lib.addresses import *
 
 
-from route_compiler import RouteCompiler
-from networkmaps import ElementToMac,FlowToElementsMapping,MacToIP
+#from route_compiler import ElementToApplication
+from networkmaps import ElementToMac,FlowToElementsMapping,MacToIP,ElementToApplication
 from msmessageproc import MSMessageProcessor
 from conf import *
 from download import Download
@@ -69,7 +69,7 @@ class slick_controller (object):
         self.prev_time = 0
 
         # Various mappings between elements, applications, and machines -- TODO Rename
-        self.route_compiler =  RouteCompiler()
+        self.elem_to_app =  ElementToApplication()
         self.elem_to_mac = ElementToMac()
         self.flow_to_elems = FlowToElementsMapping()
         self.mac_to_ip = MacToIP()
@@ -143,8 +143,8 @@ class slick_controller (object):
         # Call configuration on the application repeatedly so
         # we can change configuration on the fly
 
-        for fd in self.route_compiler.application_handles:
-            app_handle = self.route_compiler.get_application_handle(fd)
+        for elem_desc in self.elem_to_app.application_handles:
+            app_handle = self.elem_to_app.get_app_handle(elem_desc)
             app_handle.configure_user_params()
         return True
 
@@ -194,10 +194,10 @@ class slick_controller (object):
         # STEP 0: check that this application actually owns this element
 
         # TODO We need to see if this application is installed some other way;
-        #      the problem with this is that route_compiler won't know anything
+        #      the problem with this is that elem_to_app won't know anything
         #      about app_desc until it has applied an element (i.e., this will fail
         #      the first time an app tries to apply an element)
-        if(self.route_compiler.is_installed(app_desc)):# We have the application installed
+        if(self.elem_to_app.contains_app(app_desc)):# We have the application installed
             log.debug("Creating another function for application: %d",app_desc)
 
         ##
@@ -246,7 +246,7 @@ class slick_controller (object):
                     self.flow_to_elems.add(None, flow, {elem_desc:element_name}) #Function descriptor 
 
                     # Update our internal state, noting that app_desc owns elem_desc
-                    self.route_compiler.update_application_handles(elem_desc, application_object, app_desc)
+                    self.elem_to_app.update(elem_desc, application_object, app_desc)
 
                     return elem_desc
                 else:
@@ -261,12 +261,11 @@ class slick_controller (object):
     This method ensures that the application actually owns the specified element before sending the message
     """
     def configure_elem(self, app_desc, elem_desc, application_conf_params):
-        if(self.route_compiler.application_handles.has_key(elem_desc)):
-            if(self.route_compiler.is_allowed(app_desc, elem_desc)):
-                msg_dst = self.elem_to_mac.get(elem_desc)
-                app_handle = self.route_compiler.get_application_handle(elem_desc) # not requied by additional check 
-                if((msg_dst != None) and (app_handle != None)):
-                    self.ms_msg_proc.send_configure_msg(elem_desc, application_conf_params ,msg_dst)
+        if(self.elem_to_app.get_app_desc(elem_desc) == app_desc):
+            msg_dst = self.elem_to_mac.get(elem_desc)
+            app_handle = self.elem_to_app.get_app_handle(elem_desc) # not requied by additional check 
+            if((msg_dst != None) and (app_handle != None)):
+                self.ms_msg_proc.send_configure_msg(elem_desc, application_conf_params ,msg_dst)
 
     #TODO:
     def remove_elem(self, app_desc, elem_desc):

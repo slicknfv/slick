@@ -53,10 +53,10 @@ class MSMessageProcessor():
             if(msg["type"] == "BadDomainEvent"):
                 self.dns_handlers.handle_trigger(msg)
             if(msg["type"] == "trigger"):
-                fd = msg["ed"]
-                if(type(fd) == int):
-                    application_handle = self.cntxt.route_compiler.get_application_handle(fd)
-                    application_handle.handle_trigger(fd,msg)
+                elem_desc = msg["ed"]
+                if(type(elem_desc) == int):
+                    application_handle = self.cntxt.elem_to_app.get_app_handle(elem_desc)
+                    application_handle.handle_trigger(elem_desc,msg)
                 reply["dummy"]="connected"
                 return reply
 

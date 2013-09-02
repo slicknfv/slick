@@ -59,22 +59,6 @@ class ElementToMac():
                 return mac_addr
 
 
-    """Returns the shim machine with the mac_addr
-        Args:
-            element_name: name of the element, eg, Drop, Noop etc.
-        Returns:
-            mac addr of the machine that has the element instance for element_name.
-    """
-    """
-    # TODO this is no longer needed; it's handled by the Placement module
-    def get_machine_for_element(self, element_name):
-        element_spec = self.element_specs.get_element_spec(element_name)
-        for mac_addr in self._mac_to_elems:
-            if(mac_addr != None):
-                # TODO: Add recurrent optimization algorithm call here.
-                if (len(self._mac_to_elems[mac_addr]) < MAX_FUNCTION_INSTANCES): # 10 functions can be added per machine.
-                    return mac_addr
-    """
 
 """
 	This class provides a mapping from a mac address to an IP address
@@ -292,3 +276,55 @@ class FlowToElementsMapping():
             if(_flowtuple_equals(item, ft)):
                 return item
         return None
+
+
+"""
+This class maintains a mapping between elements and the apps who own them
+
+This used to be RouteCompiler in route_compiler
+"""
+class ElementToApplication():
+    def __init__(self):
+        self.application_handles = {}
+
+    def update(self, ed, application_object, app_desc):
+        if not (self.application_handles.has_key(ed)):
+            self.application_handles[ed] = (application_object, app_desc) 
+        else:
+            print "ERROR: This should not happen"
+
+    def get_app_handle(self, ed):
+        """Given an element descriptor return the application handle.
+        """
+        if (self.application_handles.has_key(ed)):
+            return self.application_handles[ed][0] 
+        else:
+            logging.error("No application for the element with element descriptor:", ed)
+            raise slick_exceptions.InstanceNotFound("No application handle for element descriptor %d", ed)
+
+    def get_app_desc(self, ed):
+        """Given an element descriptor return the application descriptor.
+
+        Args:
+            ed: Element descriptor
+        Returns:
+            Application descriptor
+        """
+        if (self.application_handles.has_key(ed)):
+            return self.application_handles[ed][1]
+        else:
+            print "ERROR: There is no application for the function descriptor:",ed
+            return None
+
+    def contains_app(self, app_desc):
+        """Return True if app_desc is registered as application.
+
+        Args:
+            app_desc =  Application descriptor to check its installation.
+        Returns:
+            True/False
+        """
+        for _, app in self.application_handles.iteritems():
+            if(app[1] == app_desc):
+                return True
+        return False
