@@ -22,9 +22,11 @@ from mininet.topo import Topo
 from mininet.topolib import TreeNet, TreeTopo
 from mininet.util import quietRun
 from mininet.node import OVSController, Controller, RemoteController
+
+from optparse import OptionParser
  
 #################################
-def startNAT( root, inetIntf='eth0', subnet='10.0/8' ):
+def startNAT( root, subnet='10.0/8', inetIntf='eth1' ):
     """Start NAT/forwarding between Mininet and external network
     root: node to access iptables from
     inetIntf: interface for internet access
@@ -79,7 +81,7 @@ def fixNetworkManager( root, intf ):
     # hopefully this won't disconnect you
     root.cmd( 'service network-manager restart' )
  
-def connectToInternet( network, switch='s1', rootip='10.254', subnet='10.0.0.0/8'):
+def connectToInternet( network, switch='s1', rootInterface='eth1', rootip='10.254', subnet='10.0.0.0/8'):
     """Connect the network to the internet
        switch: switch to connect to root namespace
        rootip: address for interface in root namespace
@@ -105,7 +107,7 @@ def connectToInternet( network, switch='s1', rootip='10.254', subnet='10.0.0.0/8
     # HACK: eth0 is the interface in the root context that connects
     # to the Internet.  Should be a parameter.
     # dml: This used to be eth1.
-    startNAT( root, 'eth0', subnet )
+    startNAT( root, subnet, rootInterface )
  
     # Establish routes from end hosts
     i = 1
@@ -142,6 +144,18 @@ def start_sshd( network, cmd='/usr/sbin/sshd', opts='-D' ):
 # MAIN
  
 if __name__ == '__main__':
+
+    desc = ( 'Initiate a Mininet Network that is connected to the Internet via NAT' )
+    usage = ( '%prog -i <interface> [options]\n'
+              '(type %prog -h for details)' )
+
+    op = OptionParser( description=desc, usage=usage )
+    op.add_option( '--root-interface', '-i', action="store", 
+                     dest="rootInterface", help = 'the Ethernet interface that connects to the Internet'  )
+    options, args = op.parse_args()
+    if options.rootInterface is None:   # if filename is not given
+        op.error('Must specify the Ethernet interface that connects to the Internet')
+
     lg.setLogLevel( 'info')
 
 # This sets the controller port to 6634 by default, which can conflict
@@ -167,7 +181,7 @@ if __name__ == '__main__':
 
     # Pick a network that is different from your 
     # NAT'd network if you are behind a NAT
-    rootnode = connectToInternet( net, 's1', '192.168.100.1', '192.168.100.0/24')
+    rootnode = connectToInternet( net, 's1', options.rootInterface, '192.168.100.1', '192.168.100.0/24')
 
     print "*** Hosts are running and should have internet connectivity"
     print "*** Type 'exit' or control-D to shut down network"
