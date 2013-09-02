@@ -37,10 +37,10 @@ from utils.packet_utils import *
 
 from apps import *
 
-#from routing import ShortestPathRouting
-#from steering import RandomSteering
-#from placement import RandomPlacement
-#from network_model import NetworkModel
+#from slick.routing.ShortestPathRouting import ShortestPathRouting
+#from slick.steering.RandomSteering import RandomSteering
+#from slick.placement.RandomPlacement import RandomPlacement
+from slick.NetworkModel import NetworkModel
 
 log = core.getLogger()
 
@@ -55,7 +55,7 @@ class slick_controller (object):
         self.transparent = transparent
 
         # Modules
-        #self.network_model = SlickNetworkModel()
+        self.network_model = NetworkModel()
         #self.placement_module = RandomPlacementModule( self.network_model )
         #self.steering_module = RandomSteeringModule( self.network_model )
         #self.routing_module = ShortestPathRoutingModule( self.network_model )
@@ -194,6 +194,11 @@ class slick_controller (object):
 
                     # Update our internal state, noting that app_desc owns elem_desc
                     self.route_compiler.update_application_handles(elem_desc, application_object, app_desc)
+
+                    mac_str = mac_to_str(mac_addr)
+                    ethaddr = EthAddr(mac_str)
+                    self.network_model.add_placement(element_name, app_desc, elem_desc, ethaddr)
+                    log.debug("Network Model:\n" + self.network_model.dump())
                     return elem_desc
                 else:
                     return -1
@@ -239,6 +244,11 @@ class POXInterface():
     def path_was_installed (self, match, element_sequence, machine_sequence, path):
         return self.controller.network_model.path_was_installed(match, element_sequence, machine_sequence, path)
     """
+    def add_machine_location(self, ether_addr, location):
+        self.controller.network_model.add_machine_location(ether_addr, location)
+
+    def del_machine_location(self, ether_addr):
+        self.controller.network_model.del_machine_location(ether_addr, location)
         
     """ 
       This interface is for Placement and Steering Algorithm.

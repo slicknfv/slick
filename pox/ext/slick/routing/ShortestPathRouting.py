@@ -3,7 +3,7 @@
 """
 
 from slick.routing.Routing import Routing
-from l2_multi_slick import _get_path  # FIXME pull this method out and add it here
+from pox.forwarding.l2_multi_slick import _get_path  # FIXME pull this method out and add it here
 
 class ShortestPathRouting(Routing):
     def __init__ (self, network_model):

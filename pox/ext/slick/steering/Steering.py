@@ -6,9 +6,10 @@ class Steering():
     def __init__ (self, network_model):
         self.network_model = network_model
 
-    def get_steering (self, element_sequence, src, dst):
+    def get_steering (self, app_desc, element_sequence, src, dst):
         """
             Inputs:
+                - app_desc: the application description for whom we're steering (this is necessary because we need to look up where that application in particular has installed elements)
                 - element_sequence: an *ordered* list element *names* the flow should be applied to
                 - src/dst: each is a (mac,port) pair
             Outputs:

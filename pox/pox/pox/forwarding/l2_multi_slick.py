@@ -426,6 +426,7 @@ class Switch (EventMixin):
     if oldloc is None:
       if packet.src.is_multicast == False:
         mac_map[packet.src] = loc # Learn position for ethaddr
+        slick_controller_interface.add_machine_location(packet.src, loc)
         log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
     elif oldloc != loc:
       # ethaddr seen at different place!
@@ -436,6 +437,7 @@ class Switch (EventMixin):
                   dpid_to_str(   loc[0].connection.dpid),    loc[1])
         if packet.src.is_multicast == False:
           mac_map[packet.src] = loc # Learn position for ethaddr
+          slick_controller_interface.add_machine_location(packet.src, loc)
           log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
       elif packet.dst.is_multicast == False:
         # New place is a switch-to-switch port!
@@ -584,6 +586,7 @@ class l2_multi_slick (EventMixin):
             bad_macs.add(mac)
       for mac in bad_macs:
         del mac_map[mac]
+        slick_controller_interface.del_machine_location(mac)
 
   def _handle_ConnectionUp (self, event):
     sw = switches.get(event.dpid)
