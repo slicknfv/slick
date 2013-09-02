@@ -83,19 +83,21 @@ class slick_controller (object):
         # Message Processor.  Where App Handles are Initialized.
         self.ms_msg_proc = MSMessageProcessor(self)
 
-        # TODO Initialize the application
-        
+        # Load the application
         app_class = sys.modules['slick.apps.'+application].__dict__[application]
         self.app_instance = app_class( self, self._get_unique_app_descriptor() )
         self.ms_msg_proc.add_application( self.app_instance )
 
-        print "Successfully loaded",application,"application"
+        log.debug("Successfully loaded " + application + "application. I will now periodically try to initialize it.")
 
-        #
         self.app_initialized = False
         self.switches = {} # A dictionary of switch ids and if the mac is a middlebox or not. 
         self.switch_connections = {}
+
+        # For uploading element code to machines
         self.download = Download()
+
+        # Exposes some wrappers, particularly for l2_multi_slick
         self.controller_interface = POXInterface(self)
 
         # Application Initialization and Configuration.
@@ -124,6 +126,11 @@ class slick_controller (object):
         if(self.switch_connections.has_key(dpid)):
             return self.switch_connections[dpid]
     
+    """
+    This method is periodically called for each running application (currently only one app)
+    The rationale behind having it is that the app might be registered before shims have come online,
+    so it tries init()'ing the application until it is able to install its elements
+    """
     def timer_callback(self):
         # Periodically initialize the applications.
         # Calling repeatedly allows for dynamic app loading (in theory)
@@ -141,31 +148,50 @@ class slick_controller (object):
             app_handle.configure_user_params()
         return True
 
+    """
+    msmessageproc calls this method when it receives a "register" message from a shim
+    The goal is to simply maintain a list of all registered machines
+    """
     def register_machine(self, machine_ip, machine_mac):
         self.mac_to_ip.add(machine_mac, machine_ip)
         self.elem_to_mac.add(machine_ip, machine_mac, None)  # as per old msmessageproc
 
+    """
+    Returns all shims who have registered (TODO: remove those who have gone offline)
+    This is used by the NetworkModel to inform the Placement module about viable placements
+    """
     def get_all_registered_machines(self):
         return self.mac_to_ip.get_all_macs()
         
 
     # Slick API Functions
+
     """
-    Controller to Application Functions
+    Applications call this method to install new elements.  When they do so, they must
+    specify a flowspace ('flow') on which to apply the element.  They can also supply
+    initialization parameters.
+    The method does the following:
+        - Perform placement (i.e., decide on which machine to install the element)
+        - Upload the element to the machine
+        - Inform the shim of what flows to apply the element to
+        - Update our internal state
+
+    Return values:
+       >=0 : success (returns the element descriptor)
+        -1 : Error installing the function
+        -2 : Error in downloading the files to middlebox.
+        -3 : Error in adding a middlebox client.
+
+    TODO : support *chains* of elements, that is, instead of taking a single
+           element_name, take an array of element names, so an application can
+           compose elements for a given flowspace
     """
-    # return function descriptor.
-    # ERROR Codes:
-    #   -1 : Error in installing the function
-    #   -2 : Error in downloading the files to middlebox.
-    #   -3 : Error in adding a middlebox client.
     def apply_elem (self, app_desc, flow, element_name, parameters, application_object):
 
         elem_desc = self._get_unique_element_descriptor()
 
         ##
-        # STEP 1: Find the middlebox where this function should be installed.
-
-        #self.application_descriptor = app_desc#+= 1 # App is providing the right application descriptor to the controller.
+        # STEP 0: check that this application actually owns this element
 
         # TODO We need to see if this application is installed some other way;
         #      the problem with this is that route_compiler won't know anything
@@ -174,30 +200,39 @@ class slick_controller (object):
         if(self.route_compiler.is_installed(app_desc)):# We have the application installed
             log.debug("Creating another function for application: %d",app_desc)
 
+        ##
+        # STEP 1: Find the middlebox where this function should be installed.
 
+        # TODO get_placement expects an array; this method should eventually
+        #      take an array, but right now we're building it by hand
         mac_addrs = self.placement_module.get_placement([element_name])
-
-        # Note: Optimization should be happening here, but right now we're just pulling
-        # the first middlebox that implements the function
-        #mac_addr = self.elem_to_mac.get_machine_for_element(element_name)   # TODO this should be get_placement
 
         # Return an error if there is no machine registered for function installation.
         if(mac_addrs == None):
             print "Warning: Could not find a middlebox for function " + element_name + " for application with descriptor (" + str(app_desc) + ")"
             return -1
 
-        # TODO iterate through the array -- ok for now since we don't support chaining
+        # TODO when we support element composition (an array of element_name's
+        #      as input), the placement module will return an array of mac
+        #      addresses.  At that point, we should iterate through mac_addrs,
+        #      but since composition isn't yet supported, we'll just pull out
+        #      the one mac addr
         [mac_addr] = mac_addrs
         
         log.debug("Placement module returned MAC Address of middlebox machine %s" % mac_addr)
-        ip_addr = self.mac_to_ip.get(mac_addr)
 
         ##
         # STEP 2: Install the function.
 
+        # We need the IP address for pushing the code; this is the only time we need a machine's IP address
+        ip_addr = self.mac_to_ip.get(mac_addr)
+
         if(self.download.add_mb_client(mac_addr,ip_addr,None,None)):
+
             # Given the function name send the files to the middlebox.
             if(self.download.put_file(mac_addr,element_name)):
+
+                # Inform the shim that it should be running these elements on this flow space
                 if(self.ms_msg_proc.send_install_msg(elem_desc, flow, element_name, parameters,mac_addr)):
                     # Now that we've uploaded and installed, we can update our state
 
@@ -210,6 +245,7 @@ class slick_controller (object):
 
                     # Update our internal state, noting that app_desc owns elem_desc
                     self.route_compiler.update_application_handles(elem_desc, application_object, app_desc)
+
                     return elem_desc
                 else:
                     return -1
@@ -218,6 +254,10 @@ class slick_controller (object):
         else:
             return -3
 
+    """
+    Applications call this to send configuration parameters to their elements.
+    This method ensures that the application actually owns the specified element before sending the message
+    """
     def configure_elem(self, app_desc, elem_desc, application_conf_params):
         if(self.route_compiler.application_handles.has_key(elem_desc)):
             if(self.route_compiler.is_allowed(app_desc, elem_desc)):
@@ -237,16 +277,19 @@ class slick_controller (object):
 from pox.core import core
 import pox.openflow.discovery
 
+"""
+Wrapper class for slick controller interface; used by l2_multi_slick
+"""
 class POXInterface():
     def __init__(self,controller):
         self.controller = controller
 
-    # Wrapper for slick controller interface.
-    # returns the dictionary of function descriptors to MAC addresses
-    # Note: This assumes that the placement of elements is already fixed.
-    # The updates to element placement could happen on a slower timescale.
-    # replaces get_element_descriptors
-
+    """
+    returns the dictionary of function descriptors to MAC addresses
+    Note: This assumes that the placement of elements is already fixed.
+    The updates to element placement could happen on a slower timescale.
+    Replaces get_element_descriptors
+    """
     def get_steering (self, src, dst, flow):
         # replica_sets is a list of lists of element descriptors
         # [[e_11, e_12, ...], [e_21, e_22, ...], ...]
@@ -274,16 +317,33 @@ class POXInterface():
 
         return element_macs
 
+    """
+    Constructs a list of "pathlets" between src -> machines in the machine
+    sequence -> dst
+
+    Returns it as this list of pathlets because that appears to be what
+    l2_multi_slick expects when installing forwarding rules.
+    """
     def get_path (self, src, machine_sequence, dst):
         return self.controller.routing_module.get_path(src, machine_sequence, dst)
 
+    """
+    Not currently used or tested: should be called after a path has been
+    successfully installed to update the NetworkModel.
+
+    We explicitly do not include it in get_path or get_steering, because it
+    should only be called after all of the forwarding rules have been
+    successfully installed
+    """
     def path_was_installed (self, match, element_sequence, machine_sequence, path):
         return self.controller.network_model.path_was_installed(match, element_sequence, machine_sequence, path)
 
 
-    # This is a utils function.
-    # This function returns a matching flow 
-    # flow is of type ofp_match
+    """
+    This is a utils function.
+    This function returns a matching flow 
+    flow is of type ofp_match
+    """
     def get_generic_flow(self,flow):
         matching_flow = flow
         matched_flow_tuple = self.controller.flow_to_elems.get_matching_flow(flow) # Find the function descriptors.
