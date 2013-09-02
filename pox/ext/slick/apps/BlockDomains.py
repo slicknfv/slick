@@ -32,7 +32,6 @@ class BlockDomains(Application):
     def handle_BadDomainEvent(self, fd, event):
         src_ip = packet_utils.ipstr_to_int(event["src_ip"])
         bad_domain_name = event["bad_domain_name"]
-        src_dpid = self.controller.route_compiler.mmap.get_dpid(src_ip)
         # If we find a bad domain then we subject
         # the flow to Drop Element.
         flow = self.make_wildcard_flow()

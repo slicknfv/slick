@@ -43,8 +43,8 @@ class P0f(Element):
                             trigger["src_ip"] = src_ip
                             self.raise_trigger(trigger)
                             self._os_map[src_ip] = trigger["OS"]
-        # This must be called.
-        self.fwd_pkt(buf)
+        # This must be called if we want to send back the packet.
+        return buf
 
 #Testing
 def main():

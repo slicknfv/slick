@@ -15,7 +15,7 @@ class TriggerAll(Element):
                     "subtype":"TriggerAll",
                     "ed":self.ed }
         self.raise_trigger( trigger )
-        self.fwd_pkt( buf )
+        return buf
 
 
 #Testing

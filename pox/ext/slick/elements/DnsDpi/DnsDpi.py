@@ -43,4 +43,6 @@ class DnsDpi(Element):
             trigger["src_ip"] = socket.inet_ntoa(src_ip)
             trigger["bad_domain_name"] = bad_domain_name
             self.raise_trigger(trigger)
-        self.fwd_pkt(buf)
+        # To allow for service chaining among elements
+        # on the same machine we need to return the packet
+        return buf

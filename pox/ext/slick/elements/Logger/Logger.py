@@ -17,7 +17,7 @@ class Logger(Element):
     def process_pkt( self, buf ):
         flow = self.extract_flow( buf )
         self.file_handle.write( str(flow) + '\n' )
-        self.fwd_pkt( buf )
+        return buf
 
     def shutdown( self ):
         print "Shutting down Logger with element descriptor:", self.ed

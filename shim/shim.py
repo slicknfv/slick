@@ -224,16 +224,25 @@ class Shim:
         if(flow[NW_DST] == socket.inet_aton(self.mb_ip)):
             print "NOT USING IT"
         else:
-            func_handle = self.client_service.get_function_handle_from_flow(flow)
-            if(func_handle):
-                # Based on the function_hadle 
-                func_handle.process_pkt(buf)
-            else:
-                #try reverse_flow
-                reverse_flow = self.get_reverse_flow(flow)
-                func_handle = self.client_service.get_function_handle_from_flow(reverse_flow)
-                if(func_handle):
-                    func_handle.process_pkt(buf)
+            func_handles = self.client_service.get_function_handles_from_flow(flow)
+            if(func_handles):
+                for func_handle in func_handles:
+                    processed_pkt = func_handle.process_pkt(buf)
+                    if processed_pkt:
+                        buf = processed_pkt
+                        continue
+                    else:
+                        break
+                self.client_service.fwd_pkt(buf)
+            # This is forwarding at the cost of computation.
+            # This can be useful in future to show that number
+            # rules can be reduced.
+            #else:
+            #    #try reverse_flow
+            #    reverse_flow = self.get_reverse_flow(flow)
+            #    func_handle = self.client_service.get_function_handles_from_flow(reverse_flow)
+            #    if(func_handle):
+            #        func_handle.process_pkt(buf)
 
     def extract_flow(self, eth):
         """Extracts and returns flow attributes from the given 'ethernet' packet.

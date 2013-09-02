@@ -45,46 +45,54 @@ class ClientService(rpyc.Service):
         Returns:
             True/False
         """
-        fd = int(msg["fd"])
+        fds = msg["fd"]
         flow = msg["flow"]
-        function_name = str(msg["function_name"])
-        params_dict = msg["params"]
-        function_handle = None
-        if(function_name == "Logger"):
-            function_handle = Logger(self.shim, fd)#start the function but pass the shim reference to invoke trigger.
-            function_handle.init(params_dict)# init invoked on the application.
-        if(function_name == "TriggerAll"):
-            function_handle = TriggerAll(self.shim, fd)#start the function
-            function_handle.init(params_dict)# init invoked on the application.
-        if(function_name == "DnsDpi"):
-            function_handle = DnsDpi(self.shim, fd)#start the function
-            function_handle.init(params_dict)# init invoked on the application.
-        if(function_name == "Drop"):
-            function_handle = Drop(self.shim, fd)#start the function
-            function_handle.init(params_dict)# init invoked on the application.
-        if(function_name == "P0f"):
-            function_handle = P0f(self.shim, fd)
-            function_handle.init(params_dict)
-        if(function_name == "BloomFilter"):
-            function_handle = BloomFilter(self.shim, fd)
-            function_handle.init(params_dict)
-        if(function_name == "Noop"):
-            function_handle = Noop(self.shim, fd)#start the function
-            function_handle.init(params_dict)# init invoked on the application.
-        try:
-            if(isinstance(flow['nw_src'], unicode)): #BAD HACK
-                flow['nw_src'] = flow['nw_src'].encode('ascii', 'replace')
-            self.shim_table.add_flow(0, flow, fd) #Update flow to fd mapping.
-            self.fd_to_object_map[fd] =function_handle
-            if params_dict.has_key("bidirectional"):
+        function_names = msg["function_name"]
+        params_dicts = msg["params"]
+        for i in range(0, len(fds)):
+            fd = fds[i]
+            function_name = function_names[i]
+            params_dict = params_dicts[i]
+            function_handle = None
+            if(function_name == "Logger"):
+                function_handle = Logger(self.shim, fd)#start the function but pass the shim reference to invoke trigger.
+                function_handle.init(params_dict)# init invoked on the application.
+            if(function_name == "TriggerAll"):
+                function_handle = TriggerAll(self.shim, fd)#start the function
+                function_handle.init(params_dict)# init invoked on the application.
+            if(function_name == "DnsDpi"):
+                function_handle = DnsDpi(self.shim, fd)#start the function
+                function_handle.init(params_dict)# init invoked on the application.
+            if(function_name == "Drop"):
+                function_handle = Drop(self.shim, fd)#start the function
+                function_handle.init(params_dict)# init invoked on the application.
+            if(function_name == "P0f"):
+                function_handle = P0f(self.shim, fd)
+                function_handle.init(params_dict)
+            if(function_name == "BloomFilter"):
+                function_handle = BloomFilter(self.shim, fd)
+                function_handle.init(params_dict)
+            if(function_name == "Noop"):
+                function_handle = Noop(self.shim, fd)#start the function
+                function_handle.init(params_dict)# init invoked on the application.
+            try:
+                if(isinstance(flow['nw_src'], unicode)): #BAD HACK
+                    flow['nw_src'] = flow['nw_src'].encode('ascii', 'replace')
+                self.shim_table.add_flow(0, flow, fd) #Update flow to fd mapping.
+                # This is just for reference.
+                self.fd_to_object_map[fd] = function_handle
                 reverse_flow = self.shim.get_reverse_flow(flow)
                 self.shim_table.add_flow(0, reverse_flow, fd)
-        except Exception:
-            print "WARNING: Unable to create handle for the function", function_name ,"with function descriptor", fd
-            del self.fd_to_object_map[fd]
-            del self.flow_to_fd_map[flow]
-            return False
+            except Exception:
+                print "WARNING: Unable to create handle for the function", function_name ,"with function descriptor", fd
+                self._cleanup_failed_install(fds, flow)
+                return False
         return True
+
+    def _cleanup_failed_install(self, eds, flow):
+        for ed in eds:
+            del self.fd_to_object_map[ed]
+        del self.flow_to_fd_map[flow]
 
     def exposed_configure_function(self, msg):
         """Calls element's configure function based on element descriptor.
@@ -120,15 +128,21 @@ class ClientService(rpyc.Service):
     def fwd_pkt(self, packet):
         self.shim.forward_data_sock.send(packet)
 
-    def get_function_handle_from_flow(self, flow):
-        """Return the object for the flow.
+    def get_function_handles_from_flow(self, flow):
+        """Return the objects for the flow.
         """
-        fd = self.shim_table.lookup_flow(flow) #Update flow to fd mapping.
-        if(fd !=None):
-            if not (self.fd_to_object_map.has_key(fd)):
-                return None
-            else:
-                return self.fd_to_object_map[fd]
+        element_handles = [ ]
+        fds = self.shim_table.lookup_flow(flow) #Update flow to fd mapping.
+        if fds: # A flow is not installed yet
+            for fd in fds:
+                if(fd != None):
+                    if not (self.fd_to_object_map.has_key(fd)):
+                        # If not a single handle is found for an element descriptor
+                        # invalidate the service chain.
+                        return None
+                    else:
+                        element_handles.append(self.fd_to_object_map[fd])
+            return element_handles
 
 
 def usage():

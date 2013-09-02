@@ -94,5 +94,5 @@ class BloomFilter(Element):
           trigger = {"BF_trigger_type":"VAL_DETECTED"}
           # Call base class raise trigger.
           self.raise_trigger(trigger)
-    # This must be called to forward the packet.
-    self.fwd_pkt(buf)
+    # This must be returned to forward the packet.
+    return buf

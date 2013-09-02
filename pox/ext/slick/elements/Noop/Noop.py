@@ -9,4 +9,4 @@ class Noop(Element):
         Element.__init__( self, shim, ed )
 
     def process_pkt( self, buf ):
-        self.fwd_pkt( buf )
+        return buf

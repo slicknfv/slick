@@ -65,7 +65,8 @@ class MSMessageProcessor():
     # Return True for sucess False for failure
     def send_install_msg(self,fd,flow,function_name,params,msg_dst):
         if((type(fd) == int) and isinstance(params, dict)):
-            msg = {"type":"install", "fd":fd, "flow":flow,"function_name":function_name,"params":params}
+            # we are sending the lists now.
+            msg = {"type":"install", "fd": [fd], "flow":flow, "function_name": [function_name],"params": [params]}
             return self.send_msg(msg_dst,msg)
 
     # msg_dst == Middlebox MAC address
