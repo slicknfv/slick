@@ -18,9 +18,6 @@ INSTALLING SLICK
 		http://www.youtube.com/watch?v=yNmv7GiHIKE
 		http://dowdberry.blogspot.com/2013/07/virtualbox-host-only-networking.html
 
-
-
-
 2. Code Download:
 	- From within your mininet VM, in the default /home/mininet folder,
 	  download the following:

@@ -2,6 +2,9 @@
     NetworkModel class, which captures all of the state needed by the Placement, Steering, and Routing modules 
 """
 
+from specs import MachineSpec
+from specs import ElementSpec
+
 class ElementInstance():
     def __init__(self, name, app_desc, elem_desc, location):
         self.name = name
@@ -13,12 +16,14 @@ class ElementInstance():
         return "ElementInstance(name:" + self.name + ", app_desc:" + str(self.app_desc) + ", elem_desc:" + str(self.elem_desc) + ", location:" + str(self.location) + ")"
 
 class NetworkModel():
-    def __init__ (self):
+    def __init__ (self, controller):
         self._name_to_instances = {}    # element name -> element instances
         self._ed_to_instance = {}       # element descriptor -> element instance
         self._machine_load = {}         # machine mac -> load
         self._link_congestion = {}      # [mac,mac] -> congestion
-        self._mac_map = {}              # mac -> (mac,port)
+        self._controller = controller
+        self._elem_specs = ElementSpec()    # reads in the element manifests (.spec files)
+        self._machine_specs = MachineSpec() # reads in the machine manifests (.spec files)
 
         # TODO put this in the controller
         self.element_sequences = {}     # flow match -> [element names] XXX we may want this to map to descriptors
@@ -33,11 +38,36 @@ class NetworkModel():
                 rv.append( elem_instance.location )
         return rv
 
-    def get_compatible_machines (self, element_name):
-        # TODO actually look up manifests. For now, just return all machines
-        # TODO Use code from route_compiler
-        # TODO _mac_map may have multiple entries for a given machine (if it has multiple IFs)
-        return self._mac_map.values()
+    def get_compatible_machines (self, elem_name):
+        # TODO uncomment the code below to make it actually get compatible machines
+        # TODO for now, it just returns all machines
+        return self._controller.get_all_registered_machines()
+
+    """
+        elem_spec = self._elem_specs.get_element_spec(elem_name)
+        registered_machines = self._controller.get_all_registered_machines()
+        matched_machines = []
+        if (elem_spec.has_key("os") and 
+            elem_spec.has_key("processor_type") and 
+            elem_spec.has_key("os_flavor") and 
+            elem_spec.has_key("os_flavor_version")):
+            for mac,machine_spec in self.machine_specs:
+                if (machine_spec.has_key("os") and 
+                    machine_spec.has_key("processor_type") and 
+                    machine_spec.has_key("os_flavor") and 
+                    machine_spec.has_key("os_flavor_version")):
+                    if ((machine_spec["os"] == elem_spec["os"]) and 
+                        (machine_spec["processor_type"] == elem_spec["processor_type"]) and 
+                        (machine_spec["os_flavor"] == elem_spec["os_flavor"]) and 
+                        (machine_spec["os_flavor_version"] == elem_spec["os_flavor_version"])):
+                        if(mac in registered_machines):
+                            matched_machines.append(mac)
+                else:
+                    raise Exception("Invalid Machine Specification")
+        else: 
+            raise Exception(" Invalid Function Specification")
+        return matched_machines
+    """
 
     def path_was_installed (self, flow_match, element_sequence, machine_sequence, path):
         """
@@ -57,28 +87,9 @@ class NetworkModel():
         """
         pass
 
-    # Machine state
-    def add_machine_location(self, ether_addr, location):
-        """
-            location = (mac_addr, port)
-            Mirrors the mac_map from l2_multi_slick
-        """
-        # Just a copy of l2_multi_slick's mac_map
-        self._mac_map[ether_addr] = location
-
-    def del_machine_location(self, ether_addr):
-        """
-            Mirrors the mac_map from l2_multi_slick
-        """
-        del self._mac_map[ether_addr]
-
     # Placement state
     def add_placement (self, element_name, app_desc, element_desc, mac_addr):
         # TODO return an error if this app_desc has already placed this element_desc
-        # TODO what should we do if this is not stored in our (or l2_multi_slick's) _mac_map?
-        print "mac_addr:",mac_addr
-        print "_mac_map:",self._mac_map
-        location = self._mac_map[mac_addr]
 
         element_instance = ElementInstance(element_name, app_desc, element_desc, location)
         if(element_name not in self._name_to_instances.keys()):
@@ -113,7 +124,6 @@ class NetworkModel():
 
         rv = rv + "\n\t_machine_load: " + str(self._machine_load) 
         rv = rv + "\n\t_link_congestion: " + str(self._link_congestion)
-        rv = rv + "\n\t_mac_map: " + str(self._mac_map)
         return rv
 
     # Load state

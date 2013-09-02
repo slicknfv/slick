@@ -7,9 +7,96 @@ from collections import defaultdict
 from collections import namedtuple
 
 from conf import *
-from specs import MachineSpec
-from specs import ElementSpec
 from utils.packet_utils import *
+
+"""
+	This class maps an element descriptor (an element instance) to where it's installed (a mac address)
+
+    (old comment):
+    There needs to be a mapping between:
+        machine location [dpid,port] -> Machine IP addresses.
+        machine IP addresse -> function descriptor.
+
+        This code assumes one IP address per port.
+"""
+class ElementToMac():
+    def __init__(self):
+        self._mac_to_elems = defaultdict(list) # Machine MAC Address to function descriptor mapping, if the list is empty then we have shim only.
+
+    def add(self, ip_addr, machine_mac, element_desc):
+        """IP address should be a string and element_desc is an integer.
+        """
+        if (machine_mac == None):
+            return
+
+        if((element_desc != None)):
+            self._mac_to_elems[machine_mac].append(element_desc)
+            logging.info("_mac_to_elems: populating existing %s", self._mac_to_elems)
+        else:
+            logging.info("_mac_to_elems: Creating New %s",self._mac_to_elems)
+            self._mac_to_elems[machine_mac] = [ ]
+
+    def remove(self, element_desc):
+        if(element_desc != None):
+            if(element_desc in self._mac_to_elems[mac_addr]):
+                self._mac_to_elems[mac_addr].remove(element_desc)
+                return True
+            else:
+                logging.warn("Element descriptor does not exist:", element_desc)
+                return False
+
+    def get(self, element_desc):
+        """Given the element desc. return the mac address.
+
+        Args:
+              element_desc: Element descriptor assidned for the element instance.
+        Returns:
+              MAC address at which the element instance exists.
+        [used by configure function]
+        """
+        for mac_addr in self._mac_to_elems:
+            if(element_desc in self._mac_to_elems[mac_addr]):
+                return mac_addr
+
+
+    """Returns the shim machine with the mac_addr
+        Args:
+            element_name: name of the element, eg, Drop, Noop etc.
+        Returns:
+            mac addr of the machine that has the element instance for element_name.
+    """
+    """
+    # TODO this is no longer needed; it's handled by the Placement module
+    def get_machine_for_element(self, element_name):
+        element_spec = self.element_specs.get_element_spec(element_name)
+        for mac_addr in self._mac_to_elems:
+            if(mac_addr != None):
+                # TODO: Add recurrent optimization algorithm call here.
+                if (len(self._mac_to_elems[mac_addr]) < MAX_FUNCTION_INSTANCES): # 10 functions can be added per machine.
+                    return mac_addr
+    """
+
+"""
+	This class provides a mapping from a mac address to an IP address
+
+    This code assumes one IP address per port.
+"""
+class MacToIP():
+    def __init__(self):
+        self._mac_to_ip = {} # Key= MAC -> ip_address
+
+    def add(self, machine_mac, ip_addr):
+        if(ip_addr != None):
+            if (not self._mac_to_ip.has_key(machine_mac)):
+                self._mac_to_ip[machine_mac] = ip_addr
+
+    def get(self, mac):
+        if(mac != None):
+            return self._mac_to_ip[mac]
+
+    def get_all_macs(self):
+        return self._mac_to_ip.keys()
+
 
 """
     A helper function to allow flowtuple comparisons with "wildcards" (None)
@@ -29,106 +116,6 @@ def _flowtuple_equals (ft1, ft2):
 
 
 """
-	This class provides the function map for each dpid.
-        We need to update the location of functions once they are installed or removed.
-	What functions are connected with which dpid
-
-    There needs to be a mapping between:
-        machine location [dpid,port] -> Machine IP addresses.
-        machine IP addresse -> function descriptor.
-
-        This code assumes one IP address per port.
-"""
-# TODO This could use a renaming.  What it does now:
-#       - fd_map : element descriptor -> where it is installed
-#       - mac_to_ip : mac address -> ip
-#       - element/machine_specs - reads and marshalls spec files
-
-
-class FunctionMap():
-    def __init__(self):
-        self.fd_map = defaultdict(list) # Machine MAC Address to function descriptor mapping, if the list is empty then we have shim only.
-        self.mac_to_ip = {} # Key= MAC -> ip_address
-        self.element_specs = ElementSpec()
-        self.machine_specs = MachineSpec()
-
-    def update_element_machine(self, ip_addr, machine_mac, element_desc):
-        """IP address should be a string and element_desc is an integer.
-        """
-        if((element_desc != None) and (machine_mac !=None)):
-            self.fd_map[machine_mac].append(element_desc)
-            logging.info("fd_map: populating existing %s", self.fd_map)
-        elif(machine_mac !=None):
-            logging.info("fd_map: Creating New %s",self.fd_map)
-            self.fd_map[machine_mac] = [ ]
-        if((machine_mac != None) and (ip_addr != None)):
-            if (not self.mac_to_ip.has_key(machine_mac)):
-                self.mac_to_ip[machine_mac] = ip_addr
-
-    # Given the MAC address return the IP address
-    def get_ip_addr(self,mac):
-        if(mac != None):
-            return self.mac_to_ip[mac]
-
-    def del_element_desc(self, element_desc):
-        if(element_desc != None):
-            if(element_desc in self.fd_map[mac_addr]):
-                self.fd_map[mac_addr].remove(element_desc)
-                return True
-            else:
-                logging.warn("Element descriptor does not exist:", element_desc)
-                return False
-
-    def get_mac_addr_from_element_desc(self, element_desc):
-        """Given the element desc. return the mac address.
-
-        Args:
-              element_desc: Element descriptor assidned for the element instance.
-        Returns:
-              MAC address at which the element instance exists.
-        [used by configure function]
-        """
-        for mac_addr in self.fd_map:
-            if(element_desc in self.fd_map[mac_addr]):
-                return mac_addr
-
-    # TODO this is basically what "Placement" is
-    def get_machine_for_element(self, element_name):
-        """Returns the shim machine with the mac_addr
-        Args:
-            element_name: name of the element, eg, Drop, Noop etc.
-        Returns:
-            mac addr of the machine that has the element instance for element_name.
-        """
-        element_spec = self.element_specs.get_element_spec(element_name)
-        for mac_addr in self.fd_map:
-            if(mac_addr != None):
-                # TODO: Add recurrent optimization algorithm call here.
-                if (len(self.fd_map[mac_addr]) < MAX_FUNCTION_INSTANCES): # 10 functions can be added per machine.
-                    return mac_addr
-
-    # TODO Returns the list of machines that match the function_spec
-    def lookup_machines(self,function_spec):
-        """Function to lookup the machine specification.
-        Args:
-            function_spec: Its the function specification
-        Returns:
-            list of mac addresses of machines whose spec match with function_spec.
-        """
-        matched_machines = [] 
-        #print function_spec
-        if(function_spec.has_key("os") and function_spec.has_key("processor_type") and function_spec.has_key("os_flavor") and function_spec.has_key("os_flavor_version")):
-            for mac,machine_spec in self.machine_specs:
-                if(machine_spec.has_key("os") and machine_spec.has_key("processor_type") and machine_spec.has_key("os_flavor") and machine_spec.has_key("os_flavor_version")):
-                    if((machine_spec["os"] == function_spec["os"]) and (machine_spec["processor_type"] == function_spec["processor_type"]) and (machine_spec["os_flavor"] == function_spec["os_flavor"]) and (machine_spec["os_flavor_version"] and function_spec["os_flavor_version"])):
-                        matched_machines.append(mac)
-                else:
-                    raise Exception("Invalid Machine Specification")
-        else: 
-            raise Exception(" Invalid Function Specification")
-        return matched_machines
-
-"""
 TODO: Policy Overlap and Union of actions.
 TODO: Policy Conflict and pick them up based on some user defined criteria, 
 security over performance. Or throughput over latency.
@@ -136,10 +123,20 @@ security over performance. Or throughput over latency.
 		Keeps a flow to function mapping.
 """
 
-# TODO this is the FlowTuple to {elem_desc:elem_name} mapping
-class Policy():
+class FlowToElementsMapping():
     def __init__(self):
-        self.FlowTuple = namedtuple("FlowTuple",["in_port","dl_src","dl_dst","dl_vlan","dl_vlan_pcp","dl_type","nw_src","nw_dst","nw_proto","tp_src","tp_dst"])
+        self.FlowTuple = namedtuple("FlowTuple",
+                                       ["in_port",
+                                        "dl_src",
+                                        "dl_dst",
+                                        "dl_vlan",
+                                        "dl_vlan_pcp",
+                                        "dl_type",
+                                        "nw_src",
+                                        "nw_dst",
+                                        "nw_proto",
+                                        "tp_src",
+                                        "tp_dst"])
         self.flow_to_function_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
     
     """
@@ -152,7 +149,7 @@ class Policy():
     # TODO in_port is always None
     # TODO 'functions' should be an array (though that doesn't seem to change the code here)
     # XXX Note that 'functions' is now a dictionary of {elem_desc : elem_name}
-    def add_flow(self,in_port,flow,functions):
+    def add(self,in_port,flow,functions):
         src_mac =None
         dst_mac = None
         if(flow['dl_src'] != None):
@@ -172,7 +169,7 @@ class Policy():
                            tp_dst=flow['tp_dst'])
         if not self.flow_to_function_mapping.has_key(f):
             self.flow_to_function_mapping[f] = functions    # TODO this needs to support taking multiple functions
-            print self.flow_to_function_mapping
+            #print self.flow_to_function_mapping
             return True
         else:
             return False
@@ -180,7 +177,7 @@ class Policy():
 
 	# Given a in_port,flow and dictionary of functions{key=number:value=function_name}
     # TODO this is not getting called anywhere, but should once we add the ability to remove elements
-    def del_flow(self,in_port,flow):
+    def remove(self,in_port,flow):
         src_mac = mac_to_int(flow['dl_src'])
         dst_mac = mac_to_int(flow['dl_dst'])
         f = self.FlowTuple(in_port=in_port,
@@ -201,25 +198,10 @@ class Policy():
         	return False
 
     # TODO This should probably happen at some point, but it's not
-	def modify_functions(self,in_port,flow,functions):
-		src_mac = mac_to_int(flow['dl_src'])
-		dst_mac = mac_to_int(flow['dl_dst'])
-		f = self.FlowTuple(in_port=in_port,
-                           dl_src=src_mac,
-                           dl_dst=dst_mac,
-                           dl_vlan=flow['dl_vlan'],
-                           dl_vlan_pcp=flow['dl_vlan_pcp'],
-                           dl_type= flow['dl_type'],
-                           nw_src=flow['nw_src'],
-                           nw_dst=flow['nw_dst'],
-                           nw_proto=flow['nw_proto'],
-                           tp_src=flow['tp_src'],
-                           tp_dst=flow['tp_dst'])
-		if (self.flow_to_function_mapping.has_key(f)):
-			del self.flow_to_function_mapping[f]
-			return True
-		else:
-			return False
+    def modify(self,in_port,flow,elements):
+        if(remove(in_port, flow)):
+            return add(in_port, flow, elements)
+        return False
 
 
     # TODO this should be elsewhere; it's not getting used for now
@@ -260,14 +242,14 @@ class Policy():
             Add lookup code from file: ofmatch.py in project openfaucet.
         Dummy matching function returns True if the first wild card entry matches.
     """
-    def lookup_flow(self,ft):
+    def _lookup(self,ft):
         for item in self.flow_to_function_mapping:
             if(_flowtuple_equals(item,ft)):
                 return self.flow_to_function_mapping[item]
         return {}
 
     # Function that returns the corresponding functions dict to the flow.
-    def get_flow_functions(self,inport,flow):
+    def get(self,inport,flow):
         # Based on the flow figure out the functions and then return a list of functipons available on the port.
         src_mac = mac_to_int(flow.dl_src.toRaw())
         dst_mac = mac_to_int(flow.dl_dst.toRaw())
@@ -282,9 +264,8 @@ class Policy():
                            nw_proto=flow.nw_proto,
                            tp_src=flow.tp_src,
                            tp_dst=flow.tp_dst)
-        function_dict = self.lookup_flow(f)
+        function_dict = self._lookup(f)
         if(len(function_dict) > 0):
-        	print "There is a match"
         	return function_dict
         else:
         	return function_dict
@@ -306,7 +287,7 @@ class Policy():
                            tp_src=in_flow.tp_src,
                            tp_dst=in_flow.tp_dst)
 
-        print self.flow_to_function_mapping
+        #print self.flow_to_function_mapping
         for item in self.flow_to_function_mapping.keys():
             if(_flowtuple_equals(item, ft)):
                 return item

@@ -9,9 +9,9 @@ class Placement():
     def get_placement (self, elements_to_install):
         """
             Inputs:
-                - elements_to_install: dictionary mapping element *name* to how many instances should be placed
+                - elements_to_install: list of elements to be placed (can have repeats)
             Outputs:
-                - a dictionary mapping element name to an array of machines (where to install the instances)
+                - a list of mac addresses, of the same size as elements_to_install, providing a one-to-one mapping of where to install each element
                 - return None if no placement is possible
             Side effects:
                 - None

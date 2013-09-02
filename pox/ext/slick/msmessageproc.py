@@ -44,7 +44,9 @@ class MSMessageProcessor():
                 machine_ip = msg["machine_ip"]
                 machine_mac = msg["machine_mac"]
                 self.tcp_conn_handlers[machine_mac] = socket_name
-                self.cntxt.fmap.update_element_machine(machine_ip,machine_mac,None) # Simply add the record of the shim.
+                # dml
+                #self.cntxt.fmap.update_element_machine(machine_ip,machine_mac,None) # Simply add the record of the shim.
+                self.cntxt.register_machine(machine_ip, machine_mac)
                 reply["dummy"]="connected"
                 return reply
             # if type is trigger call raise trigger.

@@ -374,7 +374,7 @@ class Switch (EventMixin):
       # (we'll just assume that will work)
       p = [(sw,out_port,in_port) for sw,in_port,out_port in p]
       self._install_path(p, match.flip())
-      print "X"*100
+      #print "X"*100
 
 
   def _handle_PacketIn (self, event):
@@ -424,7 +424,7 @@ class Switch (EventMixin):
             middleboxes.append(temp_loc[0]) # Need these to not send packet out as packet is not reached.
 
     loc = (self, event.port) # Place we saw this ethaddr
-    print loc
+    #print loc
     oldloc = mac_map.get(packet.src) # Place we last saw this ethaddr
 
     if packet.effective_ethertype == packet.LLDP_TYPE:
@@ -434,7 +434,6 @@ class Switch (EventMixin):
     if oldloc is None:
       if packet.src.is_multicast == False:
         mac_map[packet.src] = loc # Learn position for ethaddr
-        slick_controller_interface.add_machine_location(packet.src, loc)
         log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
     elif oldloc != loc:
       # ethaddr seen at different place!
@@ -445,7 +444,6 @@ class Switch (EventMixin):
                   dpid_to_str(   loc[0].connection.dpid),    loc[1])
         if packet.src.is_multicast == False:
           mac_map[packet.src] = loc # Learn position for ethaddr
-          slick_controller_interface.add_machine_location(packet.src, loc)
           log.debug("Learned %s at %s.%i", packet.src, loc[0], loc[1])
       elif packet.dst.is_multicast == False:
         # New place is a switch-to-switch port!

@@ -5,6 +5,9 @@
 from slick.placement.Placement import Placement
 from random import choice
 
+from pox.core import core
+log = core.getLogger()
+
 class RandomPlacement(Placement):
     def __init__ (self, network_model):
         Placement.__init__ (self, network_model)
@@ -12,16 +15,15 @@ class RandomPlacement(Placement):
     def get_placement (self, elements_to_install):
         """
             Inputs:
-                - elements_to_install: dictionary mapping element *name* to how many instances should be placed
+                - elements_to_install: list of elements to be placed (can have repeats)
             Outputs:
-                - a dictionary mapping element name to an array of machines (where to install the instances)
+                - a list of mac addresses, of the same size as elements_to_install, providing a one-to-one mapping of where to install each element
                 - return None if no placement is possible
         """
-        rv = {}
-        for elem_name in elements_to_install.keys():
-            rv[elem_name] = []
-            for i in range( elements_to_install[elem_name] ):
-                machines = get_compatible_machines( elem_name )
-                if (len(machines) == 0): return None
-                rv[elem_name].append(choice(machines))
+        rv = []
+        for elem_name in elements_to_install:
+            machines = self.network_model.get_compatible_machines( elem_name )
+            log.debug("Placement choosing from " + str(len(machines)) + " machines for element '" + elem_name + "': " + str(machines))
+            if (len(machines) == 0): return None
+            rv.append(choice(machines))
         return rv
