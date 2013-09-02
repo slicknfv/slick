@@ -222,6 +222,7 @@ class slick_controller (object):
           desc_removed = self.fmap.del_element_desc(fd)
         #update mb_placement_steering for changed elements
 
+
 from pox.core import core
 import pox.openflow.discovery
 
@@ -232,11 +233,26 @@ class POXInterface():
     """
     # DML These can be used by l2_multi
     def get_element_sequence (self, match):
+        # return Element names only.
         return self.controller.get_element_sequence(match)
 
-    def get_steering (self, element_seequence, src, dst):
+    def get_steering (self, app_desc, element_seequence, src, dst):
         # TODO if this fails, try to scale out
+        # Return the list of mac addresses that is a sequence of five elements
+        # in the same order or return dictionary.
+        # This should return the element instances for the same application.
+        # return a defualtdict(list)
+        # 
         return self.controller.steering.get_steering(element_sequence, src, dst)
+
+    element descriptor to element_info classes object.
+        element_descriptor
+        mac
+        ip
+
+        based on the mac addresses returned by get_steering build an overlay network.
+
+
 
     def get_path (self, src, machine_sequence, dst):
         return self.controller.routing.get_path(src, machine_sequence, dst)
