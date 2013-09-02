@@ -12,7 +12,7 @@ class ShortestPathRouting(Routing):
         Routing.__init__ (self, network_model)
 
     def get_path (self, src, machine_sequence, dst):
-        from pox.forwarding.l2_multi_slick import _get_path  # FIXME pull this method out and add it here
+        from slick.l2_multi_slick import _get_path  # FIXME pull this method out and add it here
         """
             Inputs:
                 - src/dst: each is a (mac,port) pair
