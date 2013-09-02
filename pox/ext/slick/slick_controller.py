@@ -234,7 +234,9 @@ class slick_controller (object):
 
                 # Inform the shim that it should be running these elements on this flow space
                 if(self.ms_msg_proc.send_install_msg(elem_desc, flow, element_name, parameters,mac_addr)):
-                    # Now that we've uploaded and installed, we can update our state
+
+                    ##
+                    # STEP 3: Now that we've uploaded and installed, we update our state
 
                     # Update our internal state of where the element is installed
                     self.elem_to_mac.add(ip_addr, mac_addr, elem_desc)
