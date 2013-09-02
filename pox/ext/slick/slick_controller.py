@@ -241,194 +241,44 @@ class POXInterface():
     def __init__(self,controller):
         self.controller = controller
 
-    # DML These can be used by l2_multi
-    def get_element_sequence (self, match):
-        # return Element names only.
-        return self.controller.get_element_sequence(match)
+    # Wrapper for slick controller interface.
+    # returns the dictionary of function descriptors to MAC addresses
+    # Note: This assumes that the placement of elements is already fixed.
+    # The updates to element placement could happen on a slower timescale.
+    # replaces get_element_descriptors
 
-    def get_steering (self, app_desc, element_seequence, src, dst):
-        # TODO if this fails, try to scale out
-        # Return the list of mac addresses that is a sequence of five elements
-        # in the same order or return dictionary.
-        # This should return the element instances for the same application.
-        # return a defualtdict(list)
-        # 
-        return self.controller.steering_module.get_steering(app_desc, element_sequence, src, dst)
+    def get_steering (self, src, dst, flow):
+        # replica_sets is a list of lists of element descriptors
+        # [[e_11, e_12, ...], [e_21, e_22, ...], ...]
+        # TODO this is what flow_to_elems should return, but it does not yet support replicas
+        #replica_sets = self.controller.flow_to_elems.get(flow.in_port, flow)
+
+        # XXX as a result, we'll construct it by hand for now
+        # elems is a {elem_desc:elem_name} mapping
+        # TODO replace these 2 lines with the commented-out one above
+        replica_sets = []
+        elems = self.controller.flow_to_elems.get(flow.in_port, flow)
+        if(len(elems.keys()) > 0):
+            replica_sets = [elems.keys()]
+
+        # element_descriptors is a list of individual element descriptors: one chosen from
+        # each element in the replica list, e.g.: [e_11, e_25, e_32, ...]
+        element_descriptors = self.controller.steering_module.get_steering(replica_sets, src, dst, flow)
+
+        # TODO if this fails, try to scale out the appropriate element(s)
+
+        element_macs = {}
+        for elem_desc in element_descriptors:
+            mac_addr = self.controller.elem_to_mac.get(elem_desc) 
+            element_macs[elem_desc] = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
+
+        return element_macs
 
     def get_path (self, src, machine_sequence, dst):
         return self.controller.routing_module.get_path(src, machine_sequence, dst)
 
     def path_was_installed (self, match, element_sequence, machine_sequence, path):
         return self.controller.network_model.path_was_installed(match, element_sequence, machine_sequence, path)
-
-    """ 
-      This interface is for Placement and Steering Algorithm.
-    """
-
-    """
-      @args:
-         List of swiches that represents the path. This includes source and destination switch.
-      @returns:
-         Return the capacituy on the given path.
-    """
-    def GetPathCapacity(self,path):
-      pass
-
-    """
-      @args:
-         List of swiches that represents the path. This includes source and destination switch.
-      @returns:
-         Return the bandwidth on the given path.
-    """
-    def GetPathAvailableBandwidth(self,path):
-      pass
-
-    """
-      @args:
-         Given a link return the capacity.
-         Each location is switch,port
-      @returns:
-         Return the capacity of link.
-    """
-    def GetLinkCapacity(self,loc1,loc2):
-        pass
-
-    """
-      @args:
-         Given a link return the available bandwidth.
-         Each location is switch,port
-      @returns:
-         Return the bandwidth on the given path.
-    """
-    def GetLinkBandwidth(self,loc1,loc2):
-      pass
-
-    
-    """
-      @args:
-         MAC Address of machine that we want to get the resources about.
-      @returns:
-         Return key:value pair of machine resources.
-    """
-    def GetMachineResource(self,mac_addr):
-      pass
-
-    """
-      @args:
-         MAC Address of machine that we want to get the memory usage.
-      @returns:
-         Return bytes available on the machine.
-    """
-    def GetMemoryUsage(self,mac_addr):
-      pass
-
-    """
-      @args:
-         MAC Address of machine that we want to get the Processor Usage.
-      @returns:
-         Return bytes available on the machine.
-    """
-    def GetProcessorUsage(self,mac_addr):
-      pass
-
-    """
-      @args:
-         Return Network Usage.
-      @returns:
-         Return bytes available on the machine.
-    """
-    def GetNetworkUsage(self,mac_addr):
-      pass
-
-    """
-        Description:
-            Return all available flows that need servicing. These flows are taken from applications.
-            As each flow is registered before being applied.
-    """
-    def GetFlows(self):
-      pass
-
-    """
-        Description:
-            Return flow to Element matching.
-    """
-    def GetElement(self,flow):
-      pass
-
-    """
-        Description:
-            Return the element implementations for the given element name.
-            This information is required by the PSA (Placement and Steering Algorithm) 
-            to instantiate best implmentation of an Element.
-    """
-    def GetElements(self,element_name):
-        pass
-
-    """
-        List of element instance ids that are currently serving flows. For each
-        new flow a new element instance is instantiated but for element instances that
-        can be shared by multiple applications th
-    """
-    def GetActiveElements(self):
-        pass
-
-
-    """Get Elements running on the given mac """ 
-    def GetElements(self,machine_mac):
-        pass
-
-    """
-        return the  mac addresses that we can use for middlebox machines.
-    """
-    def GetMiddleboxes(self):
-        pass
-
-    """ Given the path return all the middleboxes on the  path """
-    def GetMiddleboxes(self,path):
-        pass
-
-    """ Given the element_id return number of flows that can be redirected to the middlebox """
-    def GetMiddleboxCapacity(self,element_id):
-      pass
-    # @args:
-    #       List of function descriptors
-    # 
-    # -
-    def mb_placement_steering(self,mb_mac,flow,function_descriptors):
-        print mb_mac
-        print flow
-        print function_descriptor
-        if(mb_mac!= None): # we have already placed the function
-            for item in function_descriptors:
-                pass
-            pass
-        pass
-
-    # Wrapper for slick controller interface.
-    # returns the dictionary of function descriptors to MAC addresses
-    # Note: This assumes that the placement of elements is already fixed.
-    # The updates to element placement could happen on a slower timescale.
-
-    # This should ultimately:
-    # 1. Determine the right set of middleboxes
-    # 2. Determine the right ordering for the middleboxes
-    # (doesn't do this right now)
-
-    def get_element_descriptors(self,flow):
-        element_macs = {}
-
-        # Find the function descriptors.
-        # TODO: can you remove a level of indirection here?
-        function_descriptors = self.controller.flow_to_elems.get(flow.in_port,flow) 
-
-        for elem_desc,element_name in function_descriptors.iteritems():
-            mac_addr_temp = self.controller.elem_to_mac.get(elem_desc) 
-
-            # Convert MAC in Long to EthAddr
-            mac_str = mac_to_str(mac_addr_temp)
-            mac_addr = EthAddr(mac_str)
-            element_macs[elem_desc] = mac_addr
-        return element_macs
 
 
     # This is a utils function.

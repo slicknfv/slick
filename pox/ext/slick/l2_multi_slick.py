@@ -410,7 +410,8 @@ class Switch (EventMixin):
     # (takes information from placement, as well as steering)
     # TODO: Let's get the refactoring language straight here.  Is this module 2 or module 3?
 
-    element_descriptors = slick_controller_interface.get_element_descriptors(flow_match)
+    #element_descriptors = slick_controller_interface.get_element_descriptors(flow_match)
+    element_descriptors = slick_controller_interface.get_steering(mac_map.get(packet.src), mac_map.get(packet.dst), flow_match)
     # Order of this list is important.
     # This is the same order in which we want the packets to traverse.
     mb_locations = [] 
