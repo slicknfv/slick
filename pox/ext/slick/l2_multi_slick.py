@@ -291,34 +291,24 @@ class Switch (EventMixin):
       sw.connection.send(msg)
       wp.add_xid(sw.dpid,msg.xid)
 
-  def install_path (self, dst_sw, last_port, match, event,mb_locations):
+  def install_path (self, dst_sw, last_port, match, event, mb_locations):
     """
     Attempts to install a path between this switch and some destination
     """
-    switch1 = None
-    switch2 = None
-    switch1_port = None
-    switch2_port = None
-    mb_locations.insert(0,(self,event.port)) # prepend
-    mb_locations.append((dst_sw,last_port))
-    for index in range(0,len(mb_locations)-1): #For n nodes we need n-1 paths installed.
+    src = (self, event.port)
+    dst = (dst_sw, last_port)
+    pathlets = slick_controller_interface.get_path(src, mb_locations, dst)
+    mb_locations = [src] + mb_locations + [dst]
+
+    for index in range(0, len(pathlets)):
       # Place we saw this ethaddr   -> loc = (self, event.port) 
       switch1 = mb_locations[index][0]
       switch2 = mb_locations[index+1][0]
       switch1_port = mb_locations[index][1]
       switch2_port = mb_locations[index+1][1]
-      #print switch1,switch1_port,switch2,switch2_port
-      # get path from source to mb
-      #p1 = _get_path(switch1, dst_sw, event.port, last_port)
-      # get path from mb to destination
-      #p2 = _get_path(switch1, dst_sw, event.port, last_port)
 
-      # source_switch,destination_switch,source_port,destination_port
-      p = _get_path(switch1, switch2, switch1_port, switch2_port)
-      #print "Path :",p
-      #print "Middlebox Locations:",mb_locations
-      #print match.dl_src, "->", match.dl_dst, "type:" ,match.dl_type, "proto:",match.nw_proto, 
-      #print "IPs:",match.nw_src,"->",match.nw_dst,"Transport: ",match.tp_src,"->", match.tp_dst
+      p = pathlets[index]
+
       if p is None:
         log.warning("Can't get from %s to %s", switch1, switch2)
 
@@ -357,25 +347,15 @@ class Switch (EventMixin):
 
         return
 
-      #log.debug("Installing path for %s -> %s %04x (%i hops)",
-      #    switch1, switch2, match.dl_type, len(p))
-      log.debug("Installing path for %s -> %s (%i hops)",
+      log.debug("Installing forward and reverse paths for %s -> %s (%i hops)",
           switch1, switch2, len(p))
 
-      #if(self in middleboxes):
-      #  print "WEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"
-      #  self._install_path(p,match,None)
-      #else:
-      #  # We have a path -- install it
-      #  self._install_path(p, match, event.ofp)
-
       self._install_path(p, match, event.ofp)
+
       # Now reverse it and install it backwards
       # (we'll just assume that will work)
       p = [(sw,out_port,in_port) for sw,in_port,out_port in p]
       self._install_path(p, match.flip())
-      #print "X"*100
-
 
   def _handle_PacketIn (self, event):
     def flood ():
@@ -414,6 +394,7 @@ class Switch (EventMixin):
     element_descriptors = slick_controller_interface.get_steering(mac_map.get(packet.src), mac_map.get(packet.dst), flow_match)
     # Order of this list is important.
     # This is the same order in which we want the packets to traverse.
+    # TODO just return the list of mac addresses instead of this (unordered) dictionary FIXME
     mb_locations = [] 
     for element_id,mac_addr in element_descriptors.iteritems():
         #print element_id,mac_addr
@@ -485,9 +466,9 @@ class Switch (EventMixin):
             #match.nw_dst = matched_flow_tuple.nw_dst
             match.tp_dst = matched_flow_tuple.tp_dst
             match.tp_src = matched_flow_tuple.tp_src
-            self.install_path(dest[0], dest[1], match, event,mb_locations)
+            self.install_path(dest[0], dest[1], match, event, mb_locations)
         else:
-            self.install_path(dest[0], dest[1], match, event,mb_locations)
+            self.install_path(dest[0], dest[1], match, event, mb_locations)
 
   def disconnect (self):
     if self.connection is not None:

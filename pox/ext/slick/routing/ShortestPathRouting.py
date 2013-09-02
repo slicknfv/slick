@@ -4,6 +4,9 @@
 
 from slick.routing.Routing import Routing
 
+from pox.core import core
+log = core.getLogger()
+
 class ShortestPathRouting(Routing):
     def __init__ (self, network_model):
         Routing.__init__ (self, network_model)
@@ -15,14 +18,17 @@ class ShortestPathRouting(Routing):
                 - src/dst: each is a (mac,port) pair
                 - machine_sequence: an ordered list of (mac,port) pairs, as delivered from Steering
             Outputs:
-                - an ordered list of (mac,port) pairs, such that:
-                    - it begins with src and ends with dst
-                    - machine_sequence is a subsequence
-                    - it constitutes a full underlay path between src and dst
+                - an ordered list of "pathlets", such that
+                    - each pathlet is an ordered list of (mac,port) pairs
+                    - the first pathlet starts with the source
+                    - the last pathlet ends with the destination
+                    - collectively it constitutes an end-to-end path
+                    - the overall length of the return value is equal to len(ms)+1
         """
 
         # the full machine sequence (machine_sequence does not include src/dst)
         ms = [src] + machine_sequence + [dst]
+        log.debug("Constructing a path for machine sequence: " + str(ms))
 
         rv = []
         for index in range(0,len(ms)-1): #For n nodes we need n-1 paths installed.
@@ -34,6 +40,7 @@ class ShortestPathRouting(Routing):
             
             # FIXME currently using l2_multi_slick_refactored's _get_path; strip that out or clean up the interface
             p = _get_path(switch1_mac, switch2_mac, switch1_port, switch2_port)
-            if p is None: return None
+            #if p is None: return None # append None; let l2_multi_slick deal with it
+            log.debug("   Pathlet " + str(index) + ": " + str(p))
             rv.append(p)
         return rv
