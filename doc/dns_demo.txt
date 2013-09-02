@@ -14,8 +14,11 @@ INSTALLING SLICK
 	  emulation
 
 	- Also, you will want to be able to ssh into the mininet VM from
-	  your host.  Follow the relevant instructions provided here:
-		http://www.openflow.org/wk/index.php/OpenFlow_Tutorial#Set_Up_Network_Access
+	  your host.  These resources may be helpful:
+		http://www.youtube.com/watch?v=yNmv7GiHIKE
+		http://dowdberry.blogspot.com/2013/07/virtualbox-host-only-networking.html
+
+
 
 
 2. Code Download:
@@ -80,7 +83,9 @@ starting POX) first.
 	  will set up NAT so that mininet hosts can communicate with hosts
 	  on the Internet:
 
-		$ sudo python ~/middlesox/mininet_scripts/internet_ssh3.py
+		$ sudo python ~/middlesox/mininet_scripts/internet_ssh3.py -i <interface>
+
+	 where <interface> is your virtual Ethernet interface that connects to the Internet.
 
 	- This will drop this terminal into a mininet CLI.
 
