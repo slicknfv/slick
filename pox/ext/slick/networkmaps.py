@@ -10,6 +10,23 @@ from conf import *
 from utils.packet_utils import *
 
 """
+This file defines several classes that the controller uses to maintain state
+about elements and applications:
+
+    ElementToMac - maps an element instance (identified by its element
+                   descriptor) to its location in the network
+
+    MacToIP - maps MAC addresses the controller has learned about to their IP
+              addresses
+
+    FlowToElementsMapping - maps flow spaces to the elements that should be
+                            applied to flows in that space
+
+    ElementToApplication - maintains a mapping between elements and the apps
+                           who own them
+"""
+
+"""
 	This class maps an element descriptor (an element instance) to where it's installed (a mac address)
 
     (old comment):
