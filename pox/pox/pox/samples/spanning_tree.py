@@ -36,7 +36,8 @@ def launch (forwarding = "l2"):
   elif forwarding.lower() == "l2_multi":
     import pox.forwarding.l2_multi as fw
   elif forwarding.lower() == "l2_multi_slick":
-    import pox.forwarding.l2_multi_slick as fw
+    #import pox.forwarding.l2_multi_slick as fw
+    import slick.l2_multi_slick as fw
   else:
     import pox.forwarding.l2_learning as fw
   core.getLogger().debug("Using forwarding: %s", fw.__name__)
