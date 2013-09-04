@@ -40,7 +40,6 @@ class TCPTransport (Task, Transport):
   def run (self):
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    #print "OOOOOOOOOOOOOOOOOO",self._addr
     listener.bind(self._addr)
     listener.listen(0)
 
@@ -66,9 +65,8 @@ class TCPTransport (Task, Transport):
     except:
       pass
     log.debug("No longer listening for connections")
-  
 
-  def send_mb_msg(self,socket_name,msg):
+  def send_mb_msg(self, socket_name, msg):
     for item in self._connections:
       if(item.get_socket_name() == socket_name):
         item.send_raw(msg)

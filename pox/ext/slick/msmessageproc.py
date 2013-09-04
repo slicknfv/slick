@@ -31,7 +31,6 @@ class MSMessageProcessor():
     # --
     def process_msg(self,msg,socket_name):
         reply = {}
-        #print self.cntxt
         if(msg.has_key("type")):
             if(msg["type"] == "connect"):
                 reply["dummy"]="connected"

@@ -17,7 +17,7 @@ class BloomFilterUnitTest(Application):
         flow = self.make_wildcard_flow()
         flow['tp_dst'] = 80
         for index in range(0, self.num_elements):
-            ed = self.apply_elem( flow, "BloomFilter" )
+            ed = self.apply_elem( flow, ["BloomFilter"] )
             if( ed > 0 ):#=> we have success
                 self.eds.append(ed)
                 self.installed = True

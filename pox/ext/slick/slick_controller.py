@@ -16,7 +16,6 @@
 # along with POX.  If not, see <http://www.gnu.org/licenses/>.
 
 import time
-import logging
 import sys  # for loading the application from commandline
 
 from pox.core import core
@@ -41,6 +40,8 @@ from slick.routing.ShortestPathRouting import ShortestPathRouting
 from slick.steering.RandomSteering import RandomSteering
 from slick.placement.RandomPlacement import RandomPlacement
 from slick.NetworkModel import NetworkModel
+from slick.NetworkModel import ElementInstance
+import slick_exceptions
 
 log = core.getLogger()
 
@@ -177,18 +178,23 @@ class slick_controller (object):
         - Update our internal state
 
     Return values:
-       >=0 : success (returns the element descriptor)
-        -1 : Error installing the function
-        -2 : Error in downloading the files to middlebox.
-        -3 : Error in adding a middlebox client.
+       SUCCESS: List of Element Descriptors in case of success
+        -1    : Error installing one or more than one elements requested
+                by the application.
+        -2    : Error in downloading the files to middlebox.
+        -3    : Error in adding a middlebox client.
+        -4    : Error no middlebox is registered.
 
     TODO : support *chains* of elements, that is, instead of taking a single
            element_name, take an array of element names, so an application can
            compose elements for a given flowspace
     """
-    def apply_elem (self, app_desc, flow, element_name, parameters, application_object):
+    def apply_elem (self, app_desc, flow, element_names, parameters, application_object):
 
-        elem_desc = self._get_unique_element_descriptor()
+        registered_machines = self.get_all_registered_machines()
+        if  not len(registered_machines):
+            log.warn("No middlebox is registered.")
+            return -4
 
         ##
         # STEP 0: check that this application actually owns this element
@@ -198,19 +204,26 @@ class slick_controller (object):
         #      about app_desc until it has applied an element (i.e., this will fail
         #      the first time an app tries to apply an element)
         if(self.elem_to_app.contains_app(app_desc)):# We have the application installed
-            log.debug("Creating another function for application: %d",app_desc)
+            log.debug("Creating another element for application: %d", app_desc)
 
         ##
         # STEP 1: Find the middlebox where this function should be installed.
 
         # TODO get_placement expects an array; this method should eventually
         #      take an array, but right now we're building it by hand
-        mac_addrs = self.placement_module.get_placement([element_name])
+        # One of the benefits of passing arrays over iterative element passing
+        # is Placement module has better view of how to place elements.
+        mac_addrs = self.placement_module.get_placement(element_names)
 
         # Return an error if there is no machine registered for function installation.
-        if(mac_addrs == None):
-            print "Warning: Could not find a middlebox for function " + element_name + " for application with descriptor (" + str(app_desc) + ")"
+        placeless_element_names = self.__get_placeless_element_names(element_names, mac_addrs)
+        if len(placeless_element_names):
+            for elem_name in placeless_element_names:
+                log.warn("Could not find a middlebox for element %s for application with descriptor (%d)" % (elem_name, app_desc))
             return -1
+        else:
+            for index, elem_name in enumerate(element_names):
+                log.debug("Placement module returned MAC Address %s for element_name %s" % (mac_addrs[index], elem_name))
 
         # TODO when we support element composition (an array of element_name's
         #      as input), the placement module will return an array of mac
@@ -218,43 +231,84 @@ class slick_controller (object):
         #      but since composition isn't yet supported, we'll just pull out
         #      the one mac addr
         [mac_addr] = mac_addrs
-        
-        log.debug("Placement module returned MAC Address of middlebox machine %s" % mac_addr)
-
+        element_name = element_names[0]
         ##
-        # STEP 2: Install the function.
+        # STEP 2: Install the elements.
+        try:
+            self.__download_files(element_names, mac_addrs)
+        except slick_exceptions.ElementDownloadFailed as e:
+            log.warn(e.__str__())
+            return -2
 
-        # We need the IP address for pushing the code; this is the only time we need a machine's IP address
-        ip_addr = self.mac_to_ip.get(mac_addr)
+        elem_descs = [ ]
+        for e in element_names:
+            elem_descs.append(self._get_unique_element_descriptor())
 
-        if(self.download.add_mb_client(mac_addr,ip_addr,None,None)):
+        #elem_desc = elem_descs[0]
+        # Keeping these assertions to avoid any issues.
+        assert len(mac_addrs) == len(element_names) , 'Number of Element Names != Number of Middlebox MACs'
+        assert len(element_names) == len(elem_descs) , 'Number of Element Names != Number of Element Descriptors'
+        assert len(element_names) == len(parameters) , 'Number of Element Names != Number of Parameters'
+        # Given above assertions intentionally iterating over element_names
+        # to keep a reminder about the element_names order matters and this 
+        # should be the order that we intert in flow_to_elems mapping.
+        for index, element_name in enumerate(element_names):
+            elem_desc = elem_descs[index]
+            element_name = element_names[index]
+            parameters = parameters[index]
+            mac_addr = mac_addrs[index]
+            # Inform the shim that it should be running these elements on this flow space
+            if(self.ms_msg_proc.send_install_msg(elem_desc, flow, element_name, parameters, mac_addr)):
 
-            # Given the function name send the files to the middlebox.
-            if(self.download.put_file(mac_addr,element_name)):
+                ##
+                # STEP 3: Now that we've uploaded and installed, we update our state
 
-                # Inform the shim that it should be running these elements on this flow space
-                if(self.ms_msg_proc.send_install_msg(elem_desc, flow, element_name, parameters,mac_addr)):
+                ip_addr = self.mac_to_ip.get(mac_addr)
+                # Update our internal state of where the element is installed
+                self.elem_to_mac.add(ip_addr, mac_addr, elem_desc)
+                self.mac_to_ip.add(mac_addr, ip_addr)
 
-                    ##
-                    # STEP 3: Now that we've uploaded and installed, we update our state
+                # Update our internal state of flow to elements mapping
+                element_instance = ElementInstance(element_name, app_desc, elem_desc, mac_addr)
 
-                    # Update our internal state of where the element is installed
-                    self.elem_to_mac.add(ip_addr, mac_addr, elem_desc)
-                    self.mac_to_ip.add(mac_addr, ip_addr)
+                self.flow_to_elems.add(None, flow, element_instance)
 
-                    # Update our internal state of flow to elements mapping
-                    self.flow_to_elems.add(None, flow, {elem_desc:element_name}) #Function descriptor 
+                # Update our internal state, noting that app_desc owns elem_desc
+                self.elem_to_app.update(elem_desc, application_object, app_desc)
 
-                    # Update our internal state, noting that app_desc owns elem_desc
-                    self.elem_to_app.update(elem_desc, application_object, app_desc)
-
-                    return elem_desc
-                else:
-                    return -1
+                return elem_desc
             else:
-                return -2
-        else:
-            return -3
+                # TODO rollback the updated states in case of failure.
+                return -1
+        # We should return the list of all sucessful elem_descs
+        # return elem_descs
+
+
+    def __download_files(self, element_names, mac_addrs):
+        """Download files to middlebox machines.
+
+        Args:
+            element_names: Array of element names.
+            mac_addrs: Array of mac_addrs
+        Returns:
+            None
+        Raises:
+            ElementDownloadFailed
+        """
+        assert len(mac_addrs) == len(element_names) , 'Number of Element Names != Number of Places'
+        elements_downloaded = [ ] 
+        for index, mac_addr in enumerate(mac_addrs):
+            # We need the IP address for pushing the code; this is the only time we need a machine's IP address
+            ip_addr = self.mac_to_ip.get(mac_addr)
+            if(self.download.add_mb_client(mac_addr, ip_addr, None, None)):
+                # Given the function name send the files to the middlebox.
+                element_name = element_names[index]
+                if(self.download.put_file(mac_addr, element_name)):
+                    elements_downloaded.append(mac_addr)
+                else:
+                    raise slick_exceptions.ElementDownloadFailed('Download to machine ' + mac_to_str(mac_addr) + ' failed.')
+            else:
+                raise slick_exceptions.ElementDownloadFailed('Download to machine ' + mac_to_str(mac_addr) + ' failed.')
 
     """
     Applications call this to send configuration parameters to their elements.
@@ -274,6 +328,25 @@ class slick_controller (object):
             desc_removed = self.elem_to_mac.remove(elem_desc)
         #update mb_placement_steering for changed elements
 
+    def __get_placeless_element_names(self, element_names, mac_addrs):
+        """Return elements that cannot be placed.
+
+        Given mac_addrs and element_names return list of 
+        element names that cannot be placed.
+        Args:
+            mac_addrs: List of mac_addrs returned by get_placement.
+            element_names: List of element_names that are requested
+                           by application.
+        Returns:
+            element_names: List of element names that cannot be placed.
+        """
+        assert len(mac_addrs) == len(element_names) , 'Number of Element Names != Number of Places'
+        homeless_element_names =  [ ]
+        if mac_addrs:
+            for index, mac_addr in enumerate(mac_addrs):
+                if not mac_addr:
+                    homeless_element_names.append(element_names[index])
+        return homeless_element_names
 
 from pox.core import core
 import pox.openflow.discovery
@@ -295,15 +368,15 @@ class POXInterface():
         # replica_sets is a list of lists of element descriptors
         # [[e_11, e_12, ...], [e_21, e_22, ...], ...]
         # TODO this is what flow_to_elems should return, but it does not yet support replicas
-        #replica_sets = self.controller.flow_to_elems.get(flow.in_port, flow)
+        replica_sets = self.controller.flow_to_elems.get(flow.in_port, flow)
 
         # XXX as a result, we'll construct it by hand for now
         # elems is a {elem_desc:elem_name} mapping
         # TODO replace these 2 lines with the commented-out one above
-        replica_sets = []
-        elems = self.controller.flow_to_elems.get(flow.in_port, flow)
-        if(len(elems.keys()) > 0):
-            replica_sets = [elems.keys()]
+        #replica_sets = []
+        #elems = self.controller.flow_to_elems.get(flow.in_port, flow)
+        #if(len(elems.keys()) > 0):
+        #    replica_sets = [elems.keys()]
 
         # element_descriptors is a list of individual element descriptors: one chosen from
         # each element in the replica list, e.g.: [e_11, e_25, e_32, ...]

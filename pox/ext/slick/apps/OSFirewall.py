@@ -17,8 +17,7 @@ class OSFirewall(Application):
         self.ed1 = None
 
     def init(self):
-        parameters = {}
-        ed = self.apply_elem(self.flow, "P0f", parameters) 
+        ed = self.apply_elem(self.flow, ["P0f"]) 
         if((ed >0)):
             self.ed1 = ed
             self.installed = True

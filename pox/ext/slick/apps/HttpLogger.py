@@ -9,10 +9,10 @@ class HttpLogger(Application):
 
     def init(self):
         # Start the Logger
-        parameters = {"file_name":"/tmp/http_log"}
+        parameters = [{"file_name":"/tmp/http_log"}]
         flow = self.make_wildcard_flow()
         flow['tp_dst'] = 80
-        ed = self.apply_elem( flow, "Logger", parameters ) 
+        ed = self.apply_elem( flow, ["Logger"], parameters ) 
 
         if(ed > 0):
             self.installed = True

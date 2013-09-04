@@ -38,6 +38,15 @@ class NetworkModel():
                 rv.append( elem_instance.location )
         return rv
 
+    def get_element_descriptors(self, element_name):
+        """ Return all the element_descriptors for an element_name.
+        This can include element_desc from different apps.
+        """
+        element_descriptors = [ ]
+        for element_name, element_instance in self._name_to_instances.iteritems():
+            element_descriptors.append(element_instance.elem_desc)
+        return element_descriptors
+
     def get_compatible_machines (self, elem_name):
         # TODO uncomment the code below to make it actually get compatible machines
         # TODO for now, it just returns all machines

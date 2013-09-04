@@ -18,7 +18,7 @@ class BlockDomains(Application):
         # Provide the flow/flows that we want to process in the network
         flow = self.make_wildcard_flow()
         flow['tp_dst'] = 53
-        fd= self.apply_elem(flow, "DnsDpi") 
+        fd= self.apply_elem(flow, ["DnsDpi"]) 
         if (fd >0):
             self.ed1 = fd
             self.installed = True
@@ -36,12 +36,13 @@ class BlockDomains(Application):
         # the flow to Drop Element.
         flow = self.make_wildcard_flow()
         flow['nw_src'] = src_ip
-        parameters = {}
         # Need to call it for new hosts that
         # lookup blocked domains.
-        fd= self.apply_elem(flow, "Drop") 
+        fd= self.apply_elem(flow, ["Drop"]) 
         if (fd > 0):
             self.ed2 = fd
+        else:
+            print "Error: Unable to install the Drop Element."
 
     def handle_trigger(self, fd, msg):
         if(msg["dns_dpi_type"] == "BadDomainEvent"):

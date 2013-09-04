@@ -5,6 +5,7 @@ from socket import htons
 from struct import unpack
 from collections import defaultdict
 from collections import namedtuple
+from collections import OrderedDict
 
 from conf import *
 from utils.packet_utils import *
@@ -138,8 +139,18 @@ class FlowToElementsMapping():
                                         "nw_proto",
                                         "tp_src",
                                         "tp_dst"])
-        self.flow_to_function_mapping = defaultdict(dict) # key:FlowTuple value:{functions}
-    
+
+        # Earlier it was: FlowTuple -> {elem_desc:element_name}
+        # Keys map to an OrderedDict of element_names
+        # Single Table entry looks like this:
+        # FlowTuple -> {element_name1: [e_11,e12,...], element_name2: [e_21, e22...]}
+        # key:FlowTuple value:{element_name1: [e_11,e12,...], element_name2: [e_21, e22...]}
+        #   where e_11, e_21 etc. are of type ElementInstance
+        #   Limitation: This assumes that a single flow will be subjected to one type
+        #               of element in one chain. For example it can be 
+        #               subjected to LoadBalancer once in a chain.
+        self.flow_to_function_mapping = defaultdict(OrderedDict) 
+
     """
      These three functions: 
         add_flow,del_flow,modify_flow 
@@ -150,7 +161,7 @@ class FlowToElementsMapping():
     # TODO in_port is always None
     # TODO 'functions' should be an array (though that doesn't seem to change the code here)
     # XXX Note that 'functions' is now a dictionary of {elem_desc : elem_name}
-    def add(self,in_port,flow,functions):
+    def add(self,in_port,flow, element_instance):
         src_mac =None
         dst_mac = None
         if(flow['dl_src'] != None):
@@ -168,17 +179,21 @@ class FlowToElementsMapping():
                            nw_proto=flow['nw_proto'],
                            tp_src=flow['tp_src'],
                            tp_dst=flow['tp_dst'])
+        element_name = element_instance.name
         if not self.flow_to_function_mapping.has_key(f):
-            self.flow_to_function_mapping[f] = functions    # TODO this needs to support taking multiple functions
-            #print self.flow_to_function_mapping
+            self.flow_to_function_mapping[f] = OrderedDict({element_name: [element_instance]})#append(element_instance)
             return True
-        else:
-            return False
+        else: # we already have a flow
+            # If there is already an element_name present add a new instance.
+            if self.flow_to_function_mapping[f].has_key(element_name):
+                self.flow_to_function_mapping[f][element_name].append(element_instance)
+            else:
+                self.flow_to_function_mapping[f][element_name] = [element_instance]
 
 
 	# Given a in_port,flow and dictionary of functions{key=number:value=function_name}
     # TODO this is not getting called anywhere, but should once we add the ability to remove elements
-    def remove(self,in_port,flow):
+    def remove(self, in_port, flow):
         src_mac = mac_to_int(flow['dl_src'])
         dst_mac = mac_to_int(flow['dl_dst'])
         f = self.FlowTuple(in_port=in_port,
@@ -193,10 +208,10 @@ class FlowToElementsMapping():
                            tp_src=flow['tp_src'],
                            tp_dst=flow['tp_dst'])
         if (self.flow_to_function_mapping.has_key(f)):
-        	del self.flow_to_function_mapping[f]
-        	return True
+            del self.flow_to_function_mapping[f]
+            return True
         else:
-        	return False
+            return False
 
     # TODO This should probably happen at some point, but it's not
     def modify(self,in_port,flow,elements):
@@ -249,7 +264,10 @@ class FlowToElementsMapping():
                 return self.flow_to_function_mapping[item]
         return {}
 
-    # Function that returns the corresponding functions dict to the flow.
+    # Function that returns the corresponding element_desc lists to the flow.
+    # Returns:
+    # [[e11,e12], [e21,e22,...], ...]
+    # 
     def get(self,inport,flow):
         # Based on the flow figure out the functions and then return a list of functipons available on the port.
         src_mac = mac_to_int(flow.dl_src.toRaw())
@@ -265,11 +283,15 @@ class FlowToElementsMapping():
                            nw_proto=flow.nw_proto,
                            tp_src=flow.tp_src,
                            tp_dst=flow.tp_dst)
-        function_dict = self._lookup(f)
-        if(len(function_dict) > 0):
-        	return function_dict
-        else:
-        	return function_dict
+        elements_dict = self._lookup(f)
+        replica_sets = [ ]
+        index = 0
+        for element_name, element_instances in elements_dict.iteritems():
+            replica_sets.append([ ])
+            for elem_inst in element_instances:
+                replica_sets[index].append(elem_inst.elem_desc)
+            index += 1
+        return replica_sets
 
     # Returns a matching flow of type ofp_match
     # else returns a None

@@ -27,3 +27,7 @@ class ApplicationNotFound(SlickException):
 class InstanceNotFound(SlickException):
   """Throw exception if the application/element instance is not found."""
   pass
+
+class ElementDownloadFailed(SlickException):
+  """Throw exception if the element download is failed during placement."""
+  pass

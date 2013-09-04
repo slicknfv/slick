@@ -1,8 +1,8 @@
 """
 # ############################################################################################################################################
-# One Apllication with Two TriggerAll Functions
-# Creates two function instances with one application. Based on the flow to function descriptor mapping, shim should handle packet to the
-# right function instance. And correct function instance should raise an event.
+# One Apllication with Two TriggerAll Elements
+# Creates two element instances with one application. Based on the flow to element descriptor mapping, shim should handle packet to the
+# right element instance. And correct element instance should raise an event.
 # ############################################################################################################################################
 """
 from slick.Application import Application
@@ -16,23 +16,23 @@ class TriggerAllUnitTest(Application):
 
         # Trigger on all port 53 traffic
         flows['tp_dst'] = 53
-        self.ed1 = self.apply_elem( flows, "TriggerAll" )
+        self.ed1 = self.apply_elem( flows, ["TriggerAll"] )
 
         # Also trigger on all port 80 traffic
         flows['tp_dst'] = 80
-        self.ed2 = self.apply_elem( flows, "TriggerAll" )
+        self.ed2 = self.apply_elem( flows, ["TriggerAll"] )
 
         # Make sure it all got set up correctly
         if(self.ed1 > 0 and self.ed2 > 0):
-            self.f1 = open("1_trigger.txt","w")
-            self.f2 = open("2_trigger.txt","w")
+            self.f1 = open("/tmp/1_trigger.txt","w", 0)
+            self.f2 = open("/tmp/2_trigger.txt","w", 0)
             self.installed = True
             print "TriggerAllUnitTest Installed with element descriptors", self.ed1, self.ed2
         else:
             print "Failed to install the TriggerAllUnitTest application"
         
 
-    # This handle Trigger will be called twice for 2 functions.
+    # This handle Trigger will be called twice for 2 elements.
     def handle_trigger( self, ed, msg ):
         if self.installed:
             print "TriggerAllUnitTest handle_trigger (",ed,") msg:",msg
