@@ -92,8 +92,6 @@ class slick_controller (object):
         log.debug("Successfully loaded " + application + "application. I will now periodically try to initialize it.")
 
         self.app_initialized = False
-        self.switches = {} # A dictionary of switch ids and if the mac is a middlebox or not. 
-        self.switch_connections = {}
 
         # For uploading element code to machines
         self.download = Download()
@@ -114,14 +112,10 @@ class slick_controller (object):
 
     def _handle_ConnectionUp (self, event):
         log.debug("Connection %s" % (event.connection,))
-        self.switches[event.dpid] = self._is_middlebox() # Keep track of switches.
-        self.switch_connections[event.dpid] = event.connection
+        #self.switch_connections[event.dpid] = event.connection
 
-    # This box is for the middlebox.
-    # Can one MAC be a middlebox and an IP address.
-    def _is_middlebox(self):
-        # If this mac is for the middlebox.
-        return False
+    def _handle_ConnectionDown (self, event):
+        log.debug("Disconnecting %s" % (event.connection,))
 
     def get_connection(self,dpid):
         if(self.switch_connections.has_key(dpid)):
@@ -179,11 +173,11 @@ class slick_controller (object):
 
     Return values:
        SUCCESS: List of Element Descriptors in case of success
-        -1    : Error installing one or more than one elements requested
+        [-1]    : Error installing one or more than one elements requested
                 by the application.
-        -2    : Error in downloading the files to middlebox.
-        -3    : Error in adding a middlebox client.
-        -4    : Error no middlebox is registered.
+        [-2]    : Error in downloading the files to middlebox.
+        [-3]    : Error in adding a middlebox client.
+        [-4]    : Error no middlebox is registered.
 
     TODO : support *chains* of elements, that is, instead of taking a single
            element_name, take an array of element names, so an application can
@@ -194,7 +188,7 @@ class slick_controller (object):
         registered_machines = self.get_all_registered_machines()
         if  not len(registered_machines):
             log.warn("No middlebox is registered.")
-            return -4
+            return [-4]
 
         ##
         # STEP 0: check that this application actually owns this element
@@ -220,7 +214,7 @@ class slick_controller (object):
         if len(placeless_element_names):
             for elem_name in placeless_element_names:
                 log.warn("Could not find a middlebox for element %s for application with descriptor (%d)" % (elem_name, app_desc))
-            return -1
+            return [-1]
         else:
             for index, elem_name in enumerate(element_names):
                 log.debug("Placement module returned MAC Address %s for element_name %s" % (mac_addrs[index], elem_name))
@@ -230,15 +224,13 @@ class slick_controller (object):
         #      addresses.  At that point, we should iterate through mac_addrs,
         #      but since composition isn't yet supported, we'll just pull out
         #      the one mac addr
-        [mac_addr] = mac_addrs
-        element_name = element_names[0]
         ##
         # STEP 2: Install the elements.
         try:
             self.__download_files(element_names, mac_addrs)
         except slick_exceptions.ElementDownloadFailed as e:
             log.warn(e.__str__())
-            return -2
+            return [-2]
 
         elem_descs = [ ]
         for e in element_names:
@@ -255,10 +247,10 @@ class slick_controller (object):
         for index, element_name in enumerate(element_names):
             elem_desc = elem_descs[index]
             element_name = element_names[index]
-            parameters = parameters[index]
+            parameter = parameters[index]
             mac_addr = mac_addrs[index]
             # Inform the shim that it should be running these elements on this flow space
-            if(self.ms_msg_proc.send_install_msg(elem_desc, flow, element_name, parameters, mac_addr)):
+            if(self.ms_msg_proc.send_install_msg(elem_desc, flow, element_name, parameter, mac_addr)):
 
                 ##
                 # STEP 3: Now that we've uploaded and installed, we update our state
@@ -276,12 +268,12 @@ class slick_controller (object):
                 # Update our internal state, noting that app_desc owns elem_desc
                 self.elem_to_app.update(elem_desc, application_object, app_desc)
 
-                return elem_desc
+                #return elem_desc
             else:
                 # TODO rollback the updated states in case of failure.
-                return -1
+                return [-1]
         # We should return the list of all sucessful elem_descs
-        # return elem_descs
+        return elem_descs
 
 
     def __download_files(self, element_names, mac_addrs):

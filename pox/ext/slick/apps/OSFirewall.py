@@ -18,8 +18,8 @@ class OSFirewall(Application):
 
     def init(self):
         ed = self.apply_elem(self.flow, ["P0f"]) 
-        if((ed >0)):
-            self.ed1 = ed
+        if self.check_elems_installed(ed):
+            self.ed1 = ed[0]
             self.installed = True
             print "P0f Element Installed."
 

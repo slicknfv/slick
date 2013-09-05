@@ -34,5 +34,16 @@ class Application():
                }
         return flow
 
-    #def init( self ):
-        #raise NotImplementedError "The Application base class requires derived classes to implement init()"
+    def check_elems_installed(self, eds):
+        """ Return true if after checking element descriptors
+
+        Args:
+            eds: List of element descriptors.
+        Returns:
+            True/False
+        """
+        installed = True
+        for ed in eds:
+            if (ed < 0):
+                installed = False
+        return installed

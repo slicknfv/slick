@@ -24,7 +24,7 @@ class TwoLoggers(Application):
         flow['tp_src'] = 80
         ed2 = self.apply_elem( flow, ["Logger"], parameters ) 
 
-        if((ed1 > 0) and (ed2 > 0)):
+        if(self.check_elems_installed(ed1) and self.check_elems_installed(ed2)):
             self.installed = True
             print "TwoLoggers: created two elements with fds", ed1, "and", ed2
         else:

@@ -10,7 +10,7 @@ class BloomFilterUnitTest(Application):
     def __init__( self, controller, ad ):
         Application.__init__( self, controller, ad )
         self.num_elements = 1
-        self.eds = [] #List of functions used by this application.
+        self.eds = [] #List of elements used by this application.
         self.count = 0
 
     def init(self):
@@ -18,8 +18,8 @@ class BloomFilterUnitTest(Application):
         flow['tp_dst'] = 80
         for index in range(0, self.num_elements):
             ed = self.apply_elem( flow, ["BloomFilter"] )
-            if( ed > 0 ):#=> we have success
-                self.eds.append(ed)
+            if self.check_elems_installed(ed):
+                self.eds.append(ed[0])
                 self.installed = True
                 logging.info("BloomFilter application Installed.")
 

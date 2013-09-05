@@ -14,8 +14,8 @@ class HttpLogger(Application):
         flow['tp_dst'] = 80
         ed = self.apply_elem( flow, ["Logger"], parameters ) 
 
-        if(ed > 0):
+        if(self.check_elems_installed(ed)):
             self.installed = True
-            print "HttpLogger: created element with fd", ed
+            print "HttpLogger: created element with element descriptor", ed
         else:
             print "Failed to install the HttpLogger application"

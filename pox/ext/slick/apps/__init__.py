@@ -1,1 +1,2 @@
-__all__ = ['TriggerAllUnitTest', 'TwoLoggers', 'BloomFilterUnitTest', 'OSFirewall', 'BlockDomains','HttpLogger']
+__all__ = ['TriggerAllUnitTest', 'TwoLoggers', 'BloomFilterUnitTest',
+           'OSFirewall', 'BlockDomains','HttpLogger', 'TwoLoggersChain']

@@ -10,6 +10,8 @@ from slick.Application import Application
 class TriggerAllUnitTest(Application):
     def __init__( self, controller, application_descriptor ):
         Application.__init__( self, controller, application_descriptor )
+        self.ed1 = None
+        self.ed2 = None
 
     def init(self):
         flows = self.make_wildcard_flow()
@@ -23,7 +25,7 @@ class TriggerAllUnitTest(Application):
         self.ed2 = self.apply_elem( flows, ["TriggerAll"] )
 
         # Make sure it all got set up correctly
-        if(self.ed1 > 0 and self.ed2 > 0):
+        if(self.check_elems_installed(self.ed1) and self.check_elems_installed(self.ed2)):
             self.f1 = open("/tmp/1_trigger.txt","w", 0)
             self.f2 = open("/tmp/2_trigger.txt","w", 0)
             self.installed = True

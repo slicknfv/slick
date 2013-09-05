@@ -2,6 +2,7 @@
     Logger: an element that copies each packet it receives to a configurable file, then forwards the packet along
 """
 import os.path
+import datetime
 from slick.Element import Element
 
 class Logger(Element):
@@ -16,7 +17,8 @@ class Logger(Element):
 
     def process_pkt( self, buf ):
         flow = self.extract_flow( buf )
-        self.file_handle.write( str(flow) + '\n' )
+        timestamp = datetime.datetime.now()
+        self.file_handle.write( str(timestamp) + ' ' + str(flow) + '\n' )
         return buf
 
     def shutdown( self ):
