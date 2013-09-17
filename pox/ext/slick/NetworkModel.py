@@ -47,6 +47,9 @@ class NetworkModel():
             element_descriptors.append(element_instance.elem_desc)
         return element_descriptors
 
+    def get_all_registered_machines (self):
+        return self._controller.get_all_registered_machines()
+
     def get_compatible_machines (self, elem_name):
         # TODO uncomment the code below to make it actually get compatible machines
         # TODO for now, it just returns all machines
@@ -146,3 +149,14 @@ class NetworkModel():
     def get_traffic_matrix( self ):
         return None
     """
+
+    # Required for OverlayNetworks
+    def get_weight(self, node1_mac, node2_mac):
+        """Retrun the overlay link weight for the 
+        given node and element descriptor."""
+        pass
+
+    def get_machine_mac (self, elem_desc):
+        """Return the machine mac address for the 
+        given element descriptor."""
+        return self._controller.elem_to_mac.get(elem_desc)

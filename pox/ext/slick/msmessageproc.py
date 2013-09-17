@@ -4,16 +4,54 @@ from collections import defaultdict
 import socket
 
 from pox.core import core as core
+from pox.lib.revent import *
+log = core.getLogger()
+
+
+class ElementMachineUp(Event):
+    def __init__(self, machine_mac, machine_ip):
+        """Event raised when a middlebox machine
+        goes live in the network."""
+        Event.__init__(self)
+        self.mac = machine_mac
+        self.ip = machine_ip
+
+class ElementMachineDown(Event):
+    def __init__(self, machine_mac, machine_ip):
+        """Event raised when a middlebox machine
+        goes down in the network."""
+        Event.__init__(self)
+        self.mac = machine_mac
+        self.ip = machine_ip
+
+class ElementInstanceEvent(Event):
+    def __init__(self, machine_mac, machine_ip, element_descriptor, 
+                 created = False, destroyed = False, moved = False):
+        """Event raised when an element instance
+        is created, destroyed or moved in the network."""
+        Event.__init__(self)
+        self.mac = machine_mac
+        self.ip = machine_ip
+        self.ed = element_descriptor
+        self.created = created
+        self.removed = destroyed
+        self.moved = moved
 
 #Priorities: ShowStopper, High,Med.Low.
-class MSMessageProcessor():
+class MSMessageProcessor(EventMixin):
     def __init__(self,context):
         self.cntxt = context
         # TCP Connection handlers
         self.tcp_conn_handlers = {}
-        # These are the pplication initializations.
-        self.app_handles = []
+        # These are the application initializations.
+        self.app_handles = [ ]
 
+    # Raise these events.
+    _eventMixin_events = set([
+        ElementMachineUp,
+        ElementMachineDown,
+        ElementInstanceEvent,
+    ])
 
     # --
     # Function adds an application to its app_handles for subsequent processing
@@ -46,6 +84,11 @@ class MSMessageProcessor():
                 # dml
                 #self.cntxt.fmap.update_element_machine(machine_ip,machine_mac,None) # Simply add the record of the shim.
                 self.cntxt.register_machine(machine_ip, machine_mac)
+                log.debug("Registering element machine: " + str(machine_mac))
+                print "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+                print self.cntxt.elem_to_mac._mac_to_elems
+                # Raising the event
+                self.raiseEvent(ElementMachineUp, machine_mac, machine_ip)
                 reply["dummy"]="connected"
                 return reply
             # if type is trigger call raise trigger.
@@ -63,22 +106,30 @@ class MSMessageProcessor():
 
     # Return True for sucess False for failure
     def send_install_msg(self,fd,flow,function_name,params,msg_dst):
+        """Send the install message and generate the required 
+        ElementInstance created events."""
         if((type(fd) == int) and isinstance(params, dict)):
             # we are sending the lists now.
             msg = {"type":"install", "fd": [fd], "flow":flow, "function_name": [function_name],"params": [params]}
-            return self.send_msg(msg_dst,msg)
+            if self.send_msg(msg_dst,msg):
+                for ed in [fd]:
+                    # Raise event for each element instance created.
+                    # TODO: Do this once the SUCCESS is returned from shim.
+                    machine_ip = self.cntxt.mac_to_ip.get(msg_dst)
+                    self.raiseEvent(ElementInstanceEvent, msg_dst, machine_ip, ed, created=True)
+                return True
+            else:
+                return False
 
     # msg_dst == Middlebox MAC address
     def send_configure_msg(self,fd,params_dict,msg_dst):
         if((type(fd) == int) and isinstance(params_dict, dict)):
             msg = {"type":"configure", "fd":fd,"params":params_dict}
-            print msg
             self.send_msg(msg_dst,msg)
-                
+
     def send_remove_msg(self,fd,params_dict,msg_dst):
         if((type(fd) == int) and isinstance(params_dict, dict)):
             msg = {"type":"remove", "fd":fd,"params":params_dict}
-            print msg
             return self.send_msg(msg_dst,msg)
 
     """

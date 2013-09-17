@@ -38,10 +38,13 @@ from apps import *
 
 from slick.routing.ShortestPathRouting import ShortestPathRouting
 from slick.steering.RandomSteering import RandomSteering
+from slick.steering.ShortestHopCountSteering import ShortestHopCountSteering
 from slick.placement.RandomPlacement import RandomPlacement
+from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.NetworkModel import NetworkModel
 from slick.NetworkModel import ElementInstance
 import slick_exceptions
+from slick.overlay_network import OverlayNetwork
 
 log = core.getLogger()
 
@@ -54,11 +57,16 @@ class slick_controller (object):
         print "INITIALIZING SLICK with application '" + application + "'"
 
         self.transparent = transparent
+        # Message Processor.  Where App Handles are Initialized.
+        self.ms_msg_proc = MSMessageProcessor(self)
+
 
         # Modules
         self.network_model = NetworkModel(self)
         self.placement_module = RandomPlacement( self.network_model )
-        self.steering_module = RandomSteering( self.network_model )
+        self.placement_module = RoundRobinPlacement( self.network_model )
+        #self.steering_module = RandomSteering( self.network_model )
+        self.steering_module = ShortestHopCountSteering( self.network_model )
         self.routing_module = ShortestPathRouting( self.network_model )
 
         # add the standard OpenFlow event handlers
@@ -81,9 +89,6 @@ class slick_controller (object):
         # Application descriptor
         self._latest_app_descriptor = 100
 
-        # Message Processor.  Where App Handles are Initialized.
-        self.ms_msg_proc = MSMessageProcessor(self)
-
         # Load the application
         app_class = sys.modules['slick.apps.'+application].__dict__[application]
         self.app_instance = app_class( self, self._get_unique_app_descriptor() )
@@ -98,6 +103,9 @@ class slick_controller (object):
 
         # Exposes some wrappers, particularly for l2_multi_slick
         self.controller_interface = POXInterface(self)
+
+        # Build the overlay network
+        self.overlay_net = OverlayNetwork(self)
 
         # Application Initialization and Configuration.
         Timer(APPCONF_REFRESH_RATE, self.timer_callback, recurring = True)

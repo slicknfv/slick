@@ -99,7 +99,7 @@ def _calc_paths ():
       path_map[k][j] = (1,None)
     path_map[k][k] = (0,None) # distance, intermediate
 
-  #dump()
+  dump()
 
   for k in sws:
     for i in sws:
@@ -112,8 +112,8 @@ def _calc_paths ():
               # i -> k -> j is better than existing
               path_map[i][j] = (ikj_dist, k)
 
-  #print "--------------------"
-  #dump()
+  print "--------------------"
+  dump()
 
 
 def _get_raw_path (src, dst):
@@ -306,7 +306,7 @@ class Switch (EventMixin):
       switch2 = mb_locations[index+1][0]
       switch1_port = mb_locations[index][1]
       switch2_port = mb_locations[index+1][1]
-
+      print pathlets
       p = pathlets[index]
 
       if p is None:
@@ -574,7 +574,7 @@ class l2_multi_slick (EventMixin):
             bad_macs.add(mac)
       for mac in bad_macs:
         del mac_map[mac]
-        slick_controller_interface.del_machine_location(mac)
+        #slick_controller_interface.del_machine_location(mac)
 
   def _handle_ConnectionUp (self, event):
     sw = switches.get(event.dpid)

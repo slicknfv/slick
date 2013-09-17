@@ -76,7 +76,21 @@ class ElementToMac():
             if(element_desc in self._mac_to_elems[mac_addr]):
                 return mac_addr
 
+    def get_elem_descs(self, mac_addr):
+        """Given mac address return all the element descriptors for the element_machine.
 
+        Args:
+            mac_addr:
+                MAC address of element machine.
+        Returns:
+            List of element descriptors.
+        Throws:
+            KeyError if the mac addres is not found.
+        """
+        if mac_addr in self._mac_to_elem:
+            return self._mac_to_elems[mac_addr]
+        else:
+            raise KeyError("Unable to find the mac addr in mac to element mapping.")
 
 """
 	This class provides a mapping from a mac address to an IP address
