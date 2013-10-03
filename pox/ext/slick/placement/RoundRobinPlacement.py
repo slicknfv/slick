@@ -15,6 +15,7 @@ class RoundRobinPlacement(Placement):
         Placement.__init__ (self, network_model)
         # element_name -> element_machine_mac set
         self.elem_name_to_machine_macs = defaultdict(list)
+        self.used_macs = [ ]
 
     def get_placement (self, elements_to_install):
         """
@@ -47,7 +48,8 @@ class RoundRobinPlacement(Placement):
         if elem_name not in self.elem_name_to_machine_macs:
             self.elem_name_to_machine_macs[elem_name] = [ ]
         for machine_mac in machines:
-            if machine_mac not in self.elem_name_to_machine_macs[elem_name]:
+            if (machine_mac not in self.elem_name_to_machine_macs[elem_name]) and (machine_mac not in self.used_macs):
+                self.used_macs.append(machine_mac)
                 self.elem_name_to_machine_macs[elem_name].append(machine_mac)
                 return machine_mac
         # If we have reached here it means that all the element machines have been used.
