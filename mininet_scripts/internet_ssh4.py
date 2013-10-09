@@ -47,7 +47,9 @@ def startNAT( root, subnet='10.0/8', inetIntf='eth1' ):
     root.cmd( 'iptables -P INPUT ACCEPT' )
     root.cmd( 'iptables -P OUTPUT ACCEPT' )
     root.cmd( 'iptables -P FORWARD DROP' )
- 
+
+    # Allow queries e.g, dpctl dump-flows tcp:127.0.0.1:6634
+    root.cmd( 'iptables -A INPUT -p tcp -i ' + str(localIntf) + ' -d 127.0.0.1 -j ACCEPT' )
     # Configure NAT
     root.cmd( 'iptables -I FORWARD -i', localIntf, '-d', subnet, '-j DROP' )
     root.cmd( 'iptables -A FORWARD -i', localIntf, '-s', subnet, '-j ACCEPT' )
@@ -176,7 +178,9 @@ if __name__ == '__main__':
     #net.addController('c0', port=6639)
     #net = Mininet(controller = lambda name: RemoteController( name, ip='10.0.2.15', port=6633 ), listenPort=6639 )
     #net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ), listenPort=6639 )
-    net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo)
+    #net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo)
+    # 6633 is controller port, 6634 is for dpctl queries, dump-flows etc.
+    net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634)
     #net.addController('c0')
 
     #s1 = net.addSwitch('s1')
