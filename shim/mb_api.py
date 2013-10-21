@@ -6,7 +6,9 @@ from collections import defaultdict
 from shim_table import ShimTable
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, parentdir+"/pox/ext/slick/elements") 
+elements_path = parentdir +"/pox/ext/slick/elements" 
+sys.path.insert(0, elements_path)
+
 from Logger.Logger import Logger
 from TriggerAll.TriggerAll import TriggerAll
 from DnsDpi.DnsDpi import DnsDpi
@@ -14,6 +16,7 @@ from P0f.P0f import P0f
 from Drop.Drop import Drop
 from Noop.Noop import Noop
 from BloomFilter.BloomFilter import BloomFilter
+
 
 """
     These are the functions supported by the Shim  to the controller.
@@ -54,33 +57,19 @@ class ClientService(rpyc.Service):
             function_name = function_names[i]
             params_dict = params_dicts[i]
             function_handle = None
-            if(function_name == "Logger"):
-                function_handle = Logger(self.shim, fd)#start the function but pass the shim reference to invoke trigger.
-                function_handle.init(params_dict)# init invoked on the application.
-            if(function_name == "TriggerAll"):
-                function_handle = TriggerAll(self.shim, fd)#start the function
-                function_handle.init(params_dict)# init invoked on the application.
-            if(function_name == "DnsDpi"):
-                function_handle = DnsDpi(self.shim, fd)#start the function
-                function_handle.init(params_dict)# init invoked on the application.
-            if(function_name == "Drop"):
-                function_handle = Drop(self.shim, fd)#start the function
-                function_handle.init(params_dict)# init invoked on the application.
-            if(function_name == "P0f"):
-                function_handle = P0f(self.shim, fd)
-                function_handle.init(params_dict)
-            if(function_name == "BloomFilter"):
-                function_handle = BloomFilter(self.shim, fd)
-                function_handle.init(params_dict)
-            if(function_name == "Noop"):
-                function_handle = Noop(self.shim, fd)#start the function
-                function_handle.init(params_dict)# init invoked on the application.
+
+            # from Logger.Logger import Logger
+            package_name = function_name +'.'+function_name
+            class_name = function_name
+            elem_class = sys.modules[package_name].__dict__[class_name]
+            elem_instance = elem_class( self.shim, fd )
+            elem_instance.init(params_dict)
             try:
                 if(isinstance(flow['nw_src'], unicode)): #BAD HACK
                     flow['nw_src'] = flow['nw_src'].encode('ascii', 'replace')
                 self.shim_table.add_flow(0, flow, fd) #Update flow to fd mapping.
                 # This is just for reference.
-                self.fd_to_object_map[fd] = function_handle
+                self.fd_to_object_map[fd] = elem_instance
                 reverse_flow = self.shim.get_reverse_flow(flow)
                 self.shim_table.add_flow(0, reverse_flow, fd)
             except Exception:
