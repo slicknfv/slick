@@ -1,5 +1,5 @@
 """
-    TwoLoggers: One Application, Two Function Instances, One Flow
+    TwoLoggers: One Application, Two Element Instances, One Flow, One Element machine.
 """
 from slick.Application import Application
 
