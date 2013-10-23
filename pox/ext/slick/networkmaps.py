@@ -163,7 +163,8 @@ class FlowToElementsMapping():
         #   Limitation: This assumes that a single flow will be subjected to one type
         #               of element in one chain. For example it can be 
         #               subjected to LoadBalancer once in a chain.
-        self.flow_to_function_mapping = defaultdict(OrderedDict) 
+        self.flow_to_element_mapping = defaultdict(list)
+        self.flow_to_element_instance_mapping = defaultdict(list)
 
     """
      These three functions: 
@@ -173,9 +174,9 @@ class FlowToElementsMapping():
 	# Given a in_port,flow and dictionary of functions{key=number:value=function_name}
     """
     # TODO in_port is always None
-    # TODO 'functions' should be an array (though that doesn't seem to change the code here)
-    # XXX Note that 'functions' is now a dictionary of {elem_desc : elem_name}
-    def add(self,in_port,flow, element_instance):
+    def add_element(self,in_port,flow, element_instance):
+        """This function is called to assign 
+        and element to a flow."""
         src_mac =None
         dst_mac = None
         if(flow['dl_src'] != None):
@@ -194,20 +195,49 @@ class FlowToElementsMapping():
                            tp_src=flow['tp_src'],
                            tp_dst=flow['tp_dst'])
         element_name = element_instance.name
-        if not self.flow_to_function_mapping.has_key(f):
-            self.flow_to_function_mapping[f] = OrderedDict({element_name: [element_instance]})#append(element_instance)
+        if not self.flow_to_element_mapping.has_key(f):
+            self.flow_to_element_mapping[f] = [element_name]#OrderedDict({element_name: [element_instance]})#append(element_instance)
             return True
         else: # we already have a flow
-            # If there is already an element_name present add a new instance.
-            if self.flow_to_function_mapping[f].has_key(element_name):
-                self.flow_to_function_mapping[f][element_name].append(element_instance)
+            if element_name not in self.flow_to_element_mapping[f]:
+                self.flow_to_element_mapping[f].append(element_name)
             else:
-                self.flow_to_function_mapping[f][element_name] = [element_instance]
+                # We have a replica being create by application.
+                # Therefore we don't add any new element_name.
+                pass 
+            return True
 
+    def add_element_instance(self,in_port,flow, element_instance):
+        """Once a new element instance is created we need to call
+        this function."""
+        src_mac =None
+        dst_mac = None
+        if(flow['dl_src'] != None):
+            src_mac = mac_to_int(flow['dl_src'])
+        if(flow['dl_dst'] != None):
+            dst_mac = mac_to_int(flow['dl_dst'])
+        f = self.FlowTuple(in_port=in_port,
+                           dl_src=src_mac,
+                           dl_dst=dst_mac,
+                           dl_vlan=flow['dl_vlan'],
+                           dl_vlan_pcp=flow['dl_vlan_pcp'],
+                           dl_type= flow['dl_type'],
+                           nw_src=flow['nw_src'],
+                           nw_dst=flow['nw_dst'],
+                           nw_proto=flow['nw_proto'],
+                           tp_src=flow['tp_src'],
+                           tp_dst=flow['tp_dst'])
+        element_name = element_instance.name
+        if not self.flow_to_element_instance_mapping.has_key(f):
+            self.flow_to_element_instance_mapping[f] = [element_instance]
+            return True
+        else: # we already have a flow
+            self.flow_to_element_instance_mapping[f].append(element_instance)
+            return True
 
-	# Given a in_port,flow and dictionary of functions{key=number:value=function_name}
+    # Given an in_port,flow and dictionary of functions{key=number:value=function_name}
     # TODO this is not getting called anywhere, but should once we add the ability to remove elements
-    def remove(self, in_port, flow):
+    def remove_flow(self, in_port, flow):
         src_mac = mac_to_int(flow['dl_src'])
         dst_mac = mac_to_int(flow['dl_dst'])
         f = self.FlowTuple(in_port=in_port,
@@ -221,8 +251,9 @@ class FlowToElementsMapping():
                            nw_proto=flow['nw_proto'],
                            tp_src=flow['tp_src'],
                            tp_dst=flow['tp_dst'])
-        if (self.flow_to_function_mapping.has_key(f)):
-            del self.flow_to_function_mapping[f]
+        if (self.flow_to_element_mapping.has_key(f)):
+            del self.flow_to_element_mapping[f]
+            del self.flow_to_element_instance_mapping[f]
             return True
         else:
             return False
@@ -272,17 +303,28 @@ class FlowToElementsMapping():
             Add lookup code from file: ofmatch.py in project openfaucet.
         Dummy matching function returns True if the first wild card entry matches.
     """
-    def _lookup(self,ft):
-        for item in self.flow_to_function_mapping:
+    def _lookup_elements(self,ft):
+        """Given flow tuple return the list of element names
+        that correspond to the flow. This is an ordered list. """
+        for item in self.flow_to_element_mapping:
             if(_flowtuple_equals(item,ft)):
-                return self.flow_to_function_mapping[item]
-        return {}
+                return self.flow_to_element_mapping[item]
+        return [ ]
 
-    # Function that returns the corresponding element_desc lists to the flow.
+    def _lookup_element_instances(self, ft):
+        """Given flow tuple return the list of element instances
+        that correspond to the flow."""
+        for item in self.flow_to_element_instance_mapping:
+            if(_flowtuple_equals(item, ft)):
+                return self.flow_to_element_instance_mapping[item]
+        return [ ]
+    # Function that returns the corresponding element_desc lists to the flow(in order).
     # Returns:
     # [[e11,e12], [e21,e22,...], ...]
     # 
     def get(self,inport,flow):
+        """Given the flow return the ordered list of element instances for 
+        a given flow."""
         # Based on the flow figure out the functions and then return a list of functipons available on the port.
         src_mac = mac_to_int(flow.dl_src.toRaw())
         dst_mac = mac_to_int(flow.dl_dst.toRaw())
@@ -297,13 +339,15 @@ class FlowToElementsMapping():
                            nw_proto=flow.nw_proto,
                            tp_src=flow.tp_src,
                            tp_dst=flow.tp_dst)
-        elements_dict = self._lookup(f)
+        element_names = self._lookup_elements(f)
+        element_instances = self._lookup_element_instances(f)
         replica_sets = [ ]
         index = 0
-        for element_name, element_instances in elements_dict.iteritems():
+        for e_name in element_names:
             replica_sets.append([ ])
             for elem_inst in element_instances:
-                replica_sets[index].append(elem_inst.elem_desc)
+                if elem_inst.name == e_name:
+                    replica_sets[index].append(elem_inst.elem_desc)
             index += 1
         return replica_sets
 
@@ -324,8 +368,8 @@ class FlowToElementsMapping():
                            tp_src=in_flow.tp_src,
                            tp_dst=in_flow.tp_dst)
 
-        #print self.flow_to_function_mapping
-        for item in self.flow_to_function_mapping.keys():
+        #print self.flow_to_element_mapping
+        for item in self.flow_to_element_mapping.keys():
             if(_flowtuple_equals(item, ft)):
                 return item
         return None

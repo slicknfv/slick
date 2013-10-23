@@ -4,6 +4,7 @@
 
 from specs import MachineSpec
 from specs import ElementSpec
+from slick.overlay_network import OverlayNetwork
 
 class ElementInstance():
     def __init__(self, name, app_desc, elem_desc, location):
@@ -27,6 +28,9 @@ class NetworkModel():
 
         # TODO put this in the controller
         self.element_sequences = {}     # flow match -> [element names] XXX we may want this to map to descriptors
+        # Build the overlay network
+        self.overlay_net = OverlayNetwork(controller)
+
 
     def get_element_placements (self, app_desc, element_name):
         """
@@ -150,13 +154,15 @@ class NetworkModel():
         return None
     """
 
-    # Required for OverlayNetworks
-    def get_weight(self, node1_mac, node2_mac):
-        """Retrun the overlay link weight for the 
-        given node and element descriptor."""
-        pass
+    # Wrapper for overlay_network function.
+    def get_overlay_subgraph(self, src_switch, dst_switch, elem_descs):
+        return self.overlay_net.get_subgraph(src_switch, dst_switch, elem_descs)
 
     def get_machine_mac (self, elem_desc):
         """Return the machine mac address for the 
         given element descriptor."""
         return self._controller.elem_to_mac.get(elem_desc)
+
+    def get_connected_switch(self, machine_mac):
+        """Return the dpid for the machine mac"""
+        return self.overlay_net.get_connected_switch(machine_mac)

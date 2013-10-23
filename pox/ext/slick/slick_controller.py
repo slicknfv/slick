@@ -44,7 +44,6 @@ from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.NetworkModel import NetworkModel
 from slick.NetworkModel import ElementInstance
 import slick_exceptions
-from slick.overlay_network import OverlayNetwork
 
 log = core.getLogger()
 
@@ -103,9 +102,6 @@ class slick_controller (object):
 
         # Exposes some wrappers, particularly for l2_multi_slick
         self.controller_interface = POXInterface(self)
-
-        # Build the overlay network
-        self.overlay_net = OverlayNetwork(self)
 
         # Application Initialization and Configuration.
         Timer(APPCONF_REFRESH_RATE, self.timer_callback, recurring = True)
@@ -271,7 +267,8 @@ class slick_controller (object):
                 # Update our internal state of flow to elements mapping
                 element_instance = ElementInstance(element_name, app_desc, elem_desc, mac_addr)
 
-                self.flow_to_elems.add(None, flow, element_instance)
+                self.flow_to_elems.add_element(None, flow, element_instance)
+                self.flow_to_elems.add_element_instance(None, flow, element_instance)
 
                 # Update our internal state, noting that app_desc owns elem_desc
                 self.elem_to_app.update(elem_desc, application_object, app_desc)
@@ -359,16 +356,25 @@ class POXInterface():
         self.controller = controller
 
     """
-    returns the dictionary of function descriptors to MAC addresses
+    Args:
+        src: Source switch and port tuple. e.g, (00-00-00-00-00-03, 1)
+        dst: Destination switch and port tuple.
+        flow: flow fields.
+    Returns:
+        returns the dictionary of function descriptors to MAC addresses
     Note: This assumes that the placement of elements is already fixed.
     The updates to element placement could happen on a slower timescale.
     Replaces get_element_descriptors
     """
     def get_steering (self, src, dst, flow):
+        element_macs = {}
+        if ((src[0] is None) or (dst[0] is None)):
+            return element_macs
         # replica_sets is a list of lists of element descriptors
         # [[e_11, e_12, ...], [e_21, e_22, ...], ...]
         # TODO this is what flow_to_elems should return, but it does not yet support replicas
         replica_sets = self.controller.flow_to_elems.get(flow.in_port, flow)
+        print "REPLICA SETS", replica_sets
 
         # XXX as a result, we'll construct it by hand for now
         # elems is a {elem_desc:elem_name} mapping
@@ -381,15 +387,31 @@ class POXInterface():
         # element_descriptors is a list of individual element descriptors: one chosen from
         # each element in the replica list, e.g.: [e_11, e_25, e_32, ...]
         element_descriptors = self.controller.steering_module.get_steering(replica_sets, src, dst, flow)
+        print "ELEMENT DESCS", element_descriptors
 
         # TODO if this fails, try to scale out the appropriate element(s)
 
-        element_macs = {}
         for elem_desc in element_descriptors:
             mac_addr = self.controller.elem_to_mac.get(elem_desc) 
             element_macs[elem_desc] = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
 
+        print "ELEMENT MACS", element_macs
         return element_macs
+
+
+    #def chain_required(self, element_macs):
+    #    """Returns True/False if the flow processing
+    #    requires it to go through a chain of elements 
+    #    on different machines.
+    #    Args:
+    #        list of replica sets.
+    #    Returns:
+    #            True/False."""
+    #    #if (len(element_macs) > 1):
+    #    if (len(element_macs) >= 1): # For dev purpose using VLAN tags change to > 1 later on.
+    #        return True
+    #    else:
+    #        return False
 
     """
     Constructs a list of "pathlets" between src -> machines in the machine
@@ -444,5 +466,6 @@ class POXInterface():
 # POX Launch the application.
 ##############################
 def launch (transparent=False, application="TwoLoggers"):
+#def launch (transparent=False, application="LoggerTriggerChain"):
     # The second component is argument for slick_controller.
     core.registerNew(slick_controller, str_to_bool(transparent), application)

@@ -391,7 +391,17 @@ class Switch (EventMixin):
     # TODO: Let's get the refactoring language straight here.  Is this module 2 or module 3?
 
     #element_descriptors = slick_controller_interface.get_element_descriptors(flow_match)
-    element_descriptors = slick_controller_interface.get_steering(mac_map.get(packet.src), mac_map.get(packet.dst), flow_match)
+    src_switch = dst_switch = src_port = dst_port = None
+    source_tuple = mac_map.get(packet.src)
+    dest_tuple = mac_map.get(packet.dst)
+    if source_tuple:
+        src_switch = source_tuple[0].dpid
+        src_port = source_tuple[1]
+    if dest_tuple:
+        dst_switch = dest_tuple[0].dpid
+        dst_port = dest_tuple[1]
+    #element_descriptors = slick_controller_interface.get_steering(mac_map.get(packet.src), mac_map.get(packet.dst), flow_match)
+    element_descriptors = slick_controller_interface.get_steering((src_switch,src_port), (dst_switch,dst_port), flow_match)
     # Order of this list is important.
     # This is the same order in which we want the packets to traverse.
     # TODO just return the list of mac addresses instead of this (unordered) dictionary FIXME

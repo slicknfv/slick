@@ -161,7 +161,7 @@ class OverlayNetwork(object):
         # in openflow_discovery.
         self._update_edge_switches()
         if node_mac in self.element_machines:
-            elem_switch_mac = self._get_connected_switch(node_mac)
+            elem_switch_mac = self.get_connected_switch(node_mac)
             # Add the switch to list of element switches
             self.element_switches.add(elem_switch_mac)
             # Update the overlay graph.
@@ -189,6 +189,7 @@ class OverlayNetwork(object):
                     hop_count = self._get_hop_count(row_mac, col_mac)
                     link_weight = LinkWeight(hop_count=hop_count)
                     self.overlay_graph[row_mac].add((col_mac, link_weight))
+                    # Getting the dicts as edge weights can be stored as key value pairs not object.
                     edge_data = link_weight.__dict__
                     #print edge_data
                     self.overlay_graph_nx.add_edge(row_mac, col_mac, edge_data)
@@ -217,7 +218,7 @@ class OverlayNetwork(object):
             if len(elem_descs_list):
                 return
             else:
-                elem_switch_mac = self._get_connected_switch(node_mac)
+                elem_switch_mac = self.get_connected_switch(node_mac)
                 self.element_switches.remove(elem_switch_mac)
                 #self.element_machines.remove(node_mac)
                 self.overlay_graph_update(node_mac)
@@ -285,11 +286,11 @@ class OverlayNetwork(object):
             else:
                 return edge_switch
 
-    def _get_connected_switch(self, mac):
+    def get_connected_switch(self, mac):
         """Given host mac address return the dpid for host
         tracker."""
-        assert isinstance(mac_addr, basestring)
         mac_addr = dpid_to_str(mac, ':')
+        assert isinstance(mac_addr, basestring)
         if mac_addr in self.hosts:
             dpid_port_tuple = self.hosts[mac_addr]
             return dpid_port_tuple[0]
@@ -314,7 +315,7 @@ class OverlayNetwork(object):
         return gateway_dpids
 
     def get_subgraph(self, src_switch_mac, dst_switch_mac, elem_descs):
-        """Return a networkX subgraph for the element descriptors.
+        """Return a copy of networkX subgraph for the element descriptors.
 
         Its a public function to be used by steering module
         to solve the subgraph.
@@ -332,11 +333,14 @@ class OverlayNetwork(object):
                 # Get the element machine mac address.
                 elem_machine_mac = self.controller.elem_to_mac.get(ed)
                 # Get the dpid to which the element is attached.
-                elem_switch_mac = self._get_connected_switch(elem_machine_mac)
-                if elem_switch_mac in switch_macs:
+                elem_switch_mac = self.get_connected_switch(elem_machine_mac)
+                if elem_switch_mac in switch_macs: # There can be multiple MB machines on one switch.
                     print "DPID already has one element_machine present."
                 else:
                     switch_macs.append(elem_switch_mac)
-        subgraph = self.overlay_graph_nx.subgraph(switch_macs)
-        #print subgraph.edges()
+        # Given the nodes get the subgraph.
+        # .copy() is for deep copy of edge attributes.
+        subgraph = nx.Graph(self.overlay_graph_nx.subgraph(switch_macs).copy())
+        # print self.overlay_graph_nx.edges()
+        # print subgraph.edges()
         return subgraph
