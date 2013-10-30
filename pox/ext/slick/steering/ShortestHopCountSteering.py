@@ -43,9 +43,15 @@ class ShortestHopCountSteering(Steering):
             if(len(replicas) == 0):
                 return None
         for replicas in replica_sets:
+            print "Subgraph Nodes:", self.subgraph.nodes()
+            print "Subgraph Edges:", self.subgraph.edges()
+            print "Starting Node for Iteration: ", start
+            print "Replicas: ", replicas
             # For each element type find the nearest replica.
             nearest_replica = self._get_nearest_replica(start, replicas)
-            start = nearest_replica
+            machine_mac = self.network_model.get_machine_mac(nearest_replica)
+            machine_switch_mac = self.network_model.get_connected_switch(machine_mac)
+            start = machine_switch_mac
             rv.append(nearest_replica)
         return rv
 
@@ -60,6 +66,7 @@ class ShortestHopCountSteering(Steering):
             # Get the MAC address for the element descriptor.
             machine_mac = self.network_model.get_machine_mac(element_desc)
             machine_switch_mac = self.network_model.get_connected_switch(machine_mac)
+            print "Getting edge data between: ", start_node, machine_switch_mac
             # Get the distance from the start_node
             edge_data = self.subgraph.get_edge_data(start_node, machine_switch_mac)
             # Please look at the LinkWeight Class in overlay_net module for 
