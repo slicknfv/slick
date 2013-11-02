@@ -25,7 +25,7 @@ class ElementMachineDown(Event):
         self.ip = machine_ip
 
 class ElementInstanceEvent(Event):
-    def __init__(self, machine_mac, machine_ip, element_descriptor, 
+    def __init__(self, machine_mac, machine_ip, element_descriptor, element_name,
                  created = False, destroyed = False, moved = False):
         """Event raised when an element instance
         is created, destroyed or moved in the network."""
@@ -33,6 +33,7 @@ class ElementInstanceEvent(Event):
         self.mac = machine_mac
         self.ip = machine_ip
         self.ed = element_descriptor
+        self.element_name = element_name
         self.created = created
         self.removed = destroyed
         self.moved = moved
@@ -116,7 +117,7 @@ class MSMessageProcessor(EventMixin):
                     # Raise event for each element instance created.
                     # TODO: Do this once the SUCCESS is returned from shim.
                     machine_ip = self.cntxt.mac_to_ip.get(msg_dst)
-                    self.raiseEvent(ElementInstanceEvent, msg_dst, machine_ip, ed, created=True)
+                    self.raiseEvent(ElementInstanceEvent, msg_dst, machine_ip, ed, function_name, created=True)
                 return True
             else:
                 return False

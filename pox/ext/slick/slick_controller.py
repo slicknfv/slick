@@ -39,6 +39,7 @@ from apps import *
 from slick.routing.ShortestPathRouting import ShortestPathRouting
 from slick.steering.RandomSteering import RandomSteering
 from slick.steering.ShortestHopCountSteering import ShortestHopCountSteering
+from slick.steering.ShortestPathSteering import ShortestPathSteering
 from slick.placement.RandomPlacement import RandomPlacement
 from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.NetworkModel import NetworkModel
@@ -52,7 +53,7 @@ class slick_controller (object):
     """
     Waits for OpenFlow switches to connect 
     """
-    def __init__ (self, transparent, application):
+    def __init__ (self, transparent, application, query):
         print "INITIALIZING SLICK with application '" + application + "'"
 
         self.transparent = transparent
@@ -62,10 +63,11 @@ class slick_controller (object):
 
         # Modules
         self.network_model = NetworkModel(self)
-        self.placement_module = RandomPlacement( self.network_model )
+        #self.placement_module = RandomPlacement( self.network_model )
         self.placement_module = RoundRobinPlacement( self.network_model )
         #self.steering_module = RandomSteering( self.network_model )
-        self.steering_module = ShortestHopCountSteering( self.network_model )
+        #self.steering_module = ShortestHopCountSteering( self.network_model )
+        self.steering_module = ShortestPathSteering( self.network_model )
         self.routing_module = ShortestPathRouting( self.network_model )
 
         # add the standard OpenFlow event handlers
@@ -393,6 +395,7 @@ class POXInterface():
 
         for elem_desc in element_descriptors:
             mac_addr = self.controller.elem_to_mac.get(elem_desc) 
+            print "MAC ADDRESS GOT FOR THE ELEMENT DESC:", elem_desc, mac_addr
             element_macs[elem_desc] = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
 
         print "ELEMENT MACS", element_macs
@@ -465,7 +468,7 @@ class POXInterface():
 ##############################
 # POX Launch the application.
 ##############################
-def launch (transparent=False, application="TwoLoggers"):
+def launch (transparent=False, application="TwoLoggers", query="elements"):
 #def launch (transparent=False, application="LoggerTriggerChain"):
     # The second component is argument for slick_controller.
-    core.registerNew(slick_controller, str_to_bool(transparent), application)
+    core.registerNew(slick_controller, str_to_bool(transparent), application, query)
