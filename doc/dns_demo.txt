@@ -78,9 +78,11 @@ starting POX) first.
 
 	- Running the following script will create a network topology, and
 	  will set up NAT so that mininet hosts can communicate with hosts
-	  on the Internet:
+	  on the Internet. This script by default creates a tree topology
+      and the fanout and depth of the tree can be specified with -f and -d 
+      options respectively.:
 
-		$ sudo python ~/middlesox/mininet_scripts/internet_ssh3.py -i <interface>
+		$ sudo python ~/middlesox/mininet_scripts/internet_ssh4.py -i <interface> -f 2 -d 3
 
 	 where <interface> is your virtual Ethernet interface that connects to the Internet.
 
@@ -106,7 +108,7 @@ starting POX) first.
 
 	- From this terminal, run:
 
-		h3# sudo python ~/middlesox/shim/shim.py
+		h3# python ~/middlesox/shim/shim.py
 
 	  This will start the shim layer and will register h3 as a
 	  middlebox so that slick controller can redirect traffic to this
@@ -144,6 +146,7 @@ APPLICATIONS
 
 		$ cd middlesox/pox/pox/
 		$ sudo ./pox.py --verbose slick.slick_controller --application=TriggerAllUnitTest messenger slick.tcp_transport --tcp_address=0.0.0.0 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
+        $ sudo ./pox.py --verbose host_tracker slick.slick_controller messenger slick.tcp_transport --tcp_address=0.0.0.0 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
 
     If no application is specified on the commandline, it will default to
     running the TwoLoggers application (which logs both port 53 and port 80

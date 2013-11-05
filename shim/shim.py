@@ -10,7 +10,7 @@ parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, parentdir) 
 sys.path.insert(0, "/home/mininet/middlesox/pox/ext") 
 
-sys.path.insert(0, '../lib/')
+sys.path.insert(0, '/home/mininet/middlesox/lib/')
 import pcap as pcap
 
 import socket
@@ -257,6 +257,8 @@ class Shim:
         attrs[DL_DST] = eth.dst
         attrs[DL_TYPE] = eth.type
         p = eth.data
+        if eth.type == dpkt.ethernet.ETH_TYPE_8021Q:
+            print "VLAN PACKET"
     
         attrs[DL_VLAN] = 0xffff # XXX should be written OFP_VLAN_NONE
         attrs[DL_VLAN_PCP] = 0
