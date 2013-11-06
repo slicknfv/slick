@@ -6,6 +6,7 @@ from struct import unpack
 from collections import defaultdict
 from collections import namedtuple
 from collections import OrderedDict
+from sets import Set
 
 from conf import *
 from utils.packet_utils import *
@@ -87,7 +88,7 @@ class ElementToMac():
         Throws:
             KeyError if the mac addres is not found.
         """
-        if mac_addr in self._mac_to_elem:
+        if mac_addr in self._mac_to_elems:
             return self._mac_to_elems[mac_addr]
         else:
             raise KeyError("Unable to find the mac addr in mac to element mapping.")
@@ -377,8 +378,6 @@ class FlowToElementsMapping():
 
 """
 This class maintains a mapping between elements and the apps who own them
-
-This used to be RouteCompiler in route_compiler
 """
 class ElementToApplication():
     def __init__(self):
@@ -425,3 +424,10 @@ class ElementToApplication():
             if(app[1] == app_desc):
                 return True
         return False
+
+    def get_app_descs(self):
+        """Return Set([ ]) of all app descs."""
+        app_descs = Set([ ])
+        for ed, app in self.application_handles.iteritems():
+            app_descs.add(app[1])
+        return app_descs

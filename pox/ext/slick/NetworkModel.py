@@ -107,7 +107,7 @@ class NetworkModel():
     def add_placement (self, element_name, app_desc, element_desc, mac_addr):
         # TODO return an error if this app_desc has already placed this element_desc
 
-        element_instance = ElementInstance(element_name, app_desc, element_desc, location)
+        element_instance = ElementInstance(element_name, app_desc, element_desc, mac_addr)
         if(element_name not in self._name_to_instances.keys()):
             self._name_to_instances[element_name] = set()
 
@@ -166,3 +166,18 @@ class NetworkModel():
     def get_connected_switch(self, machine_mac):
         """Return the dpid for the machine mac"""
         return self.overlay_net.get_connected_switch(machine_mac)
+
+    def get_elem_names(self):
+        """Return a list of active element names."""
+        return self._name_to_instances.keys()
+
+    def get_elem_descs(self):
+        """Return a list of elem descs."""
+        return self._ed_to_instance.keys()
+
+    def get_elem_name(self, ed):
+        """Given the element_desc return elem name."""
+        elem_instance = None
+        if ed in self._ed_to_instance:
+            elem_instance = self._ed_to_instance[ed]
+        return elem_instance.name

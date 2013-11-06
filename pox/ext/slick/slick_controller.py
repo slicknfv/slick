@@ -45,6 +45,7 @@ from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.NetworkModel import NetworkModel
 from slick.NetworkModel import ElementInstance
 import slick_exceptions
+import queryengine
 
 log = core.getLogger()
 
@@ -107,6 +108,8 @@ class slick_controller (object):
 
         # Application Initialization and Configuration.
         Timer(APPCONF_REFRESH_RATE, self.timer_callback, recurring = True)
+        # Anything can be queried from the controller.
+        self._query_engine = queryengine.QueryEngine(self, query)
 
     def _get_unique_app_descriptor(self):
         self._latest_app_descriptor += 1
@@ -133,6 +136,7 @@ class slick_controller (object):
     so it tries init()'ing the application until it is able to install its elements
     """
     def timer_callback(self):
+        self._query_engine.process_query()
         # Periodically initialize the applications.
         # Calling repeatedly allows for dynamic app loading (in theory)
         for app in self.ms_msg_proc.app_handles:
@@ -163,7 +167,6 @@ class slick_controller (object):
     """
     def get_all_registered_machines(self):
         return self.mac_to_ip.get_all_macs()
-        
 
     # Slick API Functions
 
@@ -275,6 +278,8 @@ class slick_controller (object):
                 # Update our internal state, noting that app_desc owns elem_desc
                 self.elem_to_app.update(elem_desc, application_object, app_desc)
 
+                self.network_model.add_placement(element_name, app_desc, elem_desc, mac_addr)
+
                 #return elem_desc
             else:
                 # TODO rollback the updated states in case of failure.
@@ -325,6 +330,7 @@ class slick_controller (object):
         # roll back
         if(self.ms_msg_proc.send_remove_msg(elem_desc, parameters,mac_addr)):
             desc_removed = self.elem_to_mac.remove(elem_desc)
+        self.remove_placement(elem_desc)
         #update mb_placement_steering for changed elements
 
     def __get_placeless_element_names(self, element_names, mac_addrs):
@@ -468,7 +474,7 @@ class POXInterface():
 ##############################
 # POX Launch the application.
 ##############################
-def launch (transparent=False, application="TwoLoggers", query="elements"):
+def launch (transparent=False, application="TwoLoggers", query="summary"):
 #def launch (transparent=False, application="LoggerTriggerChain"):
     # The second component is argument for slick_controller.
     core.registerNew(slick_controller, str_to_bool(transparent), application, query)
