@@ -166,7 +166,7 @@ def read_config(filename):
     hosts = config_dict["hosts"]
     return middleboxes, hosts
 
-def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, traffic_pattern):
+def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, traffic_pattern, kill_wait_sec):
     """Perform the operation specified with provided parameters."""
     if filename:
         middlebox_names , hosts = read_config(filename)
@@ -179,7 +179,7 @@ def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, tra
     if src_dst_pairs:
         hosts = src_dst_pairs
     middleboxes.load_shims(network, middlebox_names)
-    middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern=1)
+    middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
     for host in hosts:
         pass
 
@@ -200,8 +200,10 @@ if __name__ == '__main__':
                      dest="config", help = 'Configuration file for middlebox machines and network hosts.'  )
     op.add_option( '--middleboxes', '-m', action="store", 
                      dest="mblist", help = 'List of middlebox machines'  )
-    op.add_option( '--traffic-pattern', '-t', action="store", 
+    op.add_option( '--traffic-pattern', '-p', action="store", 
                      dest="tpattern", help = 'Traffic pattern to generate. Please see documentation for identifiers.'  )
+    op.add_option( '--kill-wait', '-k', action="store", 
+                     dest="kill_wait", help = 'Number of seconds to wait before killing the experiment.'  )
 
     options, args = op.parse_args()
     if options.rootInterface is None:   # if filename is not given
@@ -229,13 +231,19 @@ if __name__ == '__main__':
 
     config_filename = options.config
     middlebox_machines = options.mblist
-    traffic_pattern = options.tpattern
+    traffic_pattern = int(options.tpattern) if options.tpattern else None
+    kill_wait_sec = int(options.kill_wait) if options.kill_wait else None
     src_dst_pairs = [ ]
     # Wait for n seconds before starting the middlebox instacnes.
     print "Starting experiments but waiting for controller to stablize."
     time.sleep(5)
-    # Once the network is built read the configuration file and start the software.
-    perform_experiment( net, config_filename, middlebox_machines, src_dst_pairs, traffic_pattern )
+    print "Starting experiemnt with kill wait of ", kill_wait_sec, " seconds."
+    print "Generating Traffic Pattern: ", traffic_pattern
+    if traffic_pattern and kill_wait_sec:
+        # Once the network is built read the configuration file and start the software.
+        perform_experiment( net, config_filename, middlebox_machines, src_dst_pairs, traffic_pattern, kill_wait_sec)
+    else:
+        print "WARNING: Not performing the experiment as required parameters are missing."
 
     print "*** Hosts are running and should have internet connectivity"
     print "*** Type 'exit' or control-D to shut down network"

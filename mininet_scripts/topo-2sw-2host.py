@@ -12,7 +12,7 @@ from mininet.cli import CLI
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.node import RemoteController
-from mininet.node import OVSKernelSwitch,UserSwitch
+from mininet.node import OVSKernelSwitch,UserSwitch,OVSSwitch
 
 class MyTopo( Topo ):
     "Simple topology example."
@@ -37,7 +37,8 @@ class MyTopo( Topo ):
 
 topos = { 'mytopo': ( lambda: MyTopo() ) }
 topo = MyTopo()
-net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634)
+net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSSwitch, topo=topo, listenPort=6634)
+#net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634)
 net.start()
 CLI( net )
 print "**** Cleaning up ssh background jobs..."

@@ -54,7 +54,7 @@ def execute_command(network, hosts, command, single_command_timeoutms=1000, kill
     print '\n'
     return output
 
-def generate_traffic(network, hosts, middleboxes, traffic_pattern):
+def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec = 15):
     """network is the network object from mininet.
     hosts: List of hosts to use as clients for traffic generation.
     traffic_pattern: Identification of traffic pattern to generate."""
@@ -64,7 +64,7 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern):
         # => All the hosts should be used as client.
         hstar = True
     if traffic_pattern == 1:
-        seconds = 15
+        seconds = kill_wait_sec
         if hstar == True:
             # Returns the list of host names.
             for h in network.hosts:
