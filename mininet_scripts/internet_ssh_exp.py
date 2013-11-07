@@ -163,13 +163,15 @@ def read_config(filename):
         Two arrays of middlebox names and hosts."""
     config_dict = read_json(filename)
     middleboxes = config_dict["middlebox_machines"]
-    hosts = config_dict = ["hosts"]
+    hosts = config_dict["hosts"]
     return middleboxes, hosts
 
-def perform_experiment(network, filename, middlebox_machines, src_dst_pairs):
+def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, traffic_pattern):
     """Perform the operation specified with provided parameters."""
     if filename:
         middlebox_names , hosts = read_config(filename)
+        print "Middlebox Machines: ", middlebox_names
+        print "Network Servers: ", hosts
     else:
         print "No filename provided to laod the network configuration."
     if middlebox_machines:
@@ -177,6 +179,7 @@ def perform_experiment(network, filename, middlebox_machines, src_dst_pairs):
     if src_dst_pairs:
         hosts = src_dst_pairs
     middleboxes.load_shims(network, middlebox_names)
+    middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern=1)
     for host in hosts:
         pass
 
@@ -197,6 +200,8 @@ if __name__ == '__main__':
                      dest="config", help = 'Configuration file for middlebox machines and network hosts.'  )
     op.add_option( '--middleboxes', '-m', action="store", 
                      dest="mblist", help = 'List of middlebox machines'  )
+    op.add_option( '--traffic-pattern', '-t', action="store", 
+                     dest="tpattern", help = 'Traffic pattern to generate. Please see documentation for identifiers.'  )
 
     options, args = op.parse_args()
     if options.rootInterface is None:   # if filename is not given
@@ -224,12 +229,13 @@ if __name__ == '__main__':
 
     config_filename = options.config
     middlebox_machines = options.mblist
+    traffic_pattern = options.tpattern
     src_dst_pairs = [ ]
     # Wait for n seconds before starting the middlebox instacnes.
     print "Starting experiments but waiting for controller to stablize."
     time.sleep(5)
     # Once the network is built read the configuration file and start the software.
-    perform_experiment( net, config_filename, middlebox_machines, src_dst_pairs )
+    perform_experiment( net, config_filename, middlebox_machines, src_dst_pairs, traffic_pattern )
 
     print "*** Hosts are running and should have internet connectivity"
     print "*** Type 'exit' or control-D to shut down network"
