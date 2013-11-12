@@ -26,9 +26,13 @@ from mininet.node import Node, OVSKernelSwitch,UserSwitch
 
 from optparse import OptionParser
 
+from dctopo import FatTreeTopo
+
 import json
 import time
 import middleboxes
+import build_topology
+import sys
 
 def read_json(filename,debug=None):
     if(debug):
@@ -180,8 +184,6 @@ def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, tra
         hosts = src_dst_pairs
     middleboxes.load_shims(network, middlebox_names)
     middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
-    for host in hosts:
-        pass
 
 if __name__ == '__main__':
 
@@ -204,23 +206,48 @@ if __name__ == '__main__':
                      dest="tpattern", help = 'Traffic pattern to generate. Please see documentation for identifiers.'  )
     op.add_option( '--kill-wait', '-k', action="store", 
                      dest="kill_wait", help = 'Number of seconds to wait before killing the experiment.'  )
+    op.add_option( '--topo-file', '-t', action="store", 
+                     dest="topology_file", help = 'Path of topology file.'  )
+    op.add_option( '--fattree-degree', '-z', action="store", 
+                     dest="ft_degree", help = 'Switch degree for FatTree.'  )
 
     options, args = op.parse_args()
     if options.rootInterface is None:   # if filename is not given
         op.error('Must specify the Ethernet interface that connects to the Internet')
+    config_filename = options.config
+    middlebox_machines = options.mblist
+    traffic_pattern = int(options.tpattern) if options.tpattern else None
+    kill_wait_sec = int(options.kill_wait) if options.kill_wait else None
+    topo_file_name = str(options.topology_file) if options.topology_file else None
+    ft_degree = int(options.ft_degree) if options.ft_degree else None
 
     lg.setLogLevel( 'info')
 
-# This sets the controller port to 6634 by default, which can conflict
-# if we also start up another controller.  We should have this listen
-# somewher else since it is just for the NAT.
-#    net = TreeNet( depth=1, fanout=4)
-    if options.treedepth and options.fanout:
+    topo = None
+    # If the topology is to be read.
+    if topo_file_name:
+        print "Building network topology from file: ", topo_file_name
+        topo = build_topology.build_topo(topo_file_name, False)
+    elif ft_degree:
+        print "Building a FatTree with K=", ft_degree
+        topo = FatTreeTopo(ft_degree)
+    elif options.treedepth and options.fanout:
         topo = TreeTopo( depth = int(options.treedepth), fanout = int(options.fanout) )
     else:
         topo = TreeTopo( depth = 1, fanout = 3 )
     # 6633 is controller port, 6634 is for dpctl queries, dump-flows etc.
+    # This sets the controller port to 6634 by default, which can conflict
+    # if we also start up another controller.  We should have this listen
+    # somewher else since it is just for the NAT.
+    print "Using the topo:", topo
     net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634)
+    net.start( )
+    time.sleep(5)
+    print "Pinging hosts."
+    #net.pingAll( )
+    CLI( net )
+    net.stop( )
+    sys.exit(1)
     # Pick a network that is different from your 
     # NAT'd network if you are behind a NAT
     rootnode = connectToInternet( net,
@@ -229,15 +256,10 @@ if __name__ == '__main__':
                                   '192.168.100.1',
                                   '192.168.100.0/24')
 
-    config_filename = options.config
-    middlebox_machines = options.mblist
-    traffic_pattern = int(options.tpattern) if options.tpattern else None
-    kill_wait_sec = int(options.kill_wait) if options.kill_wait else None
+
     src_dst_pairs = [ ]
     # Wait for n seconds before starting the middlebox instacnes.
-    print "Starting experiments but waiting for controller to stablize."
     time.sleep(5)
-    print "Starting experiemnt with kill wait of ", kill_wait_sec, " seconds."
     print "Generating Traffic Pattern: ", traffic_pattern
     if traffic_pattern and kill_wait_sec:
         # Once the network is built read the configuration file and start the software.

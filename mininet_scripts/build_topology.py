@@ -24,6 +24,27 @@ class NetworkXTopo(Topo):
         for n1, n2 in topo_graph.edges():
             self.addLink('s%d' % n1, 's%d' % n2)
 
+def validate_graph(graph):
+    """Return the largest component of the graph > 100 nodes.
+    """
+    if not nx.is_connected(graph):
+        print "WARNING: This network is not connected."
+        num_connected_comps = nx.number_connected_components(graph)
+        print "Total number of components: ", num_connected_comps
+        subgraphs = nx.connected_component_subgraphs(graph)
+        biggest_subg = None
+        max_nodes = 0
+        subg_nodes = 0
+        for subg in subgraphs:
+            # print len(subg.nodes())
+            subg_nodes = len(subg.nodes())
+            if subg_nodes > max_nodes:
+                max_nodes = subg_nodes
+                biggest_subg = subg
+        return biggest_subg
+    else:
+        return graph
+
 
 def read_topo(topo_file):
     """Args:
@@ -34,6 +55,7 @@ def read_topo(topo_file):
     topo_graph = nx.Graph()
 
     line_num = 0
+    edge_count = 0
     with open(topo_file, 'r') as f:
         for line in f.readlines():
             if line_num != 0:
@@ -51,35 +73,48 @@ def read_topo(topo_file):
                 capacity = float(split_data[5])
                 vlan = int(split_data[6])
 
-                topo_graph.add_edge(object_id, r_object_id, capacity = capacity)
+                if not topo_graph.has_edge(object_id, r_object_id):
+                    edge_count += 1
+                    topo_graph.add_edge(object_id, r_object_id, capacity = capacity)
             line_num = line_num +1
+    topo_graph = validate_graph(topo_graph)
+    if not nx.is_connected(topo_graph):
+        print "WARNING: This network is not connected."
     f.close()
     return topo_graph
 
 
-def build_topo(topo_file):
+
+def build_topo(topo_file, display_graph = False):
     """Reads the topology in csv and returns a mininet Topo object."""
     topo_graph = read_topo( topo_file )
-    net = NetworkXTopo( )
-    net.build_network( topo_graph, 1 )
-    hosts = net.hosts( )
+    topo = NetworkXTopo( )
+    topo.build_network( topo_graph, 1 )
+    hosts = topo.hosts( )
     # Debug 
+    print "Total number of Vertices:", len(topo.switches())
+    print "Total number of Edges:", len(topo.links())
     #for host in hosts:
     #    print host
     #for link in net.links():
     #    print link
-    draw_graph(topo_graph)
+    if display_graph:
+        draw_graph(topo_graph)
+    return topo
 
 def draw_graph(netx_graph):
     pos = nx.graphviz_layout(netx_graph, prog='dot')
     nx.draw(netx_graph, pos)
+    # generate graph
+    plt.savefig("graph.png", dpi = 1000)
     plt.show()
 
 
 #### Test Code. ####
 def main(argv):
     #build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/sample_topo.csv")
-    build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/l2traceJuly29.2013.csv")
+    build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/l2traceJuly29.2013.csv", True)
+    
 
 if __name__ == "__main__":
     main(sys.argv[1:])

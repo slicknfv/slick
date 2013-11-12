@@ -9,7 +9,9 @@ from mininet.util import custom, pmonitor
     Traffic Pattern Identifier:
         1: Make all the hosts ping/wget to a domain name such that the DNS lookup
            request is generated and then measure the latency.
-        2: fetch a webpage from internet.
+        2: fetch a webpage from webserver inside the network.
+            a- Creates webserver on specified hosts.
+            b- Makes clients fetch webpages.
 """
 
 def load_shims(network, mblist):
@@ -54,7 +56,7 @@ def execute_command(network, hosts, command, single_command_timeoutms=1000, kill
     print '\n'
     return output
 
-def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec = 15):
+def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec):
     """network is the network object from mininet.
     hosts: List of hosts to use as clients for traffic generation.
     traffic_pattern: Identification of traffic pattern to generate."""
@@ -75,9 +77,27 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
         print Set(middleboxes)
         print hosts
         print network.hosts
-        command = "ping -c 5 www.google.com"
+        #command = "ping -c 5 www.google.com"
+        command = "ping -c 50 143.215.129.1"
         #command = "wget -S www.google.com"
-        execute_command(network, hosts, command)
+        output = execute_command(network, hosts, command, 10000, kill_wait_sec)
+        latency_dict = _get_latency(output)
+        print latency_dict
+
+def _get_latency(output):
+    """Given a list of strings where each entry is a line of ping output
+        return a dict where keys are hostnames and values are latencies."""
+    latency_dict = { }
+    for line in output:
+        if ("rtt min/avg/max/mdev" in line) or ("min/avg/max/stddev" in line):
+            line.rstrip()
+            output_array = line.replace("/"," ").split(" ")
+            print output_array
+            min_lat = float(output_array[7])
+            avg_lat = float(output_array[8])
+            host_name = output_array[0].strip('<').strip('>:')
+            latency_dict[host_name] = avg_lat
+    return latency_dict
 
 def start_iperf(network, mblist):
     pass
