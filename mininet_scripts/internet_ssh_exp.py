@@ -17,6 +17,9 @@ from mininet.log import lg, info
 
 from mininet.node import Node
 from mininet.net import Mininet
+# For resource isolation.
+from mininet.node import CPULimitedHost
+from mininet.link import TCLink
 
 from mininet.topo import Topo
 from mininet.topolib import TreeNet, TreeTopo
@@ -26,7 +29,8 @@ from mininet.node import Node, OVSKernelSwitch,UserSwitch
 
 from optparse import OptionParser
 
-from dctopo import FatTreeTopo
+from topologies.dctopo import FatTreeTopo
+from topologies.jellyfish import JellyfishTopo
 
 import json
 import time
@@ -210,6 +214,8 @@ if __name__ == '__main__':
                      dest="topology_file", help = 'Path of topology file.'  )
     op.add_option( '--fattree-degree', '-z', action="store", 
                      dest="ft_degree", help = 'Switch degree for FatTree.'  )
+    op.add_option( '--jellyfish', '-j', action="store", 
+                     dest="jellyfish_seed", help = 'JellyFish topology\'s seed.'  )
 
     options, args = op.parse_args()
     if options.rootInterface is None:   # if filename is not given
@@ -220,6 +226,7 @@ if __name__ == '__main__':
     kill_wait_sec = int(options.kill_wait) if options.kill_wait else None
     topo_file_name = str(options.topology_file) if options.topology_file else None
     ft_degree = int(options.ft_degree) if options.ft_degree else None
+    jellyfish_seed = int(options.jellyfish_seed) if options.jellyfish_seed else None
 
     lg.setLogLevel( 'info')
 
@@ -231,6 +238,9 @@ if __name__ == '__main__':
     elif ft_degree:
         print "Building a FatTree with K=", ft_degree
         topo = FatTreeTopo(ft_degree)
+    elif jellyfish_seed:
+        print "Building Jellyfish Topology."
+        topo = JellyfishTopo(seed = jellyfish_seed)
     elif options.treedepth and options.fanout:
         topo = TreeTopo( depth = int(options.treedepth), fanout = int(options.fanout) )
     else:
@@ -240,7 +250,7 @@ if __name__ == '__main__':
     # if we also start up another controller.  We should have this listen
     # somewher else since it is just for the NAT.
     print "Using the topo:", topo
-    net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634)
+    net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=CPULimitedHost, link=TCLink)
     net.start( )
     time.sleep(5)
     print "Pinging hosts."
