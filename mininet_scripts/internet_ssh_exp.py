@@ -202,10 +202,11 @@ if __name__ == '__main__':
                      dest="treedepth", help = 'Depth of Tree Topology'  )
     op.add_option( '--fanout', '-f', action="store", 
                      dest="fanout", help = 'Tree Fanout for tree topology'  )
+    # Options -c, -m, -p and -k are for expriments.
     op.add_option( '--config', '-c', action="store", 
                      dest="config", help = 'Configuration file for middlebox machines and network hosts.'  )
     op.add_option( '--middleboxes', '-m', action="store", 
-                     dest="mblist", help = 'List of middlebox machines'  )
+                     dest="mblist", help = 'List of middlebox machines to install the shim layers.'  )
     op.add_option( '--traffic-pattern', '-p', action="store", 
                      dest="tpattern", help = 'Traffic pattern to generate. Please see documentation for identifiers.'  )
     op.add_option( '--kill-wait', '-k', action="store", 
@@ -216,6 +217,8 @@ if __name__ == '__main__':
                      dest="ft_degree", help = 'Switch degree for FatTree.'  )
     op.add_option( '--jellyfish', '-j', action="store", 
                      dest="jellyfish_seed", help = 'JellyFish topology\'s seed.'  )
+    op.add_option( '--gateway', '-g', action="store", 
+                     dest="gateway_switch", help = 'Please specify the switch name (e.g, "s1") that should be connected to internet.'  )
 
     options, args = op.parse_args()
     if options.rootInterface is None:   # if filename is not given
@@ -227,10 +230,12 @@ if __name__ == '__main__':
     topo_file_name = str(options.topology_file) if options.topology_file else None
     ft_degree = int(options.ft_degree) if options.ft_degree else None
     jellyfish_seed = int(options.jellyfish_seed) if options.jellyfish_seed else None
+    gateway_switch = str(options.gateway_switch) if options.gateway_switch else None
 
     lg.setLogLevel( 'info')
 
     topo = None
+    rootnode = None
     # If the topology is to be read.
     if topo_file_name:
         print "Building network topology from file: ", topo_file_name
@@ -251,20 +256,34 @@ if __name__ == '__main__':
     # somewher else since it is just for the NAT.
     print "Using the topo:", topo
     net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=CPULimitedHost, link=TCLink)
-    net.start( )
-    time.sleep(5)
-    print "Pinging hosts."
-    #net.pingAll( )
-    CLI( net )
-    net.stop( )
-    sys.exit(1)
-    # Pick a network that is different from your 
-    # NAT'd network if you are behind a NAT
-    rootnode = connectToInternet( net,
-                                  's1', # This assumes that the root switch of a topology is s1
-                                  options.rootInterface,
-                                  '192.168.100.1',
-                                  '192.168.100.0/24')
+    #net = Mininet(switch=OVSKernelSwitch, topo=topo, host=CPULimitedHost, link=TCLink)
+    #net.start( )
+    #time.sleep(5)
+    #CLI( net )
+    #net.stop( )
+    #sys.exit(1)
+    if gateway_switch:
+        switch_names = [ ]
+        for switch in net.switches:
+            switch_names.append(switch.name)
+        if gateway_switch not in switch_names:
+            print "ERROR: The specified gateway switch %s does not exist." % gateway_switch
+            sys.exit(1)
+        print "Using %s as gateway switch." % gateway_switch
+        rootnode = connectToInternet( net,
+                                      gateway_switch,
+                                      options.rootInterface,
+                                      '192.168.100.1',
+                                      '192.168.100.0/24')
+
+    else:
+        # Pick a network that is different from your 
+        # NAT'd network if you are behind a NAT
+        rootnode = connectToInternet( net,
+                                      's1', # This assumes that the root switch of a topology is s1
+                                      options.rootInterface,
+                                      '192.168.100.1',
+                                      '192.168.100.0/24')
 
 
     src_dst_pairs = [ ]
