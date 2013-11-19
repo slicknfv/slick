@@ -108,8 +108,8 @@ class ShortestPathSteering(Steering):
         rv = [ ]
         path_switches = [ ]
         start = src
-        print "Subgraph Nodes:", self.subgraph.nodes()
-        print "Subgraph Edges:", self.subgraph.edges()
+        #print "Subgraph Nodes:", self.subgraph.nodes()
+        #print "Subgraph Edges:", self.subgraph.edges()
         shortest_path = [ ]
         pruned_paths = [ ]
         for replicas in replica_sets:
@@ -121,15 +121,15 @@ class ShortestPathSteering(Steering):
             service_chain_length = len(replica_sets) + 2
             # Get all the paths between the src and dst
             all_paths = self._get_all_paths(src, dst, replica_sets) 
-            print all_paths
+            #print all_paths
             for p in all_paths:
                 if (self._is_valid_path(p, replica_sets)):
                     print p, " is a valid path."
                     pruned_paths.append(p)
-            print pruned_paths
+            #print pruned_paths
         if len(pruned_paths):
             path_switches = self._get_shortest_path(src, dst, pruned_paths)
-        print "Shortest Path:", path_switches
+        #print "Shortest Path:", path_switches
         # Remove source and destination switch.
         # As we need to return the shortest_path
         # ordered element descriptors.
