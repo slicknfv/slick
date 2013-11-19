@@ -10,6 +10,7 @@ import string
 from msmessageproc import MSMessageProcessor
 
 import networkx as nx
+from pox.lib.revent import EventHalt
 
 log = core.getLogger()
 
@@ -48,6 +49,26 @@ class LinkWeight(object):
         s = 'phsyical_hop_count: ' + str(self.physical_hop_count) + ' avail_bandwidth: ' + str(self.avail_bandwidth) + ' latency: ' + str(self.latency)
         return s
 
+class Vertex(object):
+    def __init__(self, vertex_id, ed, element_name):
+        """vertex_id must be an integer."""
+        # Unique ID for the node in the graph.
+        self.vertex_id = vertex_id
+        # Element descriptor for the element instance.
+        self.elem_desc = ed
+        self.element_name = element_name
+
+    # Need to make it hashable.
+    def __hash__(self):
+        return hash(self.vertex_id)
+
+    def __eq__(self, other):
+        return (self.vertex_id == other.vertex_id)
+
+    def __str__(self):
+        s = "Vertex ID: " + str(self.vertex_id) + " Element Desc: " + str(self.elem_desc) + " Element Name: " + str(self.element_name)
+        return s
+
 class OverlayNetwork(object):
     def __init__(self, controller):
         self.controller = controller
@@ -64,7 +85,8 @@ class OverlayNetwork(object):
 
         # Data Structures.
         # Overlay Graph
-        self.overlay_graph_nx = nx.Graph( )
+        self.overlay_graph_nx = nx.DiGraph( )
+        self.overlay_graph_eds = nx.DiGraph( )
         self.overlay_graph = defaultdict(Set) 
         # Set of Edge switches. This set is used to add edges.
         self.edge_switches = Set([ ])
@@ -83,6 +105,8 @@ class OverlayNetwork(object):
         # from the overlay graph.
         # dpid -> element descriptors.
         self.switch_to_elem_desc = defaultdict(list)
+        # Unique ID for the vertex.
+        self.vertex_descriptor = 0 
 
     def _handle_host_tracker_HostEvent(self, event):
         """Given the host join/leave event update the self.hosts map.
@@ -91,6 +115,9 @@ class OverlayNetwork(object):
         Returns:
             None
         """
+        #if len(self.hosts) == 53:
+        #    return EventHalt
+        print len(self.hosts)
         host = str(event.entry.macaddr)
         #print host, type(host)
         switch = event.entry.dpid
@@ -128,8 +155,10 @@ class OverlayNetwork(object):
             AssertionError: If required fields of the event are not set."""
         if event.created:
             self._add_element_machine(event.mac)
+            self._update_overlay_graph_eds(event.ed, event.element_name, join=True)
         elif event.destroyed:
             self._remove_element_machine(event.mac)
+            self._update_overlay_graph_eds(event.ed, event.element_name, leave=True)
         elif event.moved:
             #TODO: self._move_element_machine(event.mac)
             pass
@@ -175,7 +204,6 @@ class OverlayNetwork(object):
             print self.overlay_graph_nx.edges()
             print "X"*100"""
 
-
     def _update_overlay_graph(self):
         """Update the overlay graph."""
         from slick.l2_multi_slick import switches
@@ -193,6 +221,85 @@ class OverlayNetwork(object):
                     edge_data = link_weight.__dict__
                     #print edge_data
                     self.overlay_graph_nx.add_edge(row_mac, col_mac, edge_data)
+
+    def _get_vertex_id(self):
+        self.vertex_descriptor += 1
+        return self.vertex_descriptor
+
+    def _update_overlay_graph_eds(self, ed, element_name, join=False, leave=False):
+        """Args:
+            Builds a graph between the element instances of the network.
+            ed = Element descriptor to be used for the element instacen.
+            element_name = Type of element instance node added to the graph.
+            join = Default False; Set to True if the node joins
+            leave = Default False; Set to True if the node leaves.
+        """
+        vertex_id = self._get_vertex_id()
+        graph_vertex = Vertex(vertex_id, ed, element_name)
+        if (join == leave):
+            raise Exception("A node can be added or removed not both.")
+        if join:
+            print "Updating the Element Instance: " + str(ed) + element_name
+            print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            self._add_vertex(graph_vertex)
+            print self.overlay_graph_eds.nodes()
+            print self.overlay_graph_eds.edges()
+        if leave:
+            self._remove_vertex(graph_vertex)
+
+    def _is_edge_allowed(self, src, dst):
+        """Return True/False if the edge is allowed or not.
+        Args:
+            src: src vertex of possible edge of type Vertex.
+            dst: dst vertex of possible edge of type Vertex.
+        Returns:
+            True/False if the edge is allowed or not."""
+        # Check to not have self loop on a vertex
+        if (src.vertex_id == dst.vertex_id):
+            return False
+        # No edges between the element descriptors of
+        # same type.
+        if (src.element_name == dst.element_name):
+            return False
+        element_desc = src_vertex.ed
+        # Ordered list of element names.
+        element_name_list = self.controller.get_element_order()
+        if ((src.element_name in element_name_list) and (dst.element_name in element_name_list)):
+            src_index = element_name_list.index(src.element_name)
+            dst_index = element_name_list.index(dst.element_name)
+            if (src_index == (dst_index-1)):
+                return True
+            else:
+                return False
+        else:
+            raise Exception("Element Name is not present in element names for the policy.")
+
+    def _add_vertex(self, graph_vertex):
+        """Function to update the edges between all the nodes in the graph.
+        Side Effect:
+            Update the overlay graph between all the element instances
+            in the network.
+        """
+        for v in self.overlay_graph_eds.nodes():
+            if _is_edge_allowed(graph_vertex, v):
+                self.overlay_graph_eds.add_edge(graph_vertex, v)
+            if _is_edge_allowed(v, graph_vertex):
+                self.overlay_graph_eds.add_edge(v, graph_vertex)
+        # Ideally we should not be putting this constraint but for now
+        # we have this constraint.
+        # After adding a node please make sure that the graph is DAG.
+        if nx.is_directed_acyclic_graph(self.overlay_graph_eds):
+            return True
+        else:
+            return False
+
+    def _remove_vertex(self, graph_vertex):
+        self.overlay_graph_eds.remove_node(graph_vertex)
+        if nx.is_directed_acyclic_graph(self.overlay_graph_eds):
+            return True
+        else:
+            return False
+
 
     def _remove_element_machine(self, node_mac):
         """Update the data structures and overlay graph when element instnace is removed.
@@ -268,7 +375,9 @@ class OverlayNetwork(object):
                 # switches do not have middlebox attached to them.
                 # Therefore they cannot be edge switches.
                 # but this is a hack.
-                return False
+                #return False
+                # But they always have source or destination attached to them.
+                return True
             switch_obj = switches[mac_addr]
             ports_to_check = [ ]
             for item in switch_obj.ports:
@@ -334,13 +443,15 @@ class OverlayNetwork(object):
                 elem_machine_mac = self.controller.elem_to_mac.get(ed)
                 # Get the dpid to which the element is attached.
                 elem_switch_mac = self.get_connected_switch(elem_machine_mac)
-                if elem_switch_mac in switch_macs: # There can be multiple MB machines on one switch.
-                    print "DPID already has one element_machine present."
+                # There can be multiple MB machines on one switch.
+                # Or middlebox machine and source/dst might be attached to same switch.
+                if elem_switch_mac in switch_macs: 
+                    print "DPID:",elem_switch_mac, " already has one element_machine present."
                 else:
                     switch_macs.append(elem_switch_mac)
         # Given the nodes get the subgraph.
         # .copy() is for deep copy of edge attributes.
-        subgraph = nx.Graph(self.overlay_graph_nx.subgraph(switch_macs).copy())
+        subgraph = nx.DiGraph(self.overlay_graph_nx.subgraph(switch_macs).copy())
         # print self.overlay_graph_nx.edges()
         # print subgraph.edges()
         return subgraph

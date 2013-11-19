@@ -16,6 +16,12 @@ class ElementInstance():
     def __str__ (self):
         return "ElementInstance(name:" + self.name + ", app_desc:" + str(self.app_desc) + ", elem_desc:" + str(self.elem_desc) + ", location:" + str(self.location) + ")"
 
+class MachineLoad(object):
+    def __init__(self):
+        self.cpu_percent = None
+        self.mem_percent = None
+        self.flow_percent = None
+
 class NetworkModel():
     def __init__ (self, controller):
         self._name_to_instances = {}    # element name -> element instances
@@ -181,3 +187,11 @@ class NetworkModel():
         if ed in self._ed_to_instance:
             elem_instance = self._ed_to_instance[ed]
         return elem_instance.name
+
+    def network_health(self):
+        """Function to check the health of the network and take appropriate action."""
+        pass
+
+    def get_available_load(self, machine_mac):
+        """Return percentage available of machine CPU."""
+        pass

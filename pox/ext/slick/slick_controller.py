@@ -136,7 +136,14 @@ class slick_controller (object):
     so it tries init()'ing the application until it is able to install its elements
     """
     def timer_callback(self):
+        # Calling this function to continuously display the status of 
+        # middlebox machines, element types, element descriptors etc.
         self._query_engine.process_query()
+        # If timer driven placement is enabled 
+        # Run update placement else don't.
+        placement_timer = True
+        if placement_timer:
+            self.controller_interface.update_placement()
         # Periodically initialize the applications.
         # Calling repeatedly allows for dynamic app loading (in theory)
         for app in self.ms_msg_proc.app_handles:
@@ -382,7 +389,7 @@ class POXInterface():
         # [[e_11, e_12, ...], [e_21, e_22, ...], ...]
         # TODO this is what flow_to_elems should return, but it does not yet support replicas
         replica_sets = self.controller.flow_to_elems.get(flow.in_port, flow)
-        print "REPLICA SETS", replica_sets
+        #print "REPLICA SETS", replica_sets
 
         # XXX as a result, we'll construct it by hand for now
         # elems is a {elem_desc:elem_name} mapping
@@ -395,16 +402,16 @@ class POXInterface():
         # element_descriptors is a list of individual element descriptors: one chosen from
         # each element in the replica list, e.g.: [e_11, e_25, e_32, ...]
         element_descriptors = self.controller.steering_module.get_steering(replica_sets, src, dst, flow)
-        print "ELEMENT DESCS", element_descriptors
+        #print "ELEMENT DESCS", element_descriptors
 
         # TODO if this fails, try to scale out the appropriate element(s)
 
         for elem_desc in element_descriptors:
             mac_addr = self.controller.elem_to_mac.get(elem_desc) 
-            print "MAC ADDRESS GOT FOR THE ELEMENT DESC:", elem_desc, mac_addr
+            #print "MAC ADDRESS GOT FOR THE ELEMENT DESC:", elem_desc, mac_addr
             element_macs[elem_desc] = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
 
-        print "ELEMENT MACS", element_macs
+        #print "ELEMENT MACS", element_macs
         return element_macs
 
 
@@ -443,6 +450,9 @@ class POXInterface():
     def path_was_installed (self, match, element_sequence, machine_sequence, path):
         return self.controller.network_model.path_was_installed(match, element_sequence, machine_sequence, path)
 
+    def update_placement(self):
+        """This is the placement recalculation function."""
+        element_descriptors = self.controller.placement_module.update_placement( )
 
     """
     This is a utils function.
