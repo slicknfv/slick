@@ -69,8 +69,8 @@ buffer_sent = {} # Key = (middlebox_switch_id,buffer_id) Value= Boolean
 FLOOD_HOLDDOWN = 5
 
 # Flow timeouts
-FLOW_IDLE_TIMEOUT = 10
-FLOW_HARD_TIMEOUT = 30
+FLOW_IDLE_TIMEOUT = 60
+FLOW_HARD_TIMEOUT = 90
 
 # How long is allowable to set up a path?
 PATH_SETUP_TIME = 4
@@ -99,7 +99,7 @@ def _calc_paths ():
       path_map[k][j] = (1,None)
     path_map[k][k] = (0,None) # distance, intermediate
 
-  dump()
+  #dump()
 
   for k in sws:
     for i in sws:
@@ -112,8 +112,8 @@ def _calc_paths ():
               # i -> k -> j is better than existing
               path_map[i][j] = (ikj_dist, k)
 
-  print "--------------------"
-  dump()
+  #print "--------------------"
+  #dump()
 
 
 def _get_raw_path (src, dst):
@@ -143,7 +143,8 @@ def _check_path (p):
   for a,b in zip(p[:-1],p[1:]):
     if adjacency[a[0]][b[0]] != a[2]:
       return False
-    if adjacency[b[0]][a[0]] != b[2]:
+    #if adjacency[b[0]][a[0]] != b[2]:
+    if adjacency[b[0]][a[0]] != b[1]:
       return False
   return True
 
