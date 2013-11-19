@@ -28,7 +28,7 @@ def launch (forwarding = "l2"):
                         "@@@bold%(message)s@@@normal")
   from pox.core import core
   import pox.openflow.discovery
-  pox.openflow.discovery.launch()
+  pox.openflow.discovery.launch(eat_early_packets=True)
 
   core.getLogger("openflow.spanning_tree").setLevel("INFO")
   if forwarding.lower() == "l3":
@@ -44,4 +44,4 @@ def launch (forwarding = "l2"):
   fw.launch()
 
   import pox.openflow.spanning_tree
-  pox.openflow.spanning_tree.launch()
+  pox.openflow.spanning_tree.launch(no_flood=True,hold_down=True)
