@@ -7,7 +7,7 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
-EXTENSION_NAME = "ndpi"
+EXTENSION_NAME = "ndpi_cython"
 
 parser = OptionParser()
 parser.add_option("-c", "--clean",
@@ -20,7 +20,7 @@ def clean_build():
     build."""
     for root, dirs, files in os.walk(".", topdown=False):
         for name in files:
-            if (name.startswith(EXTENSION_NAME) and not(name.endswith(".pyx") or name.endswith(".pxd") or name.endswith(".py"))):
+            if (name.startswith(EXTENSION_NAME) and not(name.endswith(".pyx") or name.endswith(".pxd") or name.endswith(".py") or name.endswith("*.h") or name.endswith("*.c"))):
                 os.remove(os.path.join(root, name))
         for name in dirs:
             if (name == "build"):
@@ -31,9 +31,9 @@ def setup_dpi():
     ext_modules = [Extension(EXTENSION_NAME, # Extension name
                               sourcefiles,
                               libraries = ["pcap"],
-                              extra_compile_args=["-O3", "-I../src/include/"],
-                              extra_link_args=["-L../src/lib/.libs/"],
-                              extra_objects = ["../src/lib/.libs/libndpi.a"],
+                              extra_compile_args=["-O3", "-I ./nDPI/src/include/"],
+                              extra_link_args=["-L ./nDPI/src/lib/.libs/"],
+                              extra_objects = ["./nDPI/src/lib/.libs/libndpi.a"],
                               )]
     setup(
         name = 'Deep Packet Inspection',
@@ -42,4 +42,4 @@ def setup_dpi():
     )
 
 clean_build()
-#setup_dpi()
+setup_dpi()

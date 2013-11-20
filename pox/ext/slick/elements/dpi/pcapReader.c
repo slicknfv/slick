@@ -37,7 +37,7 @@
 #include <pcap.h>
 #include <signal.h>
 
-#include "../config.h"
+#include "nDPI/config.h"
 #include "linux_compat.h"
 #include "ndpi_main.h"
 
