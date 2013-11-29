@@ -98,8 +98,12 @@ class MSMessageProcessor(EventMixin):
             if(msg["type"] == "trigger"):
                 elem_desc = msg["ed"]
                 if(type(elem_desc) == int):
-                    application_handle = self.cntxt.elem_to_app.get_app_handle(elem_desc)
-                    application_handle.handle_trigger(elem_desc,msg)
+                    if elem_desc == 0:
+                        # This is message from ShimResource Module.
+                        self.cntxt.controller_interface.update_placement(msg)
+                    else:
+                        application_handle = self.cntxt.elem_to_app.get_app_handle(elem_desc)
+                        application_handle.handle_trigger(elem_desc,msg)
                 reply["dummy"]="connected"
                 return reply
 

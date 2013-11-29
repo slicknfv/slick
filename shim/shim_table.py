@@ -153,3 +153,7 @@ class ShimTable():
             return self.flow_to_function_mapping[flow_tuple]
         return None
 
+
+    def get_active_flows(self):
+        """Return active flows for the shim."""
+        return len(self.flow_to_function_mapping)

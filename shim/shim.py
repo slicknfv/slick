@@ -27,6 +27,7 @@ from uuid import getnode as get_mac
 # Slick Packages
 from comm.clientcomm import ClientComm
 from mb_api import ClientService
+from mb_api import ShimResources
 from shim_table import ShimTable
 import shim
 
@@ -82,6 +83,8 @@ class Shim:
         inst = self
         self.client_service = ClientService(inst)
         self.forward_data_sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
+        # Adding this to report resources on shim.
+        self.shim_resources = ShimResources(inst)
 
         if(self.oface != None):
             self.forward_data_sock.bind((self.oface, 0))
@@ -226,6 +229,8 @@ class Shim:
         else:
             func_handles = self.client_service.get_function_handles_from_flow(flow)
             if(func_handles):
+                # Should a trigger be raised
+                self.shim_resources.calc_triggers(flow)
                 for func_handle in func_handles:
                     processed_pkt = func_handle.process_pkt(buf)
                     if processed_pkt:
@@ -243,6 +248,9 @@ class Shim:
             #    func_handle = self.client_service.get_function_handles_from_flow(reverse_flow)
             #    if(func_handle):
             #        func_handle.process_pkt(buf)
+
+    def get_active_flows(self):
+        return self.client_service.shim_table.get_active_flows()
 
     def extract_flow(self, eth):
         """Extracts and returns flow attributes from the given 'ethernet' packet.

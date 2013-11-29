@@ -12,6 +12,7 @@ class Logger(Element):
 
     def init( self, params ):
         filename = params["file_name"]
+        filename += str(self.ed)
         if(filename):
             self.file_handle = open( filename, 'a+' , 0)
 

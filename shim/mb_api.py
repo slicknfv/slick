@@ -1,6 +1,7 @@
 import os,sys
 import getopt
 import rpyc
+import time
 
 from collections import defaultdict
 from shim_table import ShimTable
@@ -133,10 +134,28 @@ class ClientService(rpyc.Service):
                         element_handles.append(self.fd_to_object_map[fd])
             return element_handles
 
+class ShimResources(object):
+    """Place it as an element in front of the chain."""
+    def __init__(self, shim):
+        self.shim = shim
+        self.cpu_percentage = 0
+        self.mem_percentage = 0
+        self.trigger_time = 0
+        self.max_flows = 1
+        self.trigger_interval = 500 # seconds
+
+    def calc_triggers(self, flow):
+        active_flows = self.shim.get_active_flows()
+        trigger_msg = { }
+        if active_flows >= self.max_flows:
+            cur_time = time.time()
+            if (cur_time - self.trigger_time) > self.trigger_interval:
+                trigger_msg = {"ed" : 0, "mac" : self.shim.mac, "max_flows" : True}
+                self.shim.client_service.raise_trigger(trigger_msg)
+                self.trigger_time = time.time()
 
 def usage():
     pass
-
 
 def start_rpyc(port):
     from rpyc.utils.server import ThreadedServer

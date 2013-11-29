@@ -17,17 +17,58 @@ class ElementInstance():
         return "ElementInstance(name:" + self.name + ", app_desc:" + str(self.app_desc) + ", elem_desc:" + str(self.elem_desc) + ", location:" + str(self.location) + ")"
 
 class MachineLoad(object):
-    def __init__(self):
+    def __init__(self, mac):
+        self.mac = mac
         self.cpu_percent = None
-        self.mem_percent = None
-        self.flow_percent = None
+        self.bytes_mem = None
+        self.max_mem = None
+        self.num_flows = None
+        self.max_flows = None
+
+class ElementInstanceLoad(object):
+    def __init__(self, ed, max_load = 0):
+        self.ed = ed
+        self.max_flows = 0
+        self.num_flows = 0
+
+class LinkLoad(object):
+    def __init__(self, link):
+        # link = (src_mac, dst_mac)
+        self.link = link
+        self.link_capacity = None
+        self.link_bandwidth = None
+
+
+class NetworkLoad(object):
+    def __init__(self, controller):
+        self.controller = controller
+        self._machine_load = {}         # machine mac -> load
+        self._elem_inst_load = {}       # element desc -> load
+        self._link_congestion = {}      # [mac,mac] -> congestion
+
+    def update_machine_load(self, mac, flow):
+        """Args:
+            mac: integer mac address
+           packetin_event:
+            MachineLoad object of the machine.
+           Returns:
+             None
+        """
+        self._machine_load[mac] = machine_load
+
+    def update_element_instance_load(self, ed, flow):
+        if ed not in self._elem_inst_load:
+            elem_instance_load = ElementInstanceLoad(ed)
+            elem_instance_load.num_flows += 1
+            self._elem_inst_load[ed] = elem_instance_load
+
+    def update_link_load(self, link):
+        pass
 
 class NetworkModel():
     def __init__ (self, controller):
         self._name_to_instances = {}    # element name -> element instances
         self._ed_to_instance = {}       # element descriptor -> element instance
-        self._machine_load = {}         # machine mac -> load
-        self._link_congestion = {}      # [mac,mac] -> congestion
         self._controller = controller
         self._elem_specs = ElementSpec()    # reads in the element manifests (.spec files)
         self._machine_specs = MachineSpec() # reads in the machine manifests (.spec files)
@@ -36,6 +77,7 @@ class NetworkModel():
         self.element_sequences = {}     # flow match -> [element names] XXX we may want this to map to descriptors
         # Build the overlay network
         self.overlay_net = OverlayNetwork(controller)
+        self.network_load = NetworkLoad(controller)
 
 
     def get_element_placements (self, app_desc, element_name):
@@ -63,8 +105,17 @@ class NetworkModel():
     def get_compatible_machines (self, elem_name):
         # TODO uncomment the code below to make it actually get compatible machines
         # TODO for now, it just returns all machines
-        return self._controller.get_all_registered_machines()
 
+        # Return all the hosts inside the network
+        all_hosts = self.overlay_net.get_all_machines()
+        print all_hosts
+        # Return all forwarding devices switches, routers.
+        all_switches = self.overlay_net.get_all_forwarding_devices()
+        print all_switches
+        # Return all machines with shim running on them.
+        registered_machines = self._controller.get_all_registered_machines()
+        return registered_machines
+        #return all_hosts
     """
         elem_spec = self._elem_specs.get_element_spec(elem_name)
         registered_machines = self._controller.get_all_registered_machines()
@@ -178,11 +229,16 @@ class NetworkModel():
         return self._name_to_instances.keys()
 
     def get_elem_descs(self):
-        """Return a list of elem descs."""
+        """Return a list of all elem descs."""
         return self._ed_to_instance.keys()
 
     def get_elem_name(self, ed):
-        """Given the element_desc return elem name."""
+        """Given the element_desc return elem name.
+        Args:
+            ed: element descriptor integer.
+        Returns:
+            element_name string.
+        """
         elem_instance = None
         if ed in self._ed_to_instance:
             elem_instance = self._ed_to_instance[ed]
@@ -195,3 +251,38 @@ class NetworkModel():
     def get_available_load(self, machine_mac):
         """Return percentage available of machine CPU."""
         pass
+
+    # Functions to return the spec paramters from spec files and 
+    # administrator.
+    def get_elem_spec_placement(self, elem_name):
+        """Given element_name string return the placement recommendation
+        from the element specification."""
+        spec_placement = None
+        elem_spec = self._elem_specs.get_element_spec(elem_name)
+        if elem_spec.has_key("placement"):
+            spec_placement = elem_spec["placement"]
+        return spec_placement
+
+    def get_elem_admin_placement(self, elem_name):
+        """Gievn the element name return the placement
+        dictated by admin through application.
+        TODO: Modify apply_elem and pass the parameters to network_model."""
+        return None
+
+    """
+        Interface for loads.
+    """
+    def update_element_instance_load(self, ed, flow):
+        pass
+
+    def update_machine_load(self, mac, flow):
+        pass
+
+    def update_link_load(self, link):
+        pass
+
+    def get_loaded_elements(self, element_descs):
+        """Given the element descs, return the top most loaded element instance."""
+        # TODO Based on the flow load return the most loaded element instance/s.
+        # with only one application descriptor.
+        return element_descs

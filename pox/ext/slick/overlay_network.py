@@ -3,6 +3,7 @@ from collections import defaultdict
 from sets import Set
 
 from pox.core import core
+from pox.openflow.discovery import Discovery
 # This is required as l2_multi_slick as MACs as 00-00-00-xx-xx-xx
 # instead of 00:00:00:xx:xx:xx
 import string
@@ -82,12 +83,17 @@ class OverlayNetwork(object):
         # Required to detect edge vs non-edge switches.
         # To keep track of middlebox machine location.
         core.host_tracker.addListenerByName("HostEvent", self._handle_host_tracker_HostEvent)
+        def startup():
+            core.openflow_discovery.addListeners(self)
+        core.call_when_ready(startup, ('openflow_discovery'))
 
         # Data Structures.
         # Overlay Graph
         self.overlay_graph_nx = nx.DiGraph( )
         self.overlay_graph_eds = nx.DiGraph( )
-        self.overlay_graph = defaultdict(Set) 
+        self.overlay_graph = defaultdict(Set)
+        # Simple switch topology graph.
+        self.topo_graph = nx.Graph()
         # Set of Edge switches. This set is used to add edges.
         self.edge_switches = Set([ ])
         # Set of switches that have element machines attached to them.
@@ -108,6 +114,7 @@ class OverlayNetwork(object):
         # Unique ID for the vertex.
         self.vertex_descriptor = 0 
 
+
     def _handle_host_tracker_HostEvent(self, event):
         """Given the host join/leave event update the self.hosts map.
         Args:
@@ -115,13 +122,15 @@ class OverlayNetwork(object):
         Returns:
             None
         """
-        #if len(self.hosts) == 53:
-        #    return EventHalt
-        print len(self.hosts)
         host = str(event.entry.macaddr)
-        #print host, type(host)
         switch = event.entry.dpid
         port = event.entry.port
+        ip_addrs = [ ]
+        if len(event.entry.ipAddrs):
+            ip_addrs = event.entry.ipAddrs.keys()
+            print ip_addrs[0], type(ip_addrs[0])
+            print host, type(host)
+            self.controller.register_machine(ip_addrs[0], host)
         if event.leave:
             if host in self.hosts:
                 del self.hosts[host]
@@ -132,14 +141,13 @@ class OverlayNetwork(object):
                     log.warn("Missing switch")
 
     def _handle_ConnectionUp(self, event):
-        # Only keep switches in the graph that are edge switches
-        # or middlebox machines.
         self.switches.add(event.dpid)
 
     def _handle_ConnectionDown(self, event):
-        # Since we only keep switches in the graph that are edge switches
-        # lets try not to remove switches that are not edge switches.
         self.switches.remove(event.dpid)
+
+    def _handle_LinkEvent (self, event):
+        self.update_topo_graph()
 
     def _handle_ElementMachineUp(self, event):
         self.element_machines.add(event.mac)
@@ -221,6 +229,21 @@ class OverlayNetwork(object):
                     edge_data = link_weight.__dict__
                     #print edge_data
                     self.overlay_graph_nx.add_edge(row_mac, col_mac, edge_data)
+
+    def update_topo_graph(self):
+        from slick.l2_multi_slick import switches
+        from slick.l2_multi_slick import adjacency
+        sws = switches.values()
+        for i in sws:
+            for j in sws:
+                # Debug information
+                # print i.dpid, j.dpid
+                # print type(i.dpid), type(j.dpid)
+                if i.dpid != j.dpid:
+                    if adjacency[i][j] is not None:
+                        self.topo_graph.add_edge(i.dpid, j.dpid)
+        print ">>>>>>>>>>", self.topo_graph.edges()
+        print self.topo_graph.nodes()
 
     def _get_vertex_id(self):
         self.vertex_descriptor += 1
@@ -398,7 +421,10 @@ class OverlayNetwork(object):
     def get_connected_switch(self, mac):
         """Given host mac address return the dpid for host
         tracker."""
-        mac_addr = dpid_to_str(mac, ':')
+        if not isinstance(mac, basestring):
+            mac_addr = dpid_to_str(mac, ':')
+        else:
+            mac_addr = mac
         assert isinstance(mac_addr, basestring)
         if mac_addr in self.hosts:
             dpid_port_tuple = self.hosts[mac_addr]
@@ -422,6 +448,15 @@ class OverlayNetwork(object):
         # nodes. For now lets hardcode the list of gateway nodes.
         gateway_dpids = [1]
         return gateway_dpids
+
+
+    def get_all_machines(self):
+        """Returns list of MAC address strings."""
+        return self.hosts.keys()
+
+    def get_all_forwarding_devices(self):
+        """Returns list of switch MAC Addresses."""
+        return list(self.switches)
 
     def get_subgraph(self, src_switch_mac, dst_switch_mac, elem_descs):
         """Return a copy of networkX subgraph for the element descriptors.
@@ -455,3 +490,6 @@ class OverlayNetwork(object):
         # print self.overlay_graph_nx.edges()
         # print subgraph.edges()
         return subgraph
+
+    def get_placement_graph(self):
+        return self.topo_graph

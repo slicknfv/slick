@@ -42,8 +42,14 @@ class ElementToMac():
     def __init__(self):
         self._mac_to_elems = defaultdict(list) # Machine MAC Address to function descriptor mapping, if the list is empty then we have shim only.
 
-    def add(self, ip_addr, machine_mac, element_desc):
+    def add(self, machine_mac, element_desc):
         """IP address should be a string and element_desc is an integer.
+        machine_mac: 
+            MAC Address in the string format.
+        element_desc:
+            integer value.
+        Returns:
+            None
         """
         if (machine_mac == None):
             return
@@ -375,25 +381,61 @@ class FlowToElementsMapping():
                 return item
         return None
 
+    def get_element_flow(self, ed):
+        """Given the element descriptor integer return the corresponding flow.
+        Args:
+            ed = element_descriptor
+        Returns:
+            flow dictionary
+        """
+        for flowtuple, element_instance_list in self.flow_to_element_instance_mapping.iteritems():
+            for e_inst in element_instance_list:
+                if e_inst.elem_desc == ed:
+                    flow = {
+                             'dl_src':          flowtuple.dl_src,
+                             'dl_dst':          flowtuple.dl_dst,
+                             'dl_vlan':         flowtuple.dl_vlan,
+                             'dl_vlan_pcp':     flowtuple.dl_vlan_pcp,
+                             'dl_type':         flowtuple.dl_type,
+                             'nw_src':          flowtuple.nw_src,
+                             'nw_dst':          flowtuple.nw_dst,
+                             'nw_proto':        flowtuple.nw_proto,
+                             'tp_src':          flowtuple.tp_src,
+                             'tp_dst':          flowtuple.tp_dst
+                           }
+                    return flow
+
+
 
 """
 This class maintains a mapping between elements and the apps who own them
 """
 class ElementToApplication():
     def __init__(self):
+        # ed -> (application_object, app_desc, parameter_dict)
         self.application_handles = {}
 
-    def update(self, ed, application_object, app_desc):
+    def update(self, ed, application_object, app_desc, parameter):
         if not (self.application_handles.has_key(ed)):
-            self.application_handles[ed] = (application_object, app_desc) 
+            self.application_handles[ed] = (application_object, app_desc, parameter) 
         else:
             print "ERROR: This should not happen"
+
+    def get_elem_parameters(self, ed):
+        """Given an element descriptor return the parameters passed to it.
+        """
+        if (self.application_handles.has_key(ed)):
+            return self.application_handles[ed][2] 
+        else:
+            logging.error("No application for the element with element descriptor:", ed)
+            raise slick_exceptions.InstanceNotFound("No parameters for element descriptor %d", ed)
+        pass
 
     def get_app_handle(self, ed):
         """Given an element descriptor return the application handle.
         """
         if (self.application_handles.has_key(ed)):
-            return self.application_handles[ed][0] 
+            return self.application_handles[ed][0]
         else:
             logging.error("No application for the element with element descriptor:", ed)
             raise slick_exceptions.InstanceNotFound("No application handle for element descriptor %d", ed)

@@ -42,6 +42,7 @@ from slick.steering.ShortestHopCountSteering import ShortestHopCountSteering
 from slick.steering.ShortestPathSteering import ShortestPathSteering
 from slick.placement.RandomPlacement import RandomPlacement
 from slick.placement.RoundRobinPlacement import RoundRobinPlacement
+from slick.placement.IncrementalKPlacement import IncrementalKPlacement
 from slick.NetworkModel import NetworkModel
 from slick.NetworkModel import ElementInstance
 import slick_exceptions
@@ -65,7 +66,9 @@ class slick_controller (object):
         # Modules
         self.network_model = NetworkModel(self)
         #self.placement_module = RandomPlacement( self.network_model )
-        self.placement_module = RoundRobinPlacement( self.network_model )
+        #self.placement_module = RoundRobinPlacement( self.network_model )
+        self.placement_module = IncrementalKPlacement( self.network_model )
+        #self.placement_module = OptimalKPlacement( self.network_model )
         #self.steering_module = RandomSteering( self.network_model )
         #self.steering_module = ShortestHopCountSteering( self.network_model )
         self.steering_module = ShortestPathSteering( self.network_model )
@@ -141,7 +144,7 @@ class slick_controller (object):
         self._query_engine.process_query()
         # If timer driven placement is enabled 
         # Run update placement else don't.
-        placement_timer = True
+        placement_timer = False
         if placement_timer:
             self.controller_interface.update_placement()
         # Periodically initialize the applications.
@@ -166,7 +169,7 @@ class slick_controller (object):
     """
     def register_machine(self, machine_ip, machine_mac):
         self.mac_to_ip.add(machine_mac, machine_ip)
-        self.elem_to_mac.add(machine_ip, machine_mac, None)  # as per old msmessageproc
+        self.elem_to_mac.add(machine_mac, None)  # as per old msmessageproc
 
     """
     Returns all shims who have registered (TODO: remove those who have gone offline)
@@ -195,16 +198,21 @@ class slick_controller (object):
         [-3]    : Error in adding a middlebox client.
         [-4]    : Error no middlebox is registered.
 
-    TODO : support *chains* of elements, that is, instead of taking a single
-           element_name, take an array of element names, so an application can
-           compose elements for a given flowspace
     """
     def apply_elem (self, app_desc, flow, element_names, parameters, application_object):
 
+        print "CALINNG APPLY_ELEM. <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>"
+        # Return list of all machines.
+        all_machines = self.network_model.overlay_net.get_all_machines()
         registered_machines = self.get_all_registered_machines()
         if  not len(registered_machines):
             log.warn("No middlebox is registered.")
-            return [-4]
+            # Need to update the graph for placement.
+            self.network_model.overlay_net.update_topo_graph()
+            # This is a hack
+            # Wait until all shims are up.
+            if len(registered_machines) < len(all_machines):
+                return [-4]
 
         ##
         # STEP 0: check that this application actually owns this element
@@ -243,6 +251,8 @@ class slick_controller (object):
         ##
         # STEP 2: Install the elements.
         try:
+            #print "All machines: ", all_machines
+            #print "Registered machines:", registered_machines
             self.__download_files(element_names, mac_addrs)
         except slick_exceptions.ElementDownloadFailed as e:
             log.warn(e.__str__())
@@ -252,7 +262,6 @@ class slick_controller (object):
         for e in element_names:
             elem_descs.append(self._get_unique_element_descriptor())
 
-        #elem_desc = elem_descs[0]
         # Keeping these assertions to avoid any issues.
         assert len(mac_addrs) == len(element_names) , 'Number of Element Names != Number of Middlebox MACs'
         assert len(element_names) == len(elem_descs) , 'Number of Element Names != Number of Element Descriptors'
@@ -270,10 +279,9 @@ class slick_controller (object):
 
                 ##
                 # STEP 3: Now that we've uploaded and installed, we update our state
-
                 ip_addr = self.mac_to_ip.get(mac_addr)
                 # Update our internal state of where the element is installed
-                self.elem_to_mac.add(ip_addr, mac_addr, elem_desc)
+                self.elem_to_mac.add(mac_addr, elem_desc)
                 self.mac_to_ip.add(mac_addr, ip_addr)
 
                 # Update our internal state of flow to elements mapping
@@ -283,7 +291,7 @@ class slick_controller (object):
                 self.flow_to_elems.add_element_instance(None, flow, element_instance)
 
                 # Update our internal state, noting that app_desc owns elem_desc
-                self.elem_to_app.update(elem_desc, application_object, app_desc)
+                self.elem_to_app.update(elem_desc, application_object, app_desc, parameter)
 
                 self.network_model.add_placement(element_name, app_desc, elem_desc, mac_addr)
 
@@ -389,20 +397,9 @@ class POXInterface():
         # [[e_11, e_12, ...], [e_21, e_22, ...], ...]
         # TODO this is what flow_to_elems should return, but it does not yet support replicas
         replica_sets = self.controller.flow_to_elems.get(flow.in_port, flow)
-        #print "REPLICA SETS", replica_sets
-
-        # XXX as a result, we'll construct it by hand for now
-        # elems is a {elem_desc:elem_name} mapping
-        # TODO replace these 2 lines with the commented-out one above
-        #replica_sets = []
-        #elems = self.controller.flow_to_elems.get(flow.in_port, flow)
-        #if(len(elems.keys()) > 0):
-        #    replica_sets = [elems.keys()]
-
         # element_descriptors is a list of individual element descriptors: one chosen from
         # each element in the replica list, e.g.: [e_11, e_25, e_32, ...]
         element_descriptors = self.controller.steering_module.get_steering(replica_sets, src, dst, flow)
-        #print "ELEMENT DESCS", element_descriptors
 
         # TODO if this fails, try to scale out the appropriate element(s)
 
@@ -410,8 +407,8 @@ class POXInterface():
             mac_addr = self.controller.elem_to_mac.get(elem_desc) 
             #print "MAC ADDRESS GOT FOR THE ELEMENT DESC:", elem_desc, mac_addr
             element_macs[elem_desc] = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
+            #self.network_model.update_element_instance_load(elem_desc, flow)
 
-        #print "ELEMENT MACS", element_macs
         return element_macs
 
 
@@ -450,10 +447,39 @@ class POXInterface():
     def path_was_installed (self, match, element_sequence, machine_sequence, path):
         return self.controller.network_model.path_was_installed(match, element_sequence, machine_sequence, path)
 
-    def update_placement(self):
+    def update_placement(self, trigger_msg = None):
         """This is the placement recalculation function."""
-        element_descriptors = self.controller.placement_module.update_placement( )
+        #element_descriptors = self.controller.placement_module.update_placement( )
+        if trigger_msg:
+            if "max_flows" in trigger_msg:
+                if trigger_msg["max_flows"]:
+                    print "TRIGGER RECEIVED"
+                    assert "mac" in trigger_msg, "Shim Resources Trigger is missing the MAC address."
+                    overloaded_machine_mac = trigger_msg["mac"]
+                    # Get all the elements that are on the machine.
+                    element_descs = list(self.controller.elem_to_mac.get_elem_descs(overloaded_machine_mac))
+                    # TODO: After modifying apply_elem() and get_placement() make this call from get_placement()
+                    elem_descs = self.controller.network_model.get_loaded_elements(element_descs)
+                    # Move one element instance at a time.
+                    for ed in elem_descs:
+                        #print elem_descs
+                        element_names = [ ]
+                        app_desc = None
+                        application_object = None
+                        parameters = [ ]
+                        flow = None
 
+                        e_name = self.controller.network_model.get_elem_name(ed)
+                        element_names.append(e_name)
+                        app_desc = self.controller.elem_to_app.get_app_desc(ed)
+                        application_object = self.controller.elem_to_app.get_app_handle(ed)
+                        flow = self.controller.flow_to_elems.get_element_flow(ed)
+                        param_dict = self.controller.elem_to_app.get_elem_parameters(ed)
+                        parameters.append(param_dict)
+                        # Call apply_elem but first build all the arguments
+                        # for the function call.
+                        # For now duplicate all element instances on the machine.
+                        self.controller.apply_elem(app_desc, flow, element_names, parameters, application_object)
     """
     This is a utils function.
     This function returns a matching flow 
