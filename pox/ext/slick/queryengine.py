@@ -18,9 +18,13 @@ class QueryEngine(object):
 
     def process_query(self):
         if self.query == "summary":
+            print "*"*50
             self.process_summary_request()
+            print "*"*50
         if self.query == "details":
+            print "*"*50
             self.process_details_request()
+            print "*"*50
 
     def process_summary_request(self):
         """Show active number of middleboxes, element instances, element types and apps."""
@@ -40,7 +44,7 @@ class QueryEngine(object):
         middlebox_macs = self.controller.get_all_registered_machines()
         for mac in middlebox_macs:
             middlebox_line = ""
-            middlebox_line += "\nMiddlebox Machine: "
+            middlebox_line += "Middlebox Machine: "
             middlebox_line += dpid_to_str(mac)
             elem_descs = self.controller.elem_to_mac.get_elem_descs(mac)
             elem_name = None
@@ -48,8 +52,10 @@ class QueryEngine(object):
             for ed in elem_descs:
                 elem_desc = ed
                 elem_name = self.controller.network_model.get_elem_name(ed)
-                middlebox_line += " element name:"
+                middlebox_line += " -> {element_name:"
                 middlebox_line += elem_name
-                middlebox_line += " element descriptor:"
+                middlebox_line += " ,element_descriptor:"
                 middlebox_line += str(elem_desc)
-                print middlebox_line
+                middlebox_line += "}"
+            if len(elem_descs):
+                print middlebox_line + "\n"
