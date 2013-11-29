@@ -91,6 +91,7 @@ class IncrementalKPlacement(Placement):
         Returns:
             machine mac address.
         """
+        central_machine_mac = None
         switch_list = [ ]
         for machine in machines:
             switch_mac = self.network_model.overlay_net.get_connected_switch(machine)
@@ -102,6 +103,18 @@ class IncrementalKPlacement(Placement):
         sorted_centralities = sorted(node_cents.iteritems(), key=operator.itemgetter(1), reverse=True)
         print sorted_centralities
         log.debug("Sorted Centralities: " + str(sorted_centralities))
+        central_machine_mac = self._select_not_used_machine(sorted_centralities, machines)
+        if not central_machine_mac:
+            all_reg_machines = self.network_model.get_all_registered_machines()
+            if len(self._used_macs) >= len(all_reg_machines):
+                self._used_macs[:] = [ ]
+                central_machine_mac = self._select_not_used_machine(sorted_centralities, machines)
+        return central_machine_mac
+
+    def _select_not_used_machine(self, sorted_centralities, machines):
+        """Given sorted centralities and machine mac addresses return the machine
+        with highest centrality."""
+        machine_mac = None
         for tup in sorted_centralities:
             switch_mac = tup[0]
             # find the machine mac that is connected with switch_mac.
