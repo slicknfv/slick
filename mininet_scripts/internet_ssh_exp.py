@@ -147,15 +147,24 @@ def connectToInternet( network, switch='s1', rootInterface='eth1', rootip='10.25
         i = i + 1
 
     start_sshd(network)
+    # start_hsflowd(network)
 
     return root
 
 def start_sshd( network, cmd='/usr/sbin/sshd', opts='-D' ):
-    "Start a network, connect it to root ns, and run sshd on all hosts."
+    "Run sshd on all hosts."
     for host in network.hosts:
         host.cmd( cmd + ' ' + opts + '&' )
     print
     print "*** Hosts are running sshd ***"
+    print
+
+def start_hsflowd( network, cmd='/usr/sbin/hsflowd', opts='-d' ):
+    "Run hsflowd on all hosts."
+    for host in network.hosts:
+        host.cmd( cmd + ' ' + opts + '&' )
+    print
+    print "*** Hosts are running hsflowd***"
     print
 # HACK: This is busted until we fix host.setIP above
 #    for host in network.hosts:
@@ -187,7 +196,7 @@ def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, tra
     if src_dst_pairs:
         hosts = src_dst_pairs
     middleboxes.load_shims(network, middlebox_names)
-    middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
+    #middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
 
 if __name__ == '__main__':
 
@@ -268,6 +277,11 @@ if __name__ == '__main__':
             switch_names.append(switch.name)
         if gateway_switch not in switch_names:
             print "ERROR: The specified gateway switch %s does not exist." % gateway_switch
+            print "**** Cleaning up ssh background jobs..."
+            # HACK: This assumes ssh is the only thing in the background on these hosts
+            for host in net.hosts:
+                host.cmd('kill %1')
+            net.stop()
             sys.exit(1)
         print "Using %s as gateway switch." % gateway_switch
         rootnode = connectToInternet( net,
