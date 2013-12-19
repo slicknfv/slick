@@ -22,7 +22,7 @@ from mininet.node import CPULimitedHost
 from mininet.link import TCLink
 
 from mininet.topo import Topo
-from mininet.topolib import TreeNet, TreeTopo
+from topologies.topolib import TreeNet, TreeTopo
 from mininet.util import quietRun
 from mininet.node import OVSController, Controller, RemoteController
 from mininet.node import Node, OVSKernelSwitch,UserSwitch
@@ -36,6 +36,7 @@ import json
 import time
 import middleboxes
 import build_topology
+import sflow
 import sys
 
 def read_json(filename,debug=None):
@@ -147,7 +148,6 @@ def connectToInternet( network, switch='s1', rootInterface='eth1', rootip='10.25
         i = i + 1
 
     start_sshd(network)
-    # start_hsflowd(network)
 
     return root
 
@@ -159,13 +159,6 @@ def start_sshd( network, cmd='/usr/sbin/sshd', opts='-D' ):
     print "*** Hosts are running sshd ***"
     print
 
-def start_hsflowd( network, cmd='/usr/sbin/hsflowd', opts='-d' ):
-    "Run hsflowd on all hosts."
-    for host in network.hosts:
-        host.cmd( cmd + ' ' + opts + '&' )
-    print
-    print "*** Hosts are running hsflowd***"
-    print
 # HACK: This is busted until we fix host.setIP above
 #    for host in network.hosts:
 #        print host.name, host.IP()
@@ -197,6 +190,19 @@ def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, tra
         hosts = src_dst_pairs
     middleboxes.load_shims(network, middlebox_names)
     #middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
+
+def setup_sflow(network, switch_names):
+    # Need to start the collector first.
+    print "Starting sflow collector."
+    sflow.start_sflow_collector()
+    # Wait for collector to start.
+    time.sleep(3)
+    print "Setting up sflow agents on all the switches."
+    sflow.setup_switch_sflow_agents(switch_names)
+    # collector and switch agents must be started before setting 
+    # up host metrices.
+    print "Setting up host monitoring metrics."
+    sflow.setup_host_sflow_metrics(net)
 
 if __name__ == '__main__':
 
@@ -256,23 +262,24 @@ if __name__ == '__main__':
         print "Building Jellyfish Topology."
         topo = JellyfishTopo(seed = jellyfish_seed)
     elif options.treedepth and options.fanout:
-        topo = TreeTopo( depth = int(options.treedepth), fanout = int(options.fanout) )
+        topo = TreeTopo( depth = int(options.treedepth), fanout = int(options.fanout) , bw =1)
     else:
-        topo = TreeTopo( depth = 1, fanout = 3 )
+        topo = TreeTopo( depth = 1, fanout = 3)
     # 6633 is controller port, 6634 is for dpctl queries, dump-flows etc.
     # This sets the controller port to 6634 by default, which can conflict
     # if we also start up another controller.  We should have this listen
     # somewher else since it is just for the NAT.
     print "Using the topo:", topo
     net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=CPULimitedHost, link=TCLink)
+
     #net = Mininet(switch=OVSKernelSwitch, topo=topo, host=CPULimitedHost, link=TCLink)
     #net.start( )
     #time.sleep(5)
     #CLI( net )
     #net.stop( )
     #sys.exit(1)
+    switch_names = [ ]
     if gateway_switch:
-        switch_names = [ ]
         for switch in net.switches:
             switch_names.append(switch.name)
         if gateway_switch not in switch_names:
@@ -299,7 +306,7 @@ if __name__ == '__main__':
                                       '192.168.100.1',
                                       '192.168.100.0/24')
 
-
+    setup_sflow(net, switch_names)
     src_dst_pairs = [ ]
     # Wait for n seconds before starting the middlebox instacnes.
     time.sleep(5)
@@ -317,6 +324,8 @@ if __name__ == '__main__':
 
     # Shut down NAT
     stopNAT( rootnode )
+    # Stop sflow
+    sflow.stop_sflow( )
 
     print "**** Cleaning up ssh background jobs..."
     # HACK: This assumes ssh is the only thing in the background on these hosts
