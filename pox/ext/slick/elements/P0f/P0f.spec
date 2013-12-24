@@ -4,8 +4,10 @@
         "os": "Linux",
         "os_flavor": "Ubuntu",
         "os_flavor_version": "9.10",
-        "inline": "no",
-        "affinity" : "yes",
+        "inline": true,
+        "affinity" : false,
+        "placement" : "middle",
+        "bidirection" : true,
         "triggers": [
             "OSDetectEvent",
             "BrowserDetectEvent"

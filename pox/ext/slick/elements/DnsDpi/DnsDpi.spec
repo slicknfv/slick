@@ -5,9 +5,10 @@
         "os_flavor": "Ubuntu",
         "os_flavor_version": "9.10",
         "software": "python",
-        "inline": "no",
-        "affinity" : "yes",
+        "inline": true,
+        "affinity" : false,
         "placement" : "middle",
+        "bidirection" : true,
         "triggers": [
             "BadDomainEvent",
             "MultipleBadDomainRequestEvent",

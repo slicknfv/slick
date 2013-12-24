@@ -4,7 +4,10 @@
         "os": "Linux",
         "os_flavor": "Ubuntu",
         "software": "python",
-        "inline": "no",
+        "affinity" : false,
+        "placement" : "middle",
+        "inline": true,
+        "bidirection" : true,
         "triggers": [
         ]
     }
