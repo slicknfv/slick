@@ -31,3 +31,7 @@ class InstanceNotFound(SlickException):
 class ElementDownloadFailed(SlickException):
   """Throw exception if the element download is failed during placement."""
   pass
+
+class ElementSpecificationError(SlickException):
+    """Throw exception if there is an error in element specification."""
+    pass
