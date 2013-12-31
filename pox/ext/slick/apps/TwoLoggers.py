@@ -9,7 +9,6 @@ class TwoLoggers(Application):
 
     def init(self):
         # Start the first Logger:
-
         parameters = [{"file_name":"/tmp/dns_log"}]
         flow = self.make_wildcard_flow()
         flow['tp_dst'] = 53
