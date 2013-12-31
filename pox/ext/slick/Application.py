@@ -13,8 +13,8 @@ class Application():
     def handle_trigger( self, fd, msg ):
         pass
 
-    def apply_elem( self, flow, element_names, params=[{}] ):
-        return self.controller.apply_elem( self.ad, flow, element_names, params, self )
+    def apply_elem( self, flow, element_names, params=[{}], controller_params=[{}] ):
+        return self.controller.apply_elem( self.ad, flow, element_names, params, controller_params, self )
 
     def configure_elem( self, element_descriptor, params ):
         return self.controller.configure_elem( self.ad, element_descriptor, params )

@@ -35,3 +35,8 @@ class ElementDownloadFailed(SlickException):
 class ElementSpecificationError(SlickException):
     """Throw exception if there is an error in element specification."""
     pass
+
+class InvalidChain(SlickException):
+    """Throw exception if chain for a flow is in invalid chain.
+    e.g, there is a chain element after an element that has inline = False."""
+    pass

@@ -1,5 +1,5 @@
 """
-    RandomSteering randomizes selection
+    Greedy ShortestHopCount based steering.
 """
 import sys
 
@@ -33,10 +33,10 @@ class ShortestHopCountSteering(Steering):
         # Every time get_steering is called subgraph is updated.
         print src, dst, replica_sets
         self.subgraph = self.network_model.get_overlay_subgraph(src[0], dst[0], replica_sets)
-        rv = self.get_element_instances(src[0], dst[0], replica_sets)
+        rv = self._get_element_instances(src[0], dst[0], replica_sets)
         return rv
 
-    def get_element_instances(self, src, dst, replica_sets):
+    def _get_element_instances(self, src, dst, replica_sets):
         rv = [ ]
         start = src
         for replicas in replica_sets:

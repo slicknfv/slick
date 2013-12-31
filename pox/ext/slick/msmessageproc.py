@@ -100,7 +100,7 @@ class MSMessageProcessor(EventMixin):
                 if(type(elem_desc) == int):
                     if elem_desc == 0:
                         # This is message from ShimResource Module.
-                        self.cntxt.controller_interface.update_placement(msg)
+                        self.cntxt.controller_interface.update_network_state(msg)
                     else:
                         application_handle = self.cntxt.elem_to_app.get_app_handle(elem_desc)
                         application_handle.handle_trigger(elem_desc,msg)

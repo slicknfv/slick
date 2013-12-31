@@ -4,6 +4,7 @@ from sets import Set
 
 from pox.core import core
 from pox.openflow.discovery import Discovery
+import pox.openflow.libopenflow_01 as of
 # This is required as l2_multi_slick as MACs as 00-00-00-xx-xx-xx
 # instead of 00:00:00:xx:xx:xx
 import string
@@ -39,15 +40,16 @@ class LinkWeight(object):
     read from different slick modules and updated here
     to be served to Steering and placement modules.
     """
-    def __init__(self, hop_count=None, bandwidth=None, latency=None):
+    def __init__(self, hop_count=None, utilization=None, latency=None):
         # Physical hop count that corresponds to virtual
         # overlay link.
         self.hop_count = hop_count
-        self.avail_bandwidth = bandwidth
+        # Percent utilization of the link.
+        self.utilization = utilization
         self.latency = latency
 
     def __str__(self):
-        s = 'phsyical_hop_count: ' + str(self.physical_hop_count) + ' avail_bandwidth: ' + str(self.avail_bandwidth) + ' latency: ' + str(self.latency)
+        s = 'phsyical_hop_count: ' + str(self.physical_hop_count) + ' utilization: ' + str(self.utilization) + ' latency: ' + str(self.latency)
         return s
 
 class Vertex(object):
@@ -99,7 +101,7 @@ class OverlayNetwork(object):
         # Set of switches that have element machines attached to them.
         self.element_switches = Set([ ])
         # Set of all the switches in the network.
-        self.switches = Set([ ])
+        self.switches = { }# Set([ ])
         # List of MACs that are currently hosting the middleboxes.
         self.element_machines = Set([ ])
         # Keep track of hosts attached to the switches
@@ -141,10 +143,14 @@ class OverlayNetwork(object):
                     log.warn("Missing switch")
 
     def _handle_ConnectionUp(self, event):
-        self.switches.add(event.dpid)
+        #self.switches.add(event.dpid)
+        switch_name = event.connection.ports[of.OFPP_LOCAL].name
+        self.switches[event.dpid] = switch_name
 
     def _handle_ConnectionDown(self, event):
-        self.switches.remove(event.dpid)
+        #self.switches.remove(event.dpid)
+        switch_name = event.connection.ports[of.OFPP_LOCAL].name
+        del self.switches[event.dpid]
 
     def _handle_LinkEvent (self, event):
         self.update_topo_graph()
@@ -230,21 +236,6 @@ class OverlayNetwork(object):
                     #print edge_data
                     self.overlay_graph_nx.add_edge(row_mac, col_mac, edge_data)
 
-    def update_topo_graph(self):
-        from slick.l2_multi_slick import switches
-        from slick.l2_multi_slick import adjacency
-        sws = switches.values()
-        for i in sws:
-            for j in sws:
-                # Debug information
-                # print i.dpid, j.dpid
-                # print type(i.dpid), type(j.dpid)
-                if i.dpid != j.dpid:
-                    if adjacency[i][j] is not None:
-                        self.topo_graph.add_edge(i.dpid, j.dpid)
-        print ">>>>>>>>>>", self.topo_graph.edges()
-        print self.topo_graph.nodes()
-
     def _get_vertex_id(self):
         self.vertex_descriptor += 1
         return self.vertex_descriptor
@@ -263,7 +254,6 @@ class OverlayNetwork(object):
             raise Exception("A node can be added or removed not both.")
         if join:
             print "Updating the Element Instance: " + str(ed) + element_name
-            print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
             self._add_vertex(graph_vertex)
             print self.overlay_graph_eds.nodes()
             print self.overlay_graph_eds.edges()
@@ -418,20 +408,6 @@ class OverlayNetwork(object):
             else:
                 return edge_switch
 
-    def get_connected_switch(self, mac):
-        """Given host mac address return the dpid for host
-        tracker."""
-        if not isinstance(mac, basestring):
-            mac_addr = dpid_to_str(mac, ':')
-        else:
-            mac_addr = mac
-        assert isinstance(mac_addr, basestring)
-        if mac_addr in self.hosts:
-            dpid_port_tuple = self.hosts[mac_addr]
-            return dpid_port_tuple[0]
-        else:
-            raise KeyError("Host MAC Address is not registered with any switch.")
-
     def _get_total_ports(self, switch_mac):
         """Return total number of ports present on the switch.
            Args:
@@ -449,14 +425,15 @@ class OverlayNetwork(object):
         gateway_dpids = [1]
         return gateway_dpids
 
-
+    """ PUBLIC FUNCTIONS START HERE."""
     def get_all_machines(self):
         """Returns list of MAC address strings."""
         return self.hosts.keys()
 
     def get_all_forwarding_devices(self):
         """Returns list of switch MAC Addresses."""
-        return list(self.switches)
+        #return list(self.switches)
+        return self.switches.keys()
 
     def get_subgraph(self, src_switch_mac, dst_switch_mac, elem_descs):
         """Return a copy of networkX subgraph for the element descriptors.
@@ -493,3 +470,37 @@ class OverlayNetwork(object):
 
     def get_placement_graph(self):
         return self.topo_graph
+
+    def update_topo_graph(self):
+        """Update topology graph if new element instance is added, 
+        i.e. apply_elem is called. or a new link is discovered."""
+        from slick.l2_multi_slick import switches
+        from slick.l2_multi_slick import adjacency
+        sws = switches.values()
+        for i in sws:
+            for j in sws:
+                # Debug information
+                # print i.dpid, j.dpid
+                # print type(i.dpid), type(j.dpid)
+                if i.dpid != j.dpid:
+                    if adjacency[i][j] is not None:
+                        self.topo_graph.add_edge(i.dpid, j.dpid)
+
+    def get_connected_switch(self, mac):
+        """Given host mac address return the dpid for host
+        tracker."""
+        if not isinstance(mac, basestring):
+            mac_addr = dpid_to_str(mac, ':')
+        else:
+            mac_addr = mac
+        assert isinstance(mac_addr, basestring)
+        if mac_addr in self.hosts:
+            dpid_port_tuple = self.hosts[mac_addr]
+            return dpid_port_tuple[0]
+        else:
+            raise KeyError("Host MAC Address is not registered with any switch.")
+
+    def update_overlay_graph_link_weights(self, link, hop_count, utilization):
+        """Use this function to update the weight for links of the overlay graph
+        based on the utilization readings got from the NetworkLoad."""
+        pass

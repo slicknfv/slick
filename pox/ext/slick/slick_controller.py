@@ -27,7 +27,7 @@ from pox.lib.addresses import *
 
 
 #from route_compiler import ElementToApplication
-from networkmaps import ElementToMac,FlowToElementsMapping,MacToIP,ElementToApplication
+from networkmaps import ElementToMac,FlowToElementsMapping,MacToIP,ElementToApplication,FlowAffinity
 from msmessageproc import MSMessageProcessor
 from conf import *
 from download import Download
@@ -45,6 +45,7 @@ from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.placement.IncrementalKPlacement import IncrementalKPlacement
 from slick.NetworkModel import NetworkModel
 from slick.NetworkModel import ElementInstance
+from place_n_route import PlacenSteer
 import slick_exceptions
 import queryengine
 
@@ -87,6 +88,7 @@ class slick_controller (object):
         self.elem_to_mac = ElementToMac()
         self.flow_to_elems = FlowToElementsMapping()
         self.mac_to_ip = MacToIP()
+        self.flow_affinity = FlowAffinity()
 
         # JSON Messenger Handlers
         self.json_msg_events = {}
@@ -110,9 +112,13 @@ class slick_controller (object):
         self.controller_interface = POXInterface(self)
 
         # Application Initialization and Configuration.
-        Timer(APPCONF_REFRESH_RATE, self.timer_callback, recurring = True)
+        Timer(5, self.timer_callback, recurring = True)
+        # Network state callback
+        Timer(5, self.network_state_callback, recurring = True)
         # Anything can be queried from the controller.
         self._query_engine = queryengine.QueryEngine(self, query)
+        # Module repsonsible for continuosly performing placement or steering.
+        self._place_n_steer = PlacenSteer(self)
 
     def _get_unique_app_descriptor(self):
         self._latest_app_descriptor += 1
@@ -132,7 +138,12 @@ class slick_controller (object):
     def get_connection(self,dpid):
         if(self.switch_connections.has_key(dpid)):
             return self.switch_connections[dpid]
-    
+
+    def network_state_callback(self):
+        # Run update network state continuously.
+        # For sflow: This should be same as the polling interval of sflow agent.
+        self.controller_interface.update_network_state()
+
     """
     This method is periodically called for each running application (currently only one app)
     The rationale behind having it is that the app might be registered before shims have come online,
@@ -142,11 +153,6 @@ class slick_controller (object):
         # Calling this function to continuously display the status of 
         # middlebox machines, element types, element descriptors etc.
         self._query_engine.process_query()
-        # If timer driven placement is enabled 
-        # Run update placement else don't.
-        placement_timer = False
-        if placement_timer:
-            self.controller_interface.update_placement()
         # Periodically initialize the applications.
         # Calling repeatedly allows for dynamic app loading (in theory)
         for app in self.ms_msg_proc.app_handles:
@@ -198,10 +204,28 @@ class slick_controller (object):
         [-3]    : Error in adding a middlebox client.
         [-4]    : Error no middlebox is registered.
 
+    Args:
+        app_desc: Application descriptor from the application.
+        flow: flow space
+        element_names: List of element names to be applied.
+        parameters: List of parameter dicts to be used for each element name
+        application_object: application handle to be used by the controller
+                            e.g. to send back the events etc.
+        controller_params: List of parameter dicts that are provided by application
+                      writer to overrride slick controller preferences. Only provided preferences
+                      will be applied rest will be taken from element specification file.These parameters are taken from 
+                      <element_name>.spec file. e.g,
+                      {"placement" : "middle", affinity: "yes", "inline": "no"}
+    Returns:
+        A list of error codes or element descs.
     """
-    def apply_elem (self, app_desc, flow, element_names, parameters, application_object):
+    def apply_elem (self, app_desc, flow, element_names, parameters, controller_params, application_object):
 
         print "CALINNG APPLY_ELEM. <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>"
+        # Update element preferences according to app.
+        if len(controller_params) and len(controller_params[0]):
+            self.network_model.update_admin_elem_specs(element_names, controller_params)
+
         # Return list of all machines.
         all_machines = self.network_model.overlay_net.get_all_machines()
         registered_machines = self.get_all_registered_machines()
@@ -266,6 +290,7 @@ class slick_controller (object):
         assert len(mac_addrs) == len(element_names) , 'Number of Element Names != Number of Middlebox MACs'
         assert len(element_names) == len(elem_descs) , 'Number of Element Names != Number of Element Descriptors'
         assert len(element_names) == len(parameters) , 'Number of Element Names != Number of Parameters'
+        assert len(element_names) == len(controller_params) , 'Number of Element Names != Number of Controller parameters to be specified.'
         # Given above assertions intentionally iterating over element_names
         # to keep a reminder about the element_names order matters and this 
         # should be the order that we intert in flow_to_elems mapping.
@@ -273,6 +298,7 @@ class slick_controller (object):
             elem_desc = elem_descs[index]
             element_name = element_names[index]
             parameter = parameters[index]
+            controller_param = controller_params[index]
             mac_addr = mac_addrs[index]
             # Inform the shim that it should be running these elements on this flow space
             if(self.ms_msg_proc.send_install_msg(elem_desc, flow, element_name, parameter, mac_addr)):
@@ -291,7 +317,7 @@ class slick_controller (object):
                 self.flow_to_elems.add_element_instance(None, flow, element_instance)
 
                 # Update our internal state, noting that app_desc owns elem_desc
-                self.elem_to_app.update(elem_desc, application_object, app_desc, parameter)
+                self.elem_to_app.update(elem_desc, application_object, app_desc, parameter, controller_param)
 
                 self.network_model.add_placement(element_name, app_desc, elem_desc, mac_addr)
 
@@ -378,6 +404,63 @@ class POXInterface():
     def __init__(self,controller):
         self.controller = controller
 
+    """Flowspaces cannot overlapp with each other,
+    if there is an overlap then it will not work."""
+    def update_flow_affinity(self, flow, element_descriptors):
+        """Given the flow and a list of lists of element_descriptors, 
+        check if flow's affinity is set. 
+        Should be called before get_steering.
+        If set:
+        update element descriptors with affined element_desc
+        and return the list of lists for element descriptors.
+
+        Should be called after get_steering.
+        If not set:
+        check if any of flow's elements require affinity. If yes
+        update flow affinity. flow_ed_mapping according to get_steering's returned
+        value.
+        """
+        #ed = self.controller.flow_affinity.get_element_desc(flow)
+        pass
+
+    def get_updated_replicas(self, ed, replica_sets):
+        """Given the replica_sets remove the replicas for affined ed."""
+        print "Element descriptor affinity found........................................................."
+        for index, replicas in enumerate(replica_sets):
+            if ed in replicas:
+                for elem_desc in replicas:
+                    if elem_desc != ed:
+                        # remove all the replica_sets that we cannot use.
+                        replica_sets[index].remove(elem_desc)
+        return replica_sets
+
+    def get_updated_elem_descriptors(self, ed, flow, element_descriptors):
+        """This function is called once element descs are selected by get_steering."""
+        # Get the list of element instances corresponding to the flow.
+        element_instances = self.controller.flow_to_elems.lookup_element_instances(flow.in_port, flow)
+        print element_instances
+        # At this point there is only one instance of each element type in the 
+        # chain.
+        for elem_inst in element_instances:
+            ed = elem_inst.elem_desc
+            elem_name = elem_inst.name
+            if ed in element_descriptors:
+                # uniquely identify the element preference specified by the application.
+                if(self.controller.network_model.is_affinity_required(elem_inst)):
+                    # check the load on elem_inst and its machine. If elem_inst is
+                    # overloaded or machine is overloaded then
+                    # create new element instance else following code
+                    # to add affinity to existing element instance.
+                    print "This element %s requires flow affinity." % elem_name
+                    self.controller.flow_affinity.add_flow_affinity(flow, ed)
+                    #self.controller.flow_affinity.dump()
+        return element_descriptors
+
+    def is_flow_affined(self, flow):
+        """Return True if the flow already belongs to an elem desc else False."""
+        ed = self.controller.flow_affinity.get_element_desc(flow)
+        return ed
+
     """
     Args:
         src: Source switch and port tuple. e.g, (00-00-00-00-00-03, 1)
@@ -390,23 +473,37 @@ class POXInterface():
     Replaces get_element_descriptors
     """
     def get_steering (self, src, dst, flow):
-        element_macs = {}
+        element_descriptors = None
+        element_macs = [ ]
         if ((src[0] is None) or (dst[0] is None)):
             return element_macs
         # replica_sets is a list of lists of element descriptors
         # [[e_11, e_12, ...], [e_21, e_22, ...], ...]
         # TODO this is what flow_to_elems should return, but it does not yet support replicas
-        replica_sets = self.controller.flow_to_elems.get(flow.in_port, flow)
+        replica_sets_temp = self.controller.flow_to_elems.get(flow.in_port, flow)
+        replica_sets = replica_sets_temp
+        print "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
+        print replica_sets
+        # Check if flow is already 'affined' to an element instance.
+        ed = self.controller.flow_affinity.get_element_desc(flow)
+        print ed
+        if ed:
+            replica_sets = self.get_updated_replicas(ed, replica_sets_temp)
         # element_descriptors is a list of individual element descriptors: one chosen from
         # each element in the replica list, e.g.: [e_11, e_25, e_32, ...]
-        element_descriptors = self.controller.steering_module.get_steering(replica_sets, src, dst, flow)
-
+        element_descs = self.controller.steering_module.get_steering(replica_sets, src, dst, flow)
+        element_descriptors = element_descs
+        if not ed:
+            element_descriptors = self.get_updated_elem_descriptors(ed, flow, element_descs)
+        print element_descriptors
         # TODO if this fails, try to scale out the appropriate element(s)
 
         for elem_desc in element_descriptors:
             mac_addr = self.controller.elem_to_mac.get(elem_desc) 
             #print "MAC ADDRESS GOT FOR THE ELEMENT DESC:", elem_desc, mac_addr
-            element_macs[elem_desc] = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
+            #element_macs[elem_desc] = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
+            eth_addr = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
+            element_macs.append((elem_desc, eth_addr))
             #self.network_model.update_element_instance_load(elem_desc, flow)
 
         return element_macs
@@ -447,9 +544,14 @@ class POXInterface():
     def path_was_installed (self, match, element_sequence, machine_sequence, path):
         return self.controller.network_model.path_was_installed(match, element_sequence, machine_sequence, path)
 
-    def update_placement(self, trigger_msg = None):
+    def is_unidirection_required(self, ed):
+        print "UNI"*10
+        bidirection = self.controller.network_model.is_bidirection_required(ed)
+        print bidirection, type(bidirection)
+        return not bidirection
+
+    def update_network_state(self, trigger_msg = None):
         """This is the placement recalculation function."""
-        #element_descriptors = self.controller.placement_module.update_placement( )
         if trigger_msg:
             if "max_flows" in trigger_msg:
                 if trigger_msg["max_flows"]:
@@ -479,7 +581,14 @@ class POXInterface():
                         # Call apply_elem but first build all the arguments
                         # for the function call.
                         # For now duplicate all element instances on the machine.
-                        self.controller.apply_elem(app_desc, flow, element_names, parameters, application_object)
+                        # TODO: Add the code to get controller_param from the application
+                        # from elem_to_app object, such that we provide the same parameters 
+                        # for this element.
+                        #self.controller.apply_elem(app_desc, flow, element_names, parameters, [{}],application_object)
+        else:
+            # Call the function continuously if
+            # no trigger message from shim or from user.
+            self.controller._place_n_steer.place_n_steer()
     """
     This is a utils function.
     This function returns a matching flow 

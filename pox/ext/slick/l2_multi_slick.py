@@ -292,6 +292,112 @@ class Switch (EventMixin):
       sw.connection.send(msg)
       wp.add_xid(sw.dpid,msg.xid)
 
+  def _send_dest_unreachable(self, match, switch1, switch2, switch1_port, switch2_port):
+    """Since path is not found send ICMP unreachable packet."""
+    log.warning("Can't get from %s to %s", switch1, switch2)
+
+    import pox.lib.packet as pkt
+
+    if (match.dl_type == pkt.ethernet.IP_TYPE and
+        event.parsed.find('ipv4')):
+      # It's IP -- let's send a destination unreachable
+      log.debug("Dest unreachable (%s -> %s)",
+                switch1, switch2)
+      from pox.lib.addresses import EthAddr
+      e = pkt.ethernet()
+      e.src = EthAddr(dpid_to_str(switch1.dpid)) #FIXME: Hmm...
+      e.dst = match.dl_src
+      e.type = e.IP_TYPE
+      ipp = pkt.ipv4()
+      ipp.protocol = ipp.ICMP_PROTOCOL
+      ipp.srcip = match.nw_dst #FIXME: Ridiculous
+      ipp.dstip = match.nw_src
+      icmp = pkt.icmp()
+      icmp.type = pkt.ICMP.TYPE_DEST_UNREACH
+      icmp.code = pkt.ICMP.CODE_UNREACH_HOST
+      orig_ip = event.parsed.find('ipv4')
+
+      d = orig_ip.pack()
+      d = d[:orig_ip.hl * 4 + 8]
+      import struct
+      d = struct.pack("!HH", 0,0) + d #FIXME: MTU
+      icmp.payload = d
+      ipp.payload = icmp
+      e.payload = ipp
+      msg = of.ofp_packet_out()
+      msg.actions.append(of.ofp_action_output(port = switch1_port))
+      msg.data = e.pack()
+      self.connection.send(msg)
+    return
+
+  def get_reverse_mb_locs(self, mb_locations, element_descs):
+    """This function removes the middlebox
+    locations that should be removed on reverse path."""
+    print "INCOMING.",mb_locations
+    for index, ed in enumerate(element_descs):
+        if slick_controller_interface.is_unidirection_required(ed):
+            mb_locations.pop(index)
+    print "OUTGOING.",mb_locations
+    return mb_locations
+
+  def install_path_improved (self, dst_sw, last_port, match, event, mb_locations, element_descs):
+    """
+    Attempts to install a path between this switch and some destination
+    """
+    print "MB_LOCATIONS,",mb_locations, "ELEMENT_DESCS:",element_descs
+    src = (self, event.port)
+    dst = (dst_sw, last_port)
+    #pathlets = slick_controller_interface.get_path(src, mb_locations, dst)
+    pathlets = slick_controller_interface.get_path(src, mb_locations, dst)
+    print "FORWARD:",pathlets
+    mb_locations_forward = [src] + mb_locations + [dst]
+    print mb_locations_forward
+    print element_descs
+
+    for index in range(0, len(pathlets)):
+      # Place we saw this ethaddr   -> loc = (self, event.port) 
+      switch1 = mb_locations_forward[index][0]
+      switch2 = mb_locations_forward[index+1][0]
+      switch1_port = mb_locations_forward[index][1]
+      switch2_port = mb_locations_forward[index+1][1]
+      p = pathlets[index]
+      if p is None:
+        return self._send_dest_unreachable(match, switch1, switch2, switch1_port, switch2_port)
+      log.debug("Installing forward paths for %s -> %s (%i hops)",
+          switch1, switch2, len(p))
+      self._install_path(p, match, event.ofp)
+      # Now reverse it and install it backwards
+      # (we'll just assume that will work)
+      #p = [(sw,out_port,in_port) for sw,in_port,out_port in p]
+      #self._install_path(p, match.flip())
+
+    # 1- Reverse source destination switches. Reverse middlebox locs and corresponding elment descs.
+    (dst, src) = (src, dst)
+    mb_locations.reverse()
+    element_descs.reverse()
+    # 2- Remove unidirectional middleboxes.
+    mb_locs = mb_locations
+    mb_locations = self.get_reverse_mb_locs(mb_locs, element_descs)
+    # 3- Get pathlets
+    pathlets = slick_controller_interface.get_path(src, mb_locations, dst)
+    print "BACKWARD:",pathlets
+    mb_locations_reverse = [src] + mb_locations + [dst]
+    print mb_locations_reverse
+    print element_descs
+    # 4- Install pathlets.
+    for index in range(0, len(pathlets)):
+      # Place we saw this ethaddr   -> loc = (self, event.port) 
+      switch1 = mb_locations_forward[index][0]
+      switch2 = mb_locations_forward[index+1][0]
+      switch1_port = mb_locations_forward[index][1]
+      switch2_port = mb_locations_forward[index+1][1]
+      p = pathlets[index]
+      if p is None:
+        return self._send_dest_unreachable(match.flip(), switch1, switch2, switch1_port, switch2_port)
+      log.debug("Installing forward paths for %s -> %s (%i hops)",
+          switch1, switch2, len(p))
+      self._install_path(p, match.flip())
+
   def install_path (self, dst_sw, last_port, match, event, mb_locations):
     """
     Attempts to install a path between this switch and some destination
@@ -403,18 +509,23 @@ class Switch (EventMixin):
         dst_port = dest_tuple[1]
     #element_descriptors = slick_controller_interface.get_steering(mac_map.get(packet.src), mac_map.get(packet.dst), flow_match)
     element_descriptors = slick_controller_interface.get_steering((src_switch,src_port), (dst_switch,dst_port), flow_match)
+    #bidirection = slick_controller_interface.is_bidirectional_flow()
     # Order of this list is important.
     # This is the same order in which we want the packets to traverse.
     # TODO just return the list of mac addresses instead of this (unordered) dictionary FIXME
-    mb_locations = [] 
-    for element_id,mac_addr in element_descriptors.iteritems():
+    mb_locations = [ ]
+    element_descs = [ ]
+    #for element_id,mac_addr in element_descriptors.iteritems():
+    for element_id,mac_addr in element_descriptors:
         #print element_id,mac_addr
         #print type(mac_addr)
         temp_loc = mac_map.get(mac_addr) 
         #print temp_loc
         mb_locations.append(temp_loc)
+        element_descs.append(element_id)
         if(temp_loc[0] not in middleboxes):
             middleboxes.append(temp_loc[0]) # Need these to not send packet out as packet is not reached.
+    assert len(mb_locations) == len(element_descs) , 'Number of Element Descriptors != Number of Middlebox Locations'
 
     loc = (self, event.port) # Place we saw this ethaddr
     #print loc
@@ -477,9 +588,11 @@ class Switch (EventMixin):
             #match.nw_dst = matched_flow_tuple.nw_dst
             match.tp_dst = matched_flow_tuple.tp_dst
             match.tp_src = matched_flow_tuple.tp_src
-            self.install_path(dest[0], dest[1], match, event, mb_locations)
+            self.install_path_improved(dest[0], dest[1], match, event, mb_locations, element_descs)
+            #self.install_path(dest[0], dest[1], match, event, mb_locations)
         else:
-            self.install_path(dest[0], dest[1], match, event, mb_locations)
+            self.install_path_improved(dest[0], dest[1], match, event, mb_locations, element_descs)
+            #self.install_path(dest[0], dest[1], match, event, mb_locations)
 
   def disconnect (self):
     if self.connection is not None:

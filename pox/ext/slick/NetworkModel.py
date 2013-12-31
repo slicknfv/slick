@@ -5,6 +5,10 @@
 from specs import MachineSpec
 from specs import ElementSpec
 from slick.overlay_network import OverlayNetwork
+from slick.overlay_network import dpid_to_str
+from slick.sflow_networkload import SFlowNetworkLoad
+from pox.openflow.discovery import Discovery
+from pox.core import core
 
 class ElementInstance():
     def __init__(self, name, app_desc, elem_desc, location):
@@ -15,55 +19,6 @@ class ElementInstance():
 
     def __str__ (self):
         return "ElementInstance(name:" + self.name + ", app_desc:" + str(self.app_desc) + ", elem_desc:" + str(self.elem_desc) + ", location:" + str(self.location) + ")"
-
-class MachineLoad(object):
-    def __init__(self, mac):
-        self.mac = mac
-        self.cpu_percent = None
-        self.bytes_mem = None
-        self.max_mem = None
-        self.num_flows = None
-        self.max_flows = None
-
-class ElementInstanceLoad(object):
-    def __init__(self, ed, max_load = 0):
-        self.ed = ed
-        self.max_flows = 0
-        self.num_flows = 0
-
-class LinkLoad(object):
-    def __init__(self, link):
-        # link = (src_mac, dst_mac)
-        self.link = link
-        self.link_capacity = None
-        self.link_bandwidth = None
-
-
-class NetworkLoad(object):
-    def __init__(self, controller):
-        self.controller = controller
-        self._machine_load = {}         # machine mac -> load
-        self._elem_inst_load = {}       # element desc -> load
-        self._link_congestion = {}      # [mac,mac] -> congestion
-
-    def update_machine_load(self, mac, flow):
-        """Args:
-            mac: integer mac address
-           packetin_event:
-            MachineLoad object of the machine.
-           Returns:
-             None
-        """
-        self._machine_load[mac] = machine_load
-
-    def update_element_instance_load(self, ed, flow):
-        if ed not in self._elem_inst_load:
-            elem_instance_load = ElementInstanceLoad(ed)
-            elem_instance_load.num_flows += 1
-            self._elem_inst_load[ed] = elem_instance_load
-
-    def update_link_load(self, link):
-        pass
 
 class NetworkModel():
     def __init__ (self, controller):
@@ -77,7 +32,7 @@ class NetworkModel():
         self.element_sequences = {}     # flow match -> [element names] XXX we may want this to map to descriptors
         # Build the overlay network
         self.overlay_net = OverlayNetwork(controller)
-        self.network_load = NetworkLoad(controller)
+        self.network_load = SFlowNetworkLoad(controller)
 
 
     def get_element_placements (self, app_desc, element_name):
@@ -212,6 +167,13 @@ class NetworkModel():
     """
 
     # Wrapper for overlay_network function.
+    def get_all_forwarding_device_names(self):
+        """Returns list of switch names."""
+        forwarding_device_names = [ ]
+        for _, switch_name in self.overlay_net.switches.iteritems():
+            forwarding_device_names.append(switch_name)
+        return forwarding_device_names
+
     def get_overlay_subgraph(self, src_switch, dst_switch, elem_descs):
         return self.overlay_net.get_subgraph(src_switch, dst_switch, elem_descs)
 
@@ -223,6 +185,20 @@ class NetworkModel():
     def get_connected_switch(self, machine_mac):
         """Return the dpid for the machine mac"""
         return self.overlay_net.get_connected_switch(machine_mac)
+
+    def get_host_loc(self, machine_mac):
+        """Return the (dpid,port) for the machine mac"""
+        mac_addr = ""
+        if not isinstance(machine_mac, basestring):
+            mac_addr = dpid_to_str(machine_mac, ':')
+        else:
+            mac_addr = machine_mac
+        assert isinstance(mac_addr, basestring)
+        if mac_addr in self.overlay_net.hosts:
+            dpid_port_tuple = self.overlay_net.hosts[mac_addr]
+            return dpid_port_tuple
+        else:
+            raise KeyError("Host MAC Address is not registered with any switch.")
 
     def get_elem_names(self):
         """Return a list of active element names."""
@@ -244,13 +220,30 @@ class NetworkModel():
             elem_instance = self._ed_to_instance[ed]
         return elem_instance.name
 
-    def network_health(self):
-        """Function to check the health of the network and take appropriate action."""
-        pass
+    def is_affinity_required(self, elem_inst):
+        """Given element descriptor check if the element affinity
+        is requested by administrator else return the default affinity
+        preference of the element."""
+        ed = elem_inst.elem_desc
+        element_name = elem_inst.name
+        affinity = self.get_elem_admin_affinity(ed)
+        print "Affinity:",affinity, type(affinity)
+        if affinity:
+            return True
+        else:
+            return self.get_elem_spec_affinity(element_name)
 
-    def get_available_load(self, machine_mac):
-        """Return percentage available of machine CPU."""
-        pass
+    def is_bidirection_required(self, ed):
+        """Based on elem descriptor return the if bidirection is required or not."""
+        elem_inst = None
+        elem_name = ""
+        if ed in self._ed_to_instance:
+            elem_inst = self._ed_to_instance[ed]
+            elem_name = elem_inst.name
+            if self.get_elem_admin_direction(ed):
+                return True
+            else:
+                return self.get_elem_spec_direction(elem_name)
 
     # Functions to return the spec paramters from spec files and 
     # administrator.
@@ -269,20 +262,85 @@ class NetworkModel():
         TODO: Modify apply_elem and pass the parameters to network_model."""
         return None
 
-    """
-        Interface for loads.
-    """
-    def update_element_instance_load(self, ed, flow):
-        pass
+    def get_elem_spec_direction(self, element_name):
+        """Return True/False for bidirection/unidirection,
+        according to spec."""
+        bidirection = None
+        default_elem_spec = self._elem_specs.get_element_spec(element_name)[element_name]
+        #print "Default Elem params: ", default_elem_spec
+        if "bidirection" in default_elem_spec:
+            bidirection = default_elem_spec["bidirection"]
+            if not isinstance(bidirection, bool):
+                raise slick_exceptions.ElementSpecificationError("\'bidirection\' feature of specification has wrong type %s ", type(bidirection))
+            return bidirection
+        else:
+            raise slick_exceptions.ElementSpecificationError("\'bidirection\' feature of specification not present for element %s ", element_name)
 
-    def update_machine_load(self, mac, flow):
-        pass
+    def get_elem_admin_direction(self, ed):
+        """Return True/False for bidirection/unidirection,
+        according to application."""
+        bidirection = None
+        controller_params = self._controller.elem_to_app.get_controller_params(ed)
+        #print "Controller params: ",controller_params
+        if "bidirection" in controller_params:
+            bidirection = controller_params["bidirection"]
+            if not isinstance(bidirection, bool):
+                raise slick_exceptions.ElementSpecificationError("\'bidirection\' feature specified by application has wrong type %s ", type(bidirection))
+        return bidirection
 
-    def update_link_load(self, link):
-        pass
+    def get_elem_spec_affinity(self, element_name):
+        """This is the global spec of the element copied from the 
+        element specification file. For all the applications this is the 
+        one value to be used. Unless application specifically overrides it.
+
+        Args:
+            element_name: Element Name String.
+        returns:
+            True/False based on whatever is present in the <element_name>.spec file.
+        """
+        affinity_required = None
+        default_elem_spec = self._elem_specs.get_element_spec(element_name)[element_name]
+        #print "Default Elem params: ", default_elem_spec
+        if "affinity" in default_elem_spec:
+            affinity_required = default_elem_spec["affinity"]
+            if not isinstance(affinity_required, bool):
+                raise slick_exceptions.ElementSpecificationError("\'affinity\' feature of specification has wrong type %s ", type(affinity_required))
+            return affinity_required
+        else:
+            raise slick_exceptions.ElementSpecificationError("\'affinity\' feature of specification not present for element %s ", element_name)
+
+    def get_elem_admin_affinity(self, ed):
+        """This is specific to the application, different apps (in future) can 
+        have multiple options for the same element feature.
+        Args:
+            ed: elemenet descriptor integer.
+        Returns:
+            True/False based on the value dictated by the application writer.
+        """
+        affinity = False
+        controller_params = self._controller.elem_to_app.get_controller_params(ed)
+        #print "Controller params: ",controller_params
+        if "affinity" in controller_params:
+            affinity = controller_params["affinity"]
+            if not isinstance(affinity, bool):
+                raise slick_exceptions.ElementSpecificationError("\'affinity\' feature specified by application has wrong type %s ", type(affinity_required))
+        return affinity
+
+    def update_admin_elem_specs(self, element_names, admin_params):
+        self._elem_specs.update_admin_elem_specs(element_names, admin_params)
 
     def get_loaded_elements(self, element_descs):
         """Given the element descs, return the top most loaded element instance."""
         # TODO Based on the flow load return the most loaded element instance/s.
         # with only one application descriptor.
         return element_descs
+
+    def get_loaded_middleboxes(self):
+        loaded_middlebox_machines = [ ]
+        loaded_middlebox_machines = self.network_load.get_loaded_middleboxes( )
+        return loaded_middlebox_machines
+
+    def get_congested_links(self):
+        loaded_links = [ ]
+        loaded_links = self.network_load.get_congested_links( )
+        return loaded_links

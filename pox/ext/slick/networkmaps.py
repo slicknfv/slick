@@ -10,6 +10,7 @@ from sets import Set
 
 from conf import *
 from utils.packet_utils import *
+import slick_exceptions
 
 """
 This file defines several classes that the controller uses to maintain state
@@ -310,29 +311,25 @@ class FlowToElementsMapping():
             Add lookup code from file: ofmatch.py in project openfaucet.
         Dummy matching function returns True if the first wild card entry matches.
     """
-    def _lookup_elements(self,ft):
-        """Given flow tuple return the list of element names
+    def _lookup_elements(self, inport, flow):
+        """Given flow return the list of element names
         that correspond to the flow. This is an ordered list. """
+        ft = self.get_flow_tuple(inport, flow)
         for item in self.flow_to_element_mapping:
             if(_flowtuple_equals(item,ft)):
                 return self.flow_to_element_mapping[item]
         return [ ]
 
-    def _lookup_element_instances(self, ft):
-        """Given flow tuple return the list of element instances
+    def lookup_element_instances(self, inport, flow):
+        """Given flow return the list of element instances
         that correspond to the flow."""
+        ft = self.get_flow_tuple(inport, flow)
         for item in self.flow_to_element_instance_mapping:
             if(_flowtuple_equals(item, ft)):
                 return self.flow_to_element_instance_mapping[item]
         return [ ]
-    # Function that returns the corresponding element_desc lists to the flow(in order).
-    # Returns:
-    # [[e11,e12], [e21,e22,...], ...]
-    # 
-    def get(self,inport,flow):
-        """Given the flow return the ordered list of element instances for 
-        a given flow."""
-        # Based on the flow figure out the functions and then return a list of functipons available on the port.
+
+    def get_flow_tuple(self, inport, flow):
         src_mac = mac_to_int(flow.dl_src.toRaw())
         dst_mac = mac_to_int(flow.dl_dst.toRaw())
         f = self.FlowTuple(in_port=inport,
@@ -346,8 +343,17 @@ class FlowToElementsMapping():
                            nw_proto=flow.nw_proto,
                            tp_src=flow.tp_src,
                            tp_dst=flow.tp_dst)
-        element_names = self._lookup_elements(f)
-        element_instances = self._lookup_element_instances(f)
+        return f
+    # Function that returns the corresponding element_desc lists to the flow(in order).
+    # Returns:
+    # [[e11,e12], [e21,e22,...], ...]
+    # 
+    def get(self,inport,flow):
+        """Given the flow return the ordered list of element instances for 
+        a given flow."""
+        # Based on the flow figure out the functions and then return a list of functipons available on the port.
+        element_names = self._lookup_elements(inport, flow)
+        element_instances = self.lookup_element_instances(inport, flow)
         replica_sets = [ ]
         index = 0
         for e_name in element_names:
@@ -415,9 +421,15 @@ class ElementToApplication():
         # ed -> (application_object, app_desc, parameter_dict)
         self.application_handles = {}
 
-    def update(self, ed, application_object, app_desc, parameter):
+    """TODO: This is inefficient memory wise to store parameters and controller parameters
+    for each element descriptor.
+
+    parameter and controller_param are specific to each element_name in one application id. 
+    So for a given application and given element the parameter and controller_parameter are
+    the same over a period a of time."""
+    def update(self, ed, application_object, app_desc, parameter, controller_param):
         if not (self.application_handles.has_key(ed)):
-            self.application_handles[ed] = (application_object, app_desc, parameter) 
+            self.application_handles[ed] = (application_object, app_desc, parameter, controller_param) 
         else:
             print "ERROR: This should not happen"
 
@@ -429,7 +441,6 @@ class ElementToApplication():
         else:
             logging.error("No application for the element with element descriptor:", ed)
             raise slick_exceptions.InstanceNotFound("No parameters for element descriptor %d", ed)
-        pass
 
     def get_app_handle(self, ed):
         """Given an element descriptor return the application handle.
@@ -473,3 +484,30 @@ class ElementToApplication():
         for ed, app in self.application_handles.iteritems():
             app_descs.add(app[1])
         return app_descs
+
+    def get_controller_params(self, ed):
+        """Given the element descriptor return the controller params dict."""
+        if (self.application_handles.has_key(ed)):
+            return self.application_handles[ed][3] 
+        else:
+            logging.error("No application for the element with element descriptor:", ed)
+            raise slick_exceptions.InstanceNotFound("No parameters for element descriptor %d", ed)
+
+class FlowAffinity():
+    def __init__(self):
+        self.flow_to_ed_mapping = { }
+
+    def add_flow_affinity(self, flow, ed):
+        src_ip = flow.nw_src
+        self.flow_to_ed_mapping[src_ip] = ed
+
+    def get_element_desc(self, flow):
+        src_ip = flow.nw_src
+        if src_ip in self.flow_to_ed_mapping:
+            return self.flow_to_ed_mapping[src_ip]
+        else:
+            return None
+
+    def dump(self):
+        for flow, ed in self.flow_to_ed_mapping.iteritems():
+            print flow, ed
