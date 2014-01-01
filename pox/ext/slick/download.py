@@ -70,6 +70,7 @@ class Download():
         print function_name
         print "CURRENT PATH", os.getcwd()
         elements_path = os.getcwd() + "/"+"ext/slick/elements/"
+        shim_path = os.getcwd() + "/"+"ext/slick/elements/"
         files = os.listdir(elements_path)
         # assumes no directory in the element dir
         for item in files:
