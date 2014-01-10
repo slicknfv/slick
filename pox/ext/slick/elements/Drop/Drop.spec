@@ -8,6 +8,7 @@
         "affinity" : false,
         "placement" : "near",
         "bidirection" : true,
+        "stateful" : false,
         "triggers": [
         ]
     }

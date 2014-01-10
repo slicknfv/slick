@@ -9,6 +9,7 @@
         "affinity" : false,
         "placement" : "middle",
         "bidirection" : true,
+        "stateful": false,
         "triggers": [
             "BadDomainEvent",
             "MultipleBadDomainRequestEvent",

@@ -7,6 +7,7 @@
         "inline": true,
         "affinity" : false,
         "bidirection" : true,
+        "stateful" : false,
         "triggers": [
         ]
     }

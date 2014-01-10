@@ -8,6 +8,7 @@
         "inline": true,
         "placement" : "middle",
         "bidirection" : true,
+        "stateful" : true,
         "triggers": [
             "VAL_DETECTED"
         ]
