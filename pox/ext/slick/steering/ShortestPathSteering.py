@@ -17,31 +17,6 @@ class ShortestPathSteering(Steering):
         Steering.__init__(self, network_model)
         # Its a NetworkX graph.
         self.subgraph = None
-        # Element Decriptor to switch MAC address mapping.
-        self.elem_to_switch = { }
-
-    def _update_elem_to_switch_map(self, replica_sets):
-        """Update the element descriptor to switch mac 
-        addresses."""
-        for replicas in replica_sets:
-            for ed in replicas:
-                machine_mac = self.network_model.get_machine_mac(ed)
-                machine_switch_mac = self.network_model.get_connected_switch(machine_mac)
-                self.elem_to_switch[ed] = machine_switch_mac
-
-    def _get_elem_descriptor(self, switch_mac):
-        """Given the switch mac address return the element 
-        descriptors.
-        Args:
-            Switch MAC address
-        Retruns:
-            element descriptors list attached with the switch."""
-        ed_list = [ ]
-        for ed, s_mac in self.elem_to_switch.iteritems():
-            if s_mac == switch_mac:
-                ed_list.append(ed)
-        if len(ed_list) > 0:
-            return ed_list[0]
 
     def get_steering (self, replica_sets, src, dst, flow):
         """
@@ -59,7 +34,7 @@ class ShortestPathSteering(Steering):
         """
 
         # Every time get_steering is called subgraph is updated.
-        self._update_elem_to_switch_map(replica_sets)
+        self.network_model.add_elem_to_switch_mapping(replica_sets)
         self.subgraph = self.network_model.get_overlay_subgraph(src[0], dst[0], replica_sets)
         rv = self._get_element_instances(src[0], dst[0], replica_sets)
         return rv
@@ -137,7 +112,7 @@ class ShortestPathSteering(Steering):
             del path_switches[0]
             del path_switches[-1]
         for switch_mac in path_switches:
-            ed = self._get_elem_descriptor(switch_mac)
+            ed = self.network_model.get_elem_descriptor(switch_mac)
             if ed:
                 rv.append(ed)
             else:

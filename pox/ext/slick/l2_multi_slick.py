@@ -69,8 +69,10 @@ buffer_sent = {} # Key = (middlebox_switch_id,buffer_id) Value= Boolean
 FLOOD_HOLDDOWN = 5
 
 # Flow timeouts
-FLOW_IDLE_TIMEOUT = 60
-FLOW_HARD_TIMEOUT = 90
+#FLOW_IDLE_TIMEOUT = 60
+FLOW_IDLE_TIMEOUT = 6
+#FLOW_HARD_TIMEOUT = 90
+FLOW_HARD_TIMEOUT = 9
 
 # How long is allowable to set up a path?
 PATH_SETUP_TIME = 4
@@ -275,9 +277,12 @@ class Switch (EventMixin):
 
   def _install (self, switch, in_port, out_port, match, buf = None):
     msg = of.ofp_flow_mod()
+    # We need the switches to send the message when the flows
+    # are expired, to help in element migration.
+    msg.flags |= of.OFPFF_SEND_FLOW_REM
     msg.match = match # match should be fine as we are installing the in_port separately.
     msg.match.in_port = in_port
-    msg.match.tp_src = None
+    #msg.match.tp_src = None
     msg.idle_timeout = FLOW_IDLE_TIMEOUT
     msg.hard_timeout = FLOW_HARD_TIMEOUT
     msg.actions.append(of.ofp_action_output(port = out_port))
@@ -333,11 +338,11 @@ class Switch (EventMixin):
   def get_reverse_mb_locs(self, mb_locations, element_descs):
     """This function removes the middlebox
     locations that should be removed on reverse path."""
-    print "INCOMING.",mb_locations
+    #print "INCOMING.",mb_locations
     for index, ed in enumerate(element_descs):
         if slick_controller_interface.is_unidirection_required(ed):
             mb_locations.pop(index)
-    print "OUTGOING.",mb_locations
+    #print "OUTGOING.",mb_locations
     return mb_locations
 
   def install_path_improved (self, dst_sw, last_port, match, event, mb_locations, element_descs):
@@ -349,7 +354,7 @@ class Switch (EventMixin):
     dst = (dst_sw, last_port)
     #pathlets = slick_controller_interface.get_path(src, mb_locations, dst)
     pathlets = slick_controller_interface.get_path(src, mb_locations, dst)
-    print "FORWARD:",pathlets
+    #print "FORWARD:",pathlets
     mb_locations_forward = [src] + mb_locations + [dst]
     print mb_locations_forward
     print element_descs
@@ -380,7 +385,7 @@ class Switch (EventMixin):
     mb_locations = self.get_reverse_mb_locs(mb_locs, element_descs)
     # 3- Get pathlets
     pathlets = slick_controller_interface.get_path(src, mb_locations, dst)
-    print "BACKWARD:",pathlets
+    #print "BACKWARD:",pathlets
     mb_locations_reverse = [src] + mb_locations + [dst]
     print mb_locations_reverse
     print element_descs
@@ -588,6 +593,7 @@ class Switch (EventMixin):
             #match.nw_dst = matched_flow_tuple.nw_dst
             match.tp_dst = matched_flow_tuple.tp_dst
             match.tp_src = matched_flow_tuple.tp_src
+            print "INSTALLING FOLLOWING RULE:",match
             self.install_path_improved(dest[0], dest[1], match, event, mb_locations, element_descs)
             #self.install_path(dest[0], dest[1], match, event, mb_locations)
         else:

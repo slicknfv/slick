@@ -62,7 +62,8 @@ class ElementToMac():
             logging.info("_mac_to_elems: Creating New %s",self._mac_to_elems)
             self._mac_to_elems[machine_mac] = [ ]
 
-    def remove(self, element_desc):
+    def remove(self, mac_addr, element_desc):
+        """Remove element_desc record from the mac address."""
         if(element_desc != None):
             if(element_desc in self._mac_to_elems[mac_addr]):
                 self._mac_to_elems[mac_addr].remove(element_desc)
@@ -243,6 +244,15 @@ class FlowToElementsMapping():
             self.flow_to_element_instance_mapping[f].append(element_instance)
             return True
 
+    def remove_element_instance(self, ed):
+        """Remove the element instance record for the flow.
+        If the element instance is destroyed
+        or does not exist anymore"""
+        for flow, elem_instance_list in self.flow_to_element_instance_mapping.iteritems():
+            for index, e_inst in enumerate(elem_instance_list):
+                if e_inst.elem_desc == ed:
+                    del self.flow_to_element_instance_mapping[flow][index]
+
     # Given an in_port,flow and dictionary of functions{key=number:value=function_name}
     # TODO this is not getting called anywhere, but should once we add the ability to remove elements
     def remove_flow(self, in_port, flow):
@@ -381,6 +391,7 @@ class FlowToElementsMapping():
                            tp_src=in_flow.tp_src,
                            tp_dst=in_flow.tp_dst)
 
+        #print ft
         #print self.flow_to_element_mapping
         for item in self.flow_to_element_mapping.keys():
             if(_flowtuple_equals(item, ft)):
@@ -432,6 +443,13 @@ class ElementToApplication():
             self.application_handles[ed] = (application_object, app_desc, parameter, controller_param) 
         else:
             print "ERROR: This should not happen"
+
+    def remove(self, ed):
+        """Given the elem desc remove its record."""
+        if ed in self.application_handles:
+            del self.application_handles[ed]
+        else:
+            raise slick_exceptions.InstanceNotFound("Element descriptor %d not found.", ed)
 
     def get_elem_parameters(self, ed):
         """Given an element descriptor return the parameters passed to it.
@@ -508,6 +526,50 @@ class FlowAffinity():
         else:
             return None
 
+    def remove_flow_affinity(self, flow, ed):
+        src_ip = flow.nw_src
+        del self.flow_to_ed_mapping[src_ip]
+
+    def update_flow_affinity(self, old_ed, new_ed):
+        """Update the flow affinity to a new element descriptor."""
+        for flow, ed in self.flow_to_ed_mapping.iteritems():
+            # All the flows that belong to the old element instanace
+            # should now be attached to new element instance.
+            if ed == old_ed:
+                self.remove_flow_affinity(flow, ed)
+                self.add_flow_affinity(flow, new_ed)
+
     def dump(self):
         for flow, ed in self.flow_to_ed_mapping.iteritems():
             print flow, ed
+
+"""Use this class to maintain the old element instance to new element instance mapping until the 
+migration is complete. Once its complete we can remove the old_ed and new_ed record.
+This is used for both ElementMigration and PathMigration
+"""
+class ElementMigration():
+    def __init__(self):
+        self._elem_migration = { } # old_ed -> new_ed
+
+    def init_migration(self, old_ed, new_ed):
+        self._elem_migration[old_ed] = new_ed
+
+    def end_migration(self, old_ed):
+        del self._elem_migration[old_ed]
+
+    def is_migrating(self, ed):
+        if ed in self._elem_migration:
+            return True
+
+    def replace_migrating_elements(self, replica_sets):
+        # This is to make sure that for elements that are to be migrated they are 
+        # not assigned new flows instead elements that are suppose to take their place
+        # should be assigned new flows.
+        for ed in self._elem_migration:
+            for index, replicas in enumerate(replica_sets):
+                if ed in replicas:
+                    # remove all the replica_sets that we cannot use.
+                    replica_sets[index].remove(ed)
+                    # No need to add the new_ed because its already there.
+                    pass
+        return replica_sets

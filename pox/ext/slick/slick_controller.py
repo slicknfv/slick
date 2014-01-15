@@ -27,7 +27,7 @@ from pox.lib.addresses import *
 
 
 #from route_compiler import ElementToApplication
-from networkmaps import ElementToMac,FlowToElementsMapping,MacToIP,ElementToApplication,FlowAffinity
+from networkmaps import ElementToMac,FlowToElementsMapping,MacToIP,ElementToApplication,FlowAffinity, ElementMigration
 from msmessageproc import MSMessageProcessor
 from conf import *
 from download import Download
@@ -45,7 +45,7 @@ from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.placement.IncrementalKPlacement import IncrementalKPlacement
 from slick.NetworkModel import NetworkModel
 from slick.NetworkModel import ElementInstance
-from place_n_route import PlacenSteer
+from place_n_steer import PlacenSteer
 import slick_exceptions
 import queryengine
 
@@ -89,6 +89,7 @@ class slick_controller (object):
         self.flow_to_elems = FlowToElementsMapping()
         self.mac_to_ip = MacToIP()
         self.flow_affinity = FlowAffinity()
+        self.elem_migration = ElementMigration()
 
         # JSON Messenger Handlers
         self.json_msg_events = {}
@@ -124,7 +125,7 @@ class slick_controller (object):
         self._latest_app_descriptor += 1
         return self._latest_app_descriptor
 
-    def _get_unique_element_descriptor(self):
+    def get_unique_element_descriptor(self):
         self._latest_element_descriptor += 1
         return self._latest_element_descriptor
 
@@ -183,6 +184,7 @@ class slick_controller (object):
     """
     def get_all_registered_machines(self):
         return self.mac_to_ip.get_all_macs()
+
 
     # Slick API Functions
 
@@ -277,14 +279,14 @@ class slick_controller (object):
         try:
             #print "All machines: ", all_machines
             #print "Registered machines:", registered_machines
-            self.__download_files(element_names, mac_addrs)
+            self.download_files(element_names, mac_addrs)
         except slick_exceptions.ElementDownloadFailed as e:
             log.warn(e.__str__())
             return [-2]
 
         elem_descs = [ ]
         for e in element_names:
-            elem_descs.append(self._get_unique_element_descriptor())
+            elem_descs.append(self.get_unique_element_descriptor())
 
         # Keeping these assertions to avoid any issues.
         assert len(mac_addrs) == len(element_names) , 'Number of Element Names != Number of Middlebox MACs'
@@ -329,7 +331,7 @@ class slick_controller (object):
         return elem_descs
 
 
-    def __download_files(self, element_names, mac_addrs):
+    def download_files(self, element_names, mac_addrs):
         """Download files to middlebox machines.
 
         Args:
@@ -369,10 +371,17 @@ class slick_controller (object):
     #TODO:
     def remove_elem(self, app_desc, elem_desc):
         # roll back
-        if(self.ms_msg_proc.send_remove_msg(elem_desc, parameters,mac_addr)):
-            desc_removed = self.elem_to_mac.remove(elem_desc)
-        self.remove_placement(elem_desc)
-        #update mb_placement_steering for changed elements
+        parameters = self.elem_to_app.get_elem_parameters(elem_desc)
+        msg_dst = self.elem_to_mac.get(elem_desc)
+        # Step 1 Tell the shim to remove the element.
+        if(self.ms_msg_proc.send_remove_msg(elem_desc, parameters, msg_dst)):
+            print "ELEM TO MAC REMOVED::::::::::::::::::::::::::::::::::::::::::::::::::"
+            desc_removed = self.elem_to_mac.remove(msg_dst, elem_desc)
+        # Step 2 Remove all the mappings.
+        self.flow_to_elems.remove_element_instance(elem_desc)
+        self.elem_to_app.remove(elem_desc)
+        # Step 3 Remove the element information from the controller.
+        self.network_model.remove_placement(elem_desc)
 
     def __get_placeless_element_names(self, element_names, mac_addrs):
         """Return elements that cannot be placed.
@@ -424,8 +433,8 @@ class POXInterface():
         pass
 
     def get_updated_replicas(self, ed, replica_sets):
-        """Given the replica_sets remove the replicas for affined ed."""
-        print "Element descriptor affinity found........................................................."
+        """Given the replica_sets remove the replicas and leave the affined ed."""
+        print "Element descriptor affinity found."
         for index, replicas in enumerate(replica_sets):
             if ed in replicas:
                 for elem_desc in replicas:
@@ -446,7 +455,7 @@ class POXInterface():
             elem_name = elem_inst.name
             if ed in element_descriptors:
                 # uniquely identify the element preference specified by the application.
-                if(self.controller.network_model.is_affinity_required(elem_inst)):
+                if(self.controller.network_model.is_affinity_required(elem_inst.elem_desc, elem_inst.name)):
                     # check the load on elem_inst and its machine. If elem_inst is
                     # overloaded or machine is overloaded then
                     # create new element instance else following code
@@ -479,14 +488,12 @@ class POXInterface():
             return element_macs
         # replica_sets is a list of lists of element descriptors
         # [[e_11, e_12, ...], [e_21, e_22, ...], ...]
-        # TODO this is what flow_to_elems should return, but it does not yet support replicas
         replica_sets_temp = self.controller.flow_to_elems.get(flow.in_port, flow)
-        replica_sets = replica_sets_temp
+        replica_sets = self.controller.elem_migration.replace_migrating_elements(replica_sets_temp)
         print "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
         print replica_sets
         # Check if flow is already 'affined' to an element instance.
         ed = self.controller.flow_affinity.get_element_desc(flow)
-        print ed
         if ed:
             replica_sets = self.get_updated_replicas(ed, replica_sets_temp)
         # element_descriptors is a list of individual element descriptors: one chosen from
@@ -495,17 +502,21 @@ class POXInterface():
         element_descriptors = element_descs
         if not ed:
             element_descriptors = self.get_updated_elem_descriptors(ed, flow, element_descs)
-        print element_descriptors
         # TODO if this fails, try to scale out the appropriate element(s)
 
         for elem_desc in element_descriptors:
-            mac_addr = self.controller.elem_to_mac.get(elem_desc) 
+            mac_addr = self.controller.elem_to_mac.get(elem_desc)
+            print self.controller.elem_to_mac
+            print mac_addr
             #print "MAC ADDRESS GOT FOR THE ELEMENT DESC:", elem_desc, mac_addr
             #element_macs[elem_desc] = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
             eth_addr = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
             element_macs.append((elem_desc, eth_addr))
             #self.network_model.update_element_instance_load(elem_desc, flow)
-
+            # For first flow we'll get the the original ed
+            # for next new flow it should give the moved element instance.
+            #self.controller._place_n_steer.random_move()
+            self.controller._place_n_steer.test_steer_traffic()
         return element_macs
 
 
@@ -545,7 +556,6 @@ class POXInterface():
         return self.controller.network_model.path_was_installed(match, element_sequence, machine_sequence, path)
 
     def is_unidirection_required(self, ed):
-        print "UNI"*10
         bidirection = self.controller.network_model.is_bidirection_required(ed)
         print bidirection, type(bidirection)
         return not bidirection
@@ -559,32 +569,32 @@ class POXInterface():
                     assert "mac" in trigger_msg, "Shim Resources Trigger is missing the MAC address."
                     overloaded_machine_mac = trigger_msg["mac"]
                     # Get all the elements that are on the machine.
-                    element_descs = list(self.controller.elem_to_mac.get_elem_descs(overloaded_machine_mac))
-                    # TODO: After modifying apply_elem() and get_placement() make this call from get_placement()
-                    elem_descs = self.controller.network_model.get_loaded_elements(element_descs)
-                    # Move one element instance at a time.
-                    for ed in elem_descs:
-                        #print elem_descs
-                        element_names = [ ]
-                        app_desc = None
-                        application_object = None
-                        parameters = [ ]
-                        flow = None
+                    #element_descs = list(self.controller.elem_to_mac.get_elem_descs(overloaded_machine_mac))
+                    ## TODO: After modifying apply_elem() and get_placement() make this call from get_placement()
+                    #elem_descs = self.controller.network_model.get_loaded_elements(element_descs)
+                    ## Move one element instance at a time.
+                    #for ed in elem_descs:
+                    #    #print elem_descs
+                    #    element_names = [ ]
+                    #    app_desc = None
+                    #    application_object = None
+                    #    parameters = [ ]
+                    #    flow = None
 
-                        e_name = self.controller.network_model.get_elem_name(ed)
-                        element_names.append(e_name)
-                        app_desc = self.controller.elem_to_app.get_app_desc(ed)
-                        application_object = self.controller.elem_to_app.get_app_handle(ed)
-                        flow = self.controller.flow_to_elems.get_element_flow(ed)
-                        param_dict = self.controller.elem_to_app.get_elem_parameters(ed)
-                        parameters.append(param_dict)
-                        # Call apply_elem but first build all the arguments
-                        # for the function call.
-                        # For now duplicate all element instances on the machine.
-                        # TODO: Add the code to get controller_param from the application
-                        # from elem_to_app object, such that we provide the same parameters 
-                        # for this element.
-                        #self.controller.apply_elem(app_desc, flow, element_names, parameters, [{}],application_object)
+                    #    e_name = self.controller.network_model.get_elem_name(ed)
+                    #    element_names.append(e_name)
+                    #    app_desc = self.controller.elem_to_app.get_app_desc(ed)
+                    #    application_object = self.controller.elem_to_app.get_app_handle(ed)
+                    #    flow = self.controller.flow_to_elems.get_element_flow(ed)
+                    #    param_dict = self.controller.elem_to_app.get_elem_parameters(ed)
+                    #    parameters.append(param_dict)
+                    #    # Call apply_elem but first build all the arguments
+                    #    # for the function call.
+                    #    # For now duplicate all element instances on the machine.
+                    #    # TODO: Add the code to get controller_param from the application
+                    #    # from elem_to_app object, such that we provide the same parameters 
+                    #    # for this element.
+                    #    #self.controller.apply_elem(app_desc, flow, element_names, parameters, [{}],application_object)
         else:
             # Call the function continuously if
             # no trigger message from shim or from user.

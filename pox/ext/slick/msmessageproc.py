@@ -135,7 +135,8 @@ class MSMessageProcessor(EventMixin):
     def send_remove_msg(self,fd,params_dict,msg_dst):
         if((type(fd) == int) and isinstance(params_dict, dict)):
             msg = {"type":"remove", "fd":fd,"params":params_dict}
-            return self.send_msg(msg_dst,msg)
+            removal_msg_sent = self.send_msg(msg_dst,msg)
+            return removal_msg_sent
 
     """
         Function to send messages to Middlebox through jsonmessenger.

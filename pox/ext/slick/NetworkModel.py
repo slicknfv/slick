@@ -33,7 +33,38 @@ class NetworkModel():
         # Build the overlay network
         self.overlay_net = OverlayNetwork(controller)
         self.network_load = SFlowNetworkLoad(controller)
+        # Element Decriptor to switch MAC address mapping.
+        # Can be used in steering.
+        self.elem_to_switch = { }
 
+    def add_elem_to_switch_mapping(self, replica_sets):
+        """Update the element descriptor to switch mac 
+        addresses."""
+        for replicas in replica_sets:
+            for ed in replicas:
+                machine_mac = self.get_machine_mac(ed)
+                machine_switch_mac = self.get_connected_switch(machine_mac)
+                self.elem_to_switch[ed] = machine_switch_mac
+
+    def get_elem_descriptor(self, switch_mac):
+        """Given the switch mac address return the element 
+        descriptors.
+        Args:
+            Switch MAC address
+        Retruns:
+            element descriptors list attached with the switch."""
+        ed_list = [ ]
+        for ed, s_mac in self.elem_to_switch.iteritems():
+            if s_mac == switch_mac:
+                ed_list.append(ed)
+        if len(ed_list) > 0:
+            return ed_list[0]
+
+    def remove_elem_to_switch_mapping(self, ed):
+        """If the element is removed or in migration and
+        is no longer to be used remove its mapping."""
+        if ed in self.elem_to_switch:
+            del self.elem_to_switch[ed]
 
     def get_element_placements (self, app_desc, element_name):
         """
@@ -218,14 +249,16 @@ class NetworkModel():
         elem_instance = None
         if ed in self._ed_to_instance:
             elem_instance = self._ed_to_instance[ed]
-        return elem_instance.name
+            return elem_instance.name
+        else:
+            return None
 
-    def is_affinity_required(self, elem_inst):
-        """Given element descriptor check if the element affinity
+    def is_affinity_required(self, ed, element_name):
+        """Given element instance check if the element affinity
         is requested by administrator else return the default affinity
         preference of the element."""
-        ed = elem_inst.elem_desc
-        element_name = elem_inst.name
+        #ed = elem_inst.elem_desc
+        #element_name = elem_inst.name
         affinity = self.get_elem_admin_affinity(ed)
         print "Affinity:",affinity, type(affinity)
         if affinity:
