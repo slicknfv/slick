@@ -13,6 +13,7 @@ class HttpLogger(Application):
         parameters = [{"file_name":"/tmp/http_log"}]
         flow = self.make_wildcard_flow()
         flow['tp_dst'] = 80
+        flow['nw_proto'] = 6
         ed = self.apply_elem( flow, ["Logger"], parameters, admin_params ) 
 
         if(self.check_elems_installed(ed)):
