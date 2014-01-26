@@ -1,15 +1,6 @@
 """NetworkLoad is the base class. Based on underlaying
 infrastruture/technology, sflow, RMON-II, openflow, custom proto, we can
 implement new classes."""
-class MachineLoad(object):
-    pass
-
-class ElementLoad(object):
-    pass
-
-class LinkLoad(object):
-    pass
-
 class NetworkLoad(object):
     def __init__(self, controller):
         self.controller = controller
@@ -42,7 +33,7 @@ class NetworkLoad(object):
         pass
 
     def get_congested_links(self):
-        """Return the list o congested links in network."""
+        """Return the list of congested links in network."""
         pass
 
     def get_loaded_elements(self):
