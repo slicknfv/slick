@@ -1,6 +1,7 @@
 """
     NetworkModel class, which captures all of the state needed by the Placement, Steering, and Routing modules 
 """
+from collections import defaultdict
 
 from specs import MachineSpec
 from specs import ElementSpec
@@ -9,6 +10,7 @@ from slick.overlay_network import dpid_to_str
 from slick.sflow_networkload import SFlowNetworkLoad
 from pox.openflow.discovery import Discovery
 from pox.core import core
+
 
 class ElementInstance():
     def __init__(self, name, app_desc, elem_desc, location):
@@ -27,6 +29,7 @@ class NetworkModel():
         self._controller = controller
         self._elem_specs = ElementSpec()    # reads in the element manifests (.spec files)
         self._machine_specs = MachineSpec() # reads in the machine manifests (.spec files)
+        self._elem_name_to_loaded_descs = defaultdict(list) #elem_name -> [loaded-eds]
 
         # TODO put this in the controller
         self.element_sequences = {}     # flow match -> [element names] XXX we may want this to map to descriptors
@@ -37,13 +40,49 @@ class NetworkModel():
         # Can be used in steering.
         self.elem_to_switch = { }
 
+    def update_function_loads(self, loaded_elem_descs):
+        """This function is used to update the load
+        about functions and their corresponding loaded element 
+        instances.
+        Args:
+            List of loaded element descs from NetworkLoad module.
+        Side Effect:
+            Update the map for function to instance load mapping.
+        Returns: 
+            None
+        """
+        for ed in loaded_elem_descs:
+            element_name = self.get_elem_name(ed)
+            if element_name in self._elem_name_to_loaded_descs:
+                self._elem_name_to_loaded_descs[element_name].append(ed)
+            else:
+                self._elem_name_to_loaded_descs[element_name] = [ed]
+
+    def get_not_loaded_element_descs(self, element_name):
+        """Given the element name return the element descriptors
+        that are not loaded fully.
+        Args: 
+            element_name: Element name string.
+        Returns:
+        """
+        loaded_elem_descs = [ ]
+        all_elem_descs = self.get_element_descriptors(element_name)
+        if element_name in self._elem_name_to_loaded_descs:
+            loaded_elem_descs = self._elem_name_to_loaded_descs[element_name]
+        not_loaded_element_descs = list(set(all_elem_descs) - set(loaded_elem_descs))
+        return not_loaded_element_descs
+
+    def get_min_elem_descs(self, element_name):
+        # TODO: The policy writer should provide these paramters in controller params.
+        return 1
+
     def add_elem_to_switch_mapping(self, replica_sets):
         """Update the element descriptor to switch mac 
         addresses."""
         for replicas in replica_sets:
             for ed in replicas:
                 machine_mac = self.get_machine_mac(ed)
-                machine_switch_mac = self.get_connected_switch(machine_mac)
+                machine_switch_mac = self.overlay_net.get_connected_switch(machine_mac)
                 self.elem_to_switch[ed] = machine_switch_mac
 
     def get_elem_descriptor(self, switch_mac):
@@ -81,8 +120,11 @@ class NetworkModel():
         This can include element_desc from different apps.
         """
         element_descriptors = [ ]
-        for element_name, element_instance in self._name_to_instances.iteritems():
-            element_descriptors.append(element_instance.elem_desc)
+        element_instances = set( )
+        if element_name in self._name_to_instances:
+            element_instances = self._name_to_instances[element_name]
+        for inst in element_instances:
+            element_descriptors.append(inst.elem_desc)
         return element_descriptors
 
     def get_all_registered_machines (self):
@@ -213,10 +255,6 @@ class NetworkModel():
         given element descriptor."""
         return self._controller.elem_to_mac.get(elem_desc)
 
-    def get_connected_switch(self, machine_mac):
-        """Return the dpid for the machine mac"""
-        return self.overlay_net.get_connected_switch(machine_mac)
-
     def get_host_loc(self, machine_mac):
         """Return the (dpid,port) for the machine mac"""
         mac_addr = ""
@@ -278,8 +316,10 @@ class NetworkModel():
             else:
                 return self.get_elem_spec_direction(elem_name)
 
+    #
     # Functions to return the spec paramters from spec files and 
     # administrator.
+    #
     def get_elem_spec_placement(self, elem_name):
         """Given element_name string return the placement recommendation
         from the element specification."""
@@ -362,11 +402,17 @@ class NetworkModel():
     def update_admin_elem_specs(self, element_names, admin_params):
         self._elem_specs.update_admin_elem_specs(element_names, admin_params)
 
-    def get_loaded_elements(self, element_descs):
-        """Given the element descs, return the top most loaded element instance."""
+    #
+    # Machine, Element and Link Loads
+    # 
+    def get_loaded_elements(self):
+        """Given the element descs, return the loaded element instance descriptors"""
         # TODO Based on the flow load return the most loaded element instance/s.
         # with only one application descriptor.
-        return element_descs
+        #return [element_descs[0]]
+        loaded_element_descs = [ ]
+        loaded_element_descs = self.network_load.get_loaded_elements( )
+        return loaded_element_descs
 
     def get_loaded_middleboxes(self):
         loaded_middlebox_machines = [ ]
@@ -377,3 +423,22 @@ class NetworkModel():
         loaded_links = [ ]
         loaded_links = self.network_load.get_congested_links( )
         return loaded_links
+
+    def get_physical_link_utilizations(self):
+        # Wrapper
+        # Returns the %age utilization.
+        return self.network_load.get_link_utilizations()
+
+    def element_placement_allowed(self, mac):
+        elem_descs = self._controller.elem_to_mac.get_elem_descs(mac)
+        if len(elem_descs) < self.get_max_elements(mac):
+            return True
+        else:
+            return False
+
+    def get_max_elements(self, mac):
+        #TODO With different specs of physical machines there can
+        # be multiple max number of elements.
+        # Maximum number of elements per machine.
+        MAX_ELEMENTS_PER_MACHINE = 1
+        return MAX_ELEMENTS_PER_MACHINE

@@ -5,6 +5,7 @@
 # Move Instance
 # Steer/Redirect traffic.
 import time
+from collections import defaultdict
 
 from pox.core import core
 from pox.lib.util import dpid_to_str
@@ -31,6 +32,9 @@ def convert_fd_to_fm(flow):
     match.tp_src = flow['tp_src']
     return match
 
+class ElementLoads():
+    def __init__(self):
+        pass
 
 class PlacenSteer(object):
     def __init__(self, controller):
@@ -39,7 +43,52 @@ class PlacenSteer(object):
         # FlowRemoved Event. Keeps track of migrating elements
         self.migrating_elems = { } # FlowTuple -> (old_ed, app_desc)
         self.migrating_flows = { } # Dict of flows tuples being migrated. FlowTuple -> old_ed
+        self.active_elems = { } # switch_dpid -> active elements.
         core.openflow.addListenerByName("FlowRemoved", self._handle_FlowRemoved)
+
+    def update_active_elements(self, eds):
+        """Use this function when get_steering is dispatching
+        the traffic to elements. This is to keep track of active
+        elements that are processing the traffic.
+        Args:
+            eds: element descriptors.
+        Returns:
+            None
+        """
+        mac_addr =  [ ]
+        for elem_desc in eds:
+            elem_machine_mac = self.controller.elem_to_mac.get(elem_desc)
+            elem_switch_mac = self.controller.network_model.overlay_net.get_connected_switch(elem_machine_mac)
+            if elem_switch_mac in self.active_elems:
+                self.active_elems[elem_switch_mac].append(elem_desc)
+            else:
+                self.active_elems[elem_switch_mac] = [elem_desc]
+
+    def remove_active_elements(self, flow_removed_event):
+        # Get all the element descriptors associated with the flow
+        # But only remove those element descriptor from active flows
+        # from the switch we have received the removeflow.
+        flow_removed = flow_removed_event.ofp
+        dpid = flow_removed_event.dpid
+        replica_sets = self.controller.flow_to_elems.get(None, flow_removed.match)
+        for replica_set in replica_sets:
+            for ed in replica_set:
+                if dpid in self.active_elems:
+                    # Its possible that one switch has more than one rule for same ed.
+                    # once any of the rules is removed we consider the element instnace
+                    # to be inactive.
+                    if ed in self.active_elems[dpid]:
+                        self.active_elems[dpid].remove(ed)
+
+    def get_active_element_descs(self, eds):
+        """Given the element descriptors remove active elements only."""
+        active_elems = [ ]
+        for ed in eds:
+            for dpid, elem_descs in self.active_elems.iteritems():
+                if ed in elem_descs:
+                    if ed not in active_elems:
+                        active_elems.append(ed)
+        return active_elems
 
     def _handle_FlowRemoved (self, event):
         """
@@ -48,6 +97,7 @@ class PlacenSteer(object):
         """
         flow_removed = event.ofp
         removed_flow_tuple = self.controller.flow_to_elems.get_matching_flow(flow_removed.match)
+        self.remove_active_elements(event)
         # If the element is migrated and there
         # is not more active traffic we need to migrate the flow.
         if removed_flow_tuple in self.migrating_elems:
@@ -118,14 +168,13 @@ class PlacenSteer(object):
             return -1
         return elem_desc
 
-
-
     def _add_element_instance(self, ed):
         """Given the elment descriptor, create a new element instance copy in the network.
         Args:
             ed: element descriptor integer.
         Returns:
-            None
+            Element descriptor after successful creation of element instance.
+            If failure then returns None.
         Side Effect:
             Create a new element instance.
         """
@@ -142,20 +191,37 @@ class PlacenSteer(object):
         flow = self.controller.flow_to_elems.get_element_flow(ed)
         param_dict = self.controller.elem_to_app.get_elem_parameters(ed)
         parameters.append(param_dict)
+        controller_param = [self.controller.elem_to_app.get_controller_params(ed)]
         # Call apply_elem but first build all the arguments
         # for the function call.
         # For now duplicate all element instances on the machine.
-        self.controller.apply_elem(app_desc, flow, element_names, parameters, application_object)
+        created_elem_descs = self.controller.apply_elem(app_desc, flow, element_names, parameters, controller_param, application_object)
+        if len(created_elem_descs):
+            return created_elem_descs[0]
+        else:
+            return None
 
-    def add_element_instance(self, overloaded_machine_mac):
-        # Get all the elements that are on the machine.
-        element_descs = list(self.controller.elem_to_mac.get_elem_descs(overloaded_machine_mac))
+    def handle_loaded_elements(self, loaded_element_descs):
+        for ed in loaded_element_descs:
+            element_name = self.controller.network_model.get_elem_name(ed)
+            avail_eds = self.controller.network_model.get_not_loaded_element_descs(element_name)
+            print avail_eds
+            if len(avail_eds) == 0:
+                new_ed = self._add_element_instance(ed)
+                if new_ed:
+                    #self.forced_steer_traffic(ed, new_ed)
+                    pass
+            else:
+                # There are some instances available that are not loaded.
+                # steer traffic towards them.
+                new_ed = avail_eds.pop()
+                # Any new flows should be redirected to new element.
+                self.steer_traffic(ed, new_ed)
         # TODO: After modifying apply_elem() and get_placement() make this call from get_placement()
-        elem_descs = self.controller.network_model.get_loaded_elements(element_descs)
-        # Move one element instance at a time.
-        for ed in elem_descs:
-            self._add_element_instance(ed)
 
+    def handle_loaded_links(self, loaded_links):
+        element_name = self.controller.network_model.get_elem_name(ed)
+        pass
 
     def _perform_stateless_migration(self, ed, dst_mac):
         """Even though the element is stateless it needs to maintain the affinities of the element.
@@ -219,9 +285,79 @@ class PlacenSteer(object):
         # End path migration once FlowRemoved message is received.
         pass
 
-    def garbage_collect(self):
+    def collect_garbage(self):
         """If the resources are filled then collect the garbage."""
-        pass
+        print "Collecting Garbage."
+        elem_names = self.controller.network_model.get_elem_names()
+        # Sweep through all the element types and remove any extra 
+        # element descriptors.
+        for elem_name in elem_names:
+            avail_eds = self.controller.network_model.get_not_loaded_element_descs(elem_name)
+            # print "avail_eds:", avail_eds
+            if len(avail_eds):
+                # There are no more loaded element descs.
+                active_eds = self.get_active_element_descs(avail_eds)
+                passive_eds = list(set(avail_eds) - set(active_eds))
+                # print "active_eds:", active_eds
+                # print "passive_eds:", passive_eds
+                min_elem_instances = self.controller.network_model.get_min_elem_descs(elem_name)
+                # Check to make sure we don't delete all the element instnaces.
+                if len(passive_eds) > min_elem_instances:
+                    # Remove element instances that are not being used any more.
+                    for ed in passive_eds:
+                        app_desc = self.controller.elem_to_app.get_app_desc(ed)
+                        log.debug("Removing element %d for application: %d", ed, app_desc)
+                        self.controller.remove_elem(app_desc, ed)
+
+
+    def place_n_steer(self):
+        """Decide should we add/move elements or steer traffic."""
+        # Return the list of congested middlebox machines.
+        loaded_middleboxes = self.controller.network_model.get_loaded_middleboxes()
+        loaded_elements = self.controller.network_model.get_loaded_elements()
+        # Return the list of congested links
+        congested_links = self.controller.network_model.get_congested_links()
+        print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        print "Loaded Middleboxes:", loaded_middleboxes
+        print "Loaded Element Instances:", loaded_elements
+        print "Congested Links:", congested_links
+        print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        # update the map so that we know if there are any less loaded element 
+        # descriptors are available for a given load.
+        self.controller.network_model.update_function_loads(loaded_elements)
+        if len(loaded_elements) and (not len(congested_links)):
+            self.handle_loaded_elements(loaded_elements)
+        if len(congested_links) and (not len(loaded_elements)):
+            pass
+        if len(congested_links) and len(loaded_elements):
+            pass
+        self.collect_garbage()
+        # If network is optimized i.e. we are minimizing the
+        # resource usage for middlebox machines and network bandwidth
+        # than we don't need to do much else we need to take further action.
+        # steer traffic or move element instance.
+        #
+        # Return the list of loaded element instances.
+        #loaded_elements = self._controller.network_model.get_loaded_elements()
+        #if self._middlebox_overloaded(trigger_msg):
+        #    element_descs = list(self.controller.elem_to_mac.get_elem_descs(overloaded_machine_mac))
+        #    available_element_instances = lookup_available_element_instances(element_descs)
+        #    if len(available_element_instances) == 0:
+        #        self.add_element_instance()
+        #    else:
+        #        # Either move element instance or steer traffic.
+        #        # Decide to move or steer traffic to existing element instances.
+        #        # Decision to steer traffic over placing an element instance should 
+        #        # be made how much traffic do we need to steer. If we need to steer 
+        #        # traffic more than certain volume then we place element instance in the
+        #        # path else we steer traffic.
+        #        # To calculate the traffic to steer, estimate the volume of 
+        #        # traffic.
+        #        calc_distance
+        ## Possible options.
+        #self.add_element_instance(overloaded_machine_mac)
+        #self.move_element_instance(overloaded_machine_mac)
+        #self.remove_element_instance(overloaded_machine_mac)
 
     # Testing function.
     def random_move(self):
@@ -260,40 +396,4 @@ class PlacenSteer(object):
         if (len(free_machines) >= 1) and (len(all_elem_descs) == 1):
             new_ed = self._create_element_copy(all_elem_descs[0], free_machines[0])
             self.steer_traffic(all_elem_descs[0], new_ed)
-
-    def place_n_steer(self):
-        """Decide should we add/move elements or steer traffic."""
-        # Return the list of congested middlebox machines.
-        loaded_middleboxes = self.controller.network_model.get_loaded_middleboxes()
-        # Return the list of congested links
-        congested_links = self.controller.network_model.get_congested_links()
-        print loaded_middleboxes
-        print congested_links
-    
-        # If network is optimized i.e. we are minimizing the
-        # resource usage for middlebox machines and network bandwidth
-        # than we don't need to do much else we need to take further action.
-        # steer traffic or move element instance.
-        #
-        # Return the list of loaded element instances.
-        #loaded_elements = self._controller.network_model.get_loaded_elements()
-        #if self._middlebox_overloaded(trigger_msg):
-        #    element_descs = list(self.controller.elem_to_mac.get_elem_descs(overloaded_machine_mac))
-        #    available_element_instances = lookup_available_element_instances(element_descs)
-        #    if len(available_element_instances) == 0:
-        #        self.add_element_instance()
-        #    else:
-        #        # Either move element instance or steer traffic.
-        #        # Decide to move or steer traffic to existing element instances.
-        #        # Decision to steer traffic over placing an element instance should 
-        #        # be made how much traffic do we need to steer. If we need to steer 
-        #        # traffic more than certain volume then we place element instance in the
-        #        # path else we steer traffic.
-        #        # To calculate the traffic to steer, estimate the volume of 
-        #        # traffic.
-        #        calc_distance
-        ## Possible options.
-        #self.add_element_instance(overloaded_machine_mac)
-        #self.move_element_instance(overloaded_machine_mac)
-        #self.remove_element_instance(overloaded_machine_mac)
 

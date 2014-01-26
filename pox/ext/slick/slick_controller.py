@@ -40,6 +40,7 @@ from slick.routing.ShortestPathRouting import ShortestPathRouting
 from slick.steering.RandomSteering import RandomSteering
 from slick.steering.ShortestHopCountSteering import ShortestHopCountSteering
 from slick.steering.ShortestPathSteering import ShortestPathSteering
+from slick.steering.LoadAwareShortestPathSteering import LoadAwareShortestPathSteering
 from slick.placement.RandomPlacement import RandomPlacement
 from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.placement.IncrementalKPlacement import IncrementalKPlacement
@@ -72,7 +73,8 @@ class slick_controller (object):
         #self.placement_module = OptimalKPlacement( self.network_model )
         #self.steering_module = RandomSteering( self.network_model )
         #self.steering_module = ShortestHopCountSteering( self.network_model )
-        self.steering_module = ShortestPathSteering( self.network_model )
+        #self.steering_module = ShortestPathSteering( self.network_model )
+        self.steering_module = LoadAwareShortestPathSteering( self.network_model )
         self.routing_module = ShortestPathRouting( self.network_model )
 
         # add the standard OpenFlow event handlers
@@ -432,18 +434,19 @@ class POXInterface():
         #ed = self.controller.flow_affinity.get_element_desc(flow)
         pass
 
-    def get_updated_replicas(self, ed, replica_sets):
-        """Given the replica_sets remove the replicas and leave the affined ed."""
+    def get_updated_replicas(self, eds, replica_sets):
+        """Given the replica_sets remove the replicas and leave the affined eds."""
         print "Element descriptor affinity found."
-        for index, replicas in enumerate(replica_sets):
-            if ed in replicas:
-                for elem_desc in replicas:
-                    if elem_desc != ed:
-                        # remove all the replica_sets that we cannot use.
-                        replica_sets[index].remove(elem_desc)
+        for ed in eds: # This is required for path affinity.
+            for index, replicas in enumerate(replica_sets):
+                if ed in replicas:
+                    for elem_desc in replicas:
+                        if elem_desc != ed:
+                            # remove all the replica_sets that we cannot use for the given elem_desc
+                            replica_sets[index].remove(elem_desc)
         return replica_sets
 
-    def get_updated_elem_descriptors(self, ed, flow, element_descriptors):
+    def update_flow_affinities(self, flow, element_descriptors):
         """This function is called once element descs are selected by get_steering."""
         # Get the list of element instances corresponding to the flow.
         element_instances = self.controller.flow_to_elems.lookup_element_instances(flow.in_port, flow)
@@ -489,21 +492,31 @@ class POXInterface():
         # replica_sets is a list of lists of element descriptors
         # [[e_11, e_12, ...], [e_21, e_22, ...], ...]
         replica_sets_temp = self.controller.flow_to_elems.get(flow.in_port, flow)
-        replica_sets = self.controller.elem_migration.replace_migrating_elements(replica_sets_temp)
+        print "0",replica_sets_temp
+        #replica_sets = self.controller.elem_migration.replace_migrating_elements(replica_sets_temp)
+        replica_sets = replica_sets_temp
         print "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"
-        print replica_sets
+        print "1",replica_sets
         # Check if flow is already 'affined' to an element instance.
-        ed = self.controller.flow_affinity.get_element_desc(flow)
-        if ed:
-            replica_sets = self.get_updated_replicas(ed, replica_sets_temp)
+        eds = self.controller.flow_affinity.get_element_descs(flow) 
+        print "EEEEEEEEEEEEEEEEEEEEEEEEEEEE",eds
+        if eds:# If flow is affined then remove other element instnaces
+            replica_sets = self.get_updated_replicas(eds, replica_sets_temp)
+        print "R",replica_sets
         # element_descriptors is a list of individual element descriptors: one chosen from
         # each element in the replica list, e.g.: [e_11, e_25, e_32, ...]
+        self.controller.network_model.add_elem_to_switch_mapping(replica_sets)
         element_descs = self.controller.steering_module.get_steering(replica_sets, src, dst, flow)
         element_descriptors = element_descs
-        if not ed:
-            element_descriptors = self.get_updated_elem_descriptors(ed, flow, element_descs)
+        print "E1",element_descriptors
+        # If there is no affinity for the flow then check if element specs
+        # from admin/default require affinity. If that is the case then assign affinity.
+        if not eds:
+            element_descriptors = self.update_flow_affinities(flow, element_descs)
         # TODO if this fails, try to scale out the appropriate element(s)
+        print "E2",element_descriptors
 
+        self.controller._place_n_steer.update_active_elements(element_descriptors)
         for elem_desc in element_descriptors:
             mac_addr = self.controller.elem_to_mac.get(elem_desc)
             print self.controller.elem_to_mac
@@ -512,11 +525,10 @@ class POXInterface():
             #element_macs[elem_desc] = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
             eth_addr = EthAddr(mac_to_str(mac_addr)) # Convert MAC in Long to EthAddr
             element_macs.append((elem_desc, eth_addr))
-            #self.network_model.update_element_instance_load(elem_desc, flow)
             # For first flow we'll get the the original ed
             # for next new flow it should give the moved element instance.
             #self.controller._place_n_steer.random_move()
-            self.controller._place_n_steer.test_steer_traffic()
+            #self.controller._place_n_steer.test_steer_traffic()
         return element_macs
 
 
