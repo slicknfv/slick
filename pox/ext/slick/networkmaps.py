@@ -27,6 +27,8 @@ about elements and applications:
 
     ElementToApplication - maintains a mapping between elements and the apps
                            who own them
+    ElementMigration - Keep track of migrating elements.
+
 """
 
 """
@@ -340,8 +342,12 @@ class FlowToElementsMapping():
         return [ ]
 
     def get_flow_tuple(self, inport, flow):
-        src_mac = mac_to_int(flow.dl_src.toRaw())
-        dst_mac = mac_to_int(flow.dl_dst.toRaw())
+        src_mac = None
+        dst_mac = None
+        if flow.dl_src:
+            src_mac = mac_to_int(flow.dl_src.toRaw())
+        if flow.dl_dst:
+            dst_mac = mac_to_int(flow.dl_dst.toRaw())
         f = self.FlowTuple(in_port=inport,
                            dl_src=src_mac,
                            dl_dst=dst_mac,
@@ -516,19 +522,26 @@ class FlowAffinity():
         self.flow_to_ed_mapping = { }
 
     def add_flow_affinity(self, flow, ed):
+        """Add the element_desc/descs corresponding to each flow."""
         src_ip = flow.nw_src
-        self.flow_to_ed_mapping[src_ip] = ed
+        if src_ip in self.flow_to_ed_mapping:
+            self.flow_to_ed_mapping[src_ip].append(ed)
+        else:
+            self.flow_to_ed_mapping[src_ip] = [ed]
 
-    def get_element_desc(self, flow):
+    def get_element_descs(self, flow):
         src_ip = flow.nw_src
         if src_ip in self.flow_to_ed_mapping:
             return self.flow_to_ed_mapping[src_ip]
         else:
-            return None
+            return [ ]
 
     def remove_flow_affinity(self, flow, ed):
         src_ip = flow.nw_src
-        del self.flow_to_ed_mapping[src_ip]
+        if len(self.flow_to_ed_mapping[src_ip]) > 1:
+            self.flow_to_ed_mapping[src_ip].remove(ed)
+        else:
+            del self.flow_to_ed_mapping[src_ip]
 
     def update_flow_affinity(self, old_ed, new_ed):
         """Update the flow affinity to a new element descriptor."""
@@ -573,3 +586,4 @@ class ElementMigration():
                     # No need to add the new_ed because its already there.
                     pass
         return replica_sets
+
