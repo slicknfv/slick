@@ -10,6 +10,7 @@ from pox.core import core
 import networkx as nx
 log = core.getLogger()
 
+
 class IncrementalKPlacement(Placement):
     def __init__ (self, network_model):
         log.debug("Incremental K Placement Algorithm")
@@ -40,11 +41,20 @@ class IncrementalKPlacement(Placement):
             Mac address of the element machine where the elem_name should be hosted.
         """
         # In the simplest case we have all the machines.
-        machines = self.network_model.get_compatible_machines( elem_name )
+        all_machines = self.network_model.get_compatible_machines( elem_name )
+        machines = [ ]
+        # Make sure that we only used machines that have < MAX number of
+        # element instances running on them.
+        for mac in all_machines:
+            if self.network_model.element_placement_allowed(mac):
+                machines.append(mac)
         log.debug("Placement choosing from " + str(len(machines)) + " machines for element '" + elem_name + "': " + str(machines))
-        if (len(machines) == 0):
+        print machines
+        if ((len(machines) == 0) and (len(all_machines) > 0)):
+            log.warn("All compatibale middlebox machines are fully loaded. Element cannot be placed.")
+            print "ERROR"*100
             return None
-        if (len(machines) == 1): # No need if we have only one compatible machine.
+        if (len(machines) == 1): # No need if we have only one available machine.
             return machines[0]
         # second/third/fourth/... calls need to get the next optimal placement.
         machine_mac = self._get_inc_k_placement(elem_name, machines)
