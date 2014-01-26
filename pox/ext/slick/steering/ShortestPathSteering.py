@@ -34,12 +34,16 @@ class ShortestPathSteering(Steering):
         """
 
         # Every time get_steering is called subgraph is updated.
-        self.network_model.add_elem_to_switch_mapping(replica_sets)
+        #self.network_model.add_elem_to_switch_mapping(replica_sets)
         self.subgraph = self.network_model.get_overlay_subgraph(src[0], dst[0], replica_sets)
         rv = self._get_element_instances(src[0], dst[0], replica_sets)
         return rv
 
     def _is_valid_path(self, path, replica_sets):
+        """ helper function to check if the path has 
+        selected at most one element instance for each 
+        type of replica.
+        """
         element_chain_length = len(replica_sets)
         valid_path_length = element_chain_length
         if len(path) != valid_path_length:
@@ -48,20 +52,39 @@ class ShortestPathSteering(Steering):
             return True
 
     def _convert_ed_to_switches(self, src_switch, dst_switch, paths):
-        """Convert the element descriptors to corresponding switch identifiers."""
+        """Convert the element descriptors to corresponding switch identifiers.
+
+        Args:
+            src_switch: MAC address of the source switch.
+            dst_switch: MAC address of the destination switch.
+            paths: List of lists
+
+        Returns:
+            List of lists where each entry is a switch MAC address
+            corresponding to element descriptors.
+        """
         switch_paths = [ ]
         for j, p in enumerate(paths):
             switch_paths.append( [ ] )
             switch_paths[j].append(src_switch)
             for index, ed in enumerate(p):
                 machine_mac = self.network_model.get_machine_mac(ed)
-                switch = self.network_model.get_connected_switch(machine_mac)
+                switch = self.network_model.overlay_net.get_connected_switch(machine_mac)
                 switch_paths[j].append(switch)
             switch_paths[j].append(dst_switch)
         return switch_paths
 
     def _get_shortest_path(self, src_switch, dst_switch, paths):
-        """Return the shortest path among the paths passed as argument."""
+        """Return the shortest path among the paths passed as argument.
+
+        Args:
+            src_switch: MAC address of the source switch.
+            dst_switch: MAC address of the destination switch.
+            paths: List of lists with element descriptors in each list.
+
+        Returns:
+            List of the switches with shortest path.
+        """
         min_dist = sys.maxint
         shortest_path = None
         switch_paths = self._convert_ed_to_switches(src_switch, dst_switch, paths)
@@ -79,7 +102,14 @@ class ShortestPathSteering(Steering):
         return shortest_path
 
     def _get_element_instances(self, src, dst, replica_sets):
-        """Get the element instances required for packet forwarding."""
+        """Get the element instances required for packet forwarding.
+        Args:
+            src: MAC address of the source switch.
+            dst: MAC address of the destination switch.
+            replica_sets: list of lists where each list has element descriptors in it.
+        Returns:
+            List of element descriptors that should be traversed by the flow.
+        """
         rv = [ ]
         path_switches = [ ]
         start = src
