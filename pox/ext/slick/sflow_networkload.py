@@ -13,8 +13,9 @@ from pox.lib.util import dpid_to_str
 from slick.networkload import NetworkLoad
 log = core.getLogger()
 
-LINK_USAGE_THRESHOLD = 85
-MACHINE_USAGE_THRESHOLD = 0.2
+#LINK_USAGE_THRESHOLD = 0.2 # This is percentage.
+LINK_USAGE_THRESHOLD = 100 # This is percentage.
+MACHINE_USAGE_THRESHOLD = 0.2 # This is percentage.
 
 class SFlowNetworkLoad(NetworkLoad):
     def __init__(self, controller):
@@ -115,10 +116,27 @@ class SFlowNetworkLoad(NetworkLoad):
         MAX_MB_BANDWIDTH = 1 # Mbps
         return MAX_MB_BANDWIDTH
 
+    def get_loaded_elements(self):
+        loaded_element_descs = [ ]
+        loaded_macs = self.get_loaded_middleboxes ( )
+        for mac in loaded_macs:
+            # Get all the elements that are on the machine.
+            element_descs = self.controller.elem_to_mac.get_elem_descs(mac)
+            # For now we are assuming the limit of one element instance per middlebox machine.
+            # Since we cannot get the element load on mininet for this we need to modify hsflowd
+            # and add support for reading resource information for cgroups.
+            # Or we need to have support for /proc in mininet.
+            # Because of this limitation
+            # we approximate the load on element with load on middlebox machine.
+            if len(element_descs):
+                loaded_element_descs.append(element_descs[0])
+        return loaded_element_descs
+
     def get_loaded_middleboxes(self):
         """Return the list of overloaded middleboxes based on traffic 
         inflow and outflow from the port connected with the middlebox machine.
         """
+        log.debug("Getting Loaded Middleboxes")
         # Mbps differential before calling it overloaded.
         processing_delta = 0.25
         # List of overloaded middlebox mac addresses.
@@ -213,6 +231,7 @@ class SFlowNetworkLoad(NetworkLoad):
 
     def get_congested_links(self):
         # Get latest links.
+        log.debug("Getting Congested Links")
         congested_links = [ ]
         link_util = self._collect_link_utilization()
         for link, util in link_util.iteritems():
@@ -220,8 +239,18 @@ class SFlowNetworkLoad(NetworkLoad):
             link_usage = (float(util)/link_capacity)*100
             if (link_usage > LINK_USAGE_THRESHOLD):
                 congested_links.append(link)
-        print congested_links
         return congested_links
+
+    def get_link_utilizations(self):
+        # Return percent utilization of the links.
+        # link -> %_utilization
+        link_utils = {}
+        link_util = self._collect_link_utilization()
+        for link, util in link_util.iteritems():
+            link_capacity = self._get_link_capacity(link)
+            link_usage = (float(util)/link_capacity)*100
+            link_utils[link] = link_usage
+        return link_utils
 
     def get_element_load(self, ed):
         element_load = ElementLoad()
