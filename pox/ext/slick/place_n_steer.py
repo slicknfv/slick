@@ -168,7 +168,7 @@ class PlacenSteer(object):
             return -1
         return elem_desc
 
-    def _add_element_instance(self, ed):
+    def _create_element_instance(self, ed):
         """Given the elment descriptor, create a new element instance copy in the network.
         Args:
             ed: element descriptor integer.
@@ -202,12 +202,13 @@ class PlacenSteer(object):
             return None
 
     def handle_loaded_elements(self, loaded_element_descs):
+        print "Handling Loaded Elements."
         for ed in loaded_element_descs:
             element_name = self.controller.network_model.get_elem_name(ed)
             avail_eds = self.controller.network_model.get_not_loaded_element_descs(element_name)
             print avail_eds
             if len(avail_eds) == 0:
-                new_ed = self._add_element_instance(ed)
+                new_ed = self._create_element_instance(ed)
                 if new_ed:
                     #self.forced_steer_traffic(ed, new_ed)
                     pass

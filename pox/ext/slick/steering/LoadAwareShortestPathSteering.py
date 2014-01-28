@@ -2,6 +2,7 @@
     from source to destination.
 """
 import sys
+import copy
 import itertools # For pair-wise cross product.
 
 from slick.steering.Steering import Steering
@@ -38,6 +39,42 @@ class LoadAwareShortestPathSteering(Steering):
                 self.subgraph.remove_edge(v1, v2)
         #print self.subgraph.edges()
 
+    def _remove_loaded_element_instances(self, replica_sets):
+        """Takes list of lists for element instances inside the network.
+        and removes any loaded instances.
+        Returns:
+            List of lists for loaded element instances.
+        """
+        overloaded_elem_insts = self.network_model.get_loaded_elements( )
+        #overloaded_elem_insts = [2]
+        for index, replicas in enumerate(replica_sets):
+            for replica in replicas:
+                if replica in overloaded_elem_insts:
+                    replica_sets[index].remove(replica)
+        return replica_sets
+
+    def update_replicas(self, orig_replica_sets, replica_sets, flow):
+        # Given orig_replica_sets and replica_sets
+        # Figure out the element instances that need creation and create them.
+        updated_replicas = [ ]
+        assert len(orig_replica_sets) == len(replica_sets), "Number of lists in replica_sets must be equal."
+        for index, replicas in enumerate(replica_sets):
+            if len(replicas) == 0:
+                #print replica_sets, orig_replica_sets
+                missing_eds = orig_replica_sets[index]
+                if not len(missing_eds):
+                    raise RuntimeError;
+                else:
+                    # In thory there should not be a situation where steering module is not
+                    # able to find an element instance for an element. As iterative place_n_steer
+                    # should take care of it as its called on regular basis. But since its called on a 
+                    # slower time scale and flows can arrive at higher rate. Therefore we have this special 
+                    # call for place_n_steer which should create new element instance for any loaded element type.
+                    # TODO: Make it asynchronous
+                    self.network_model.place_n_steer()
+        updated_replicas = self.network_model.get_updated_replicas(flow)
+        return updated_replicas
+
     def get_steering (self, replica_sets, src, dst, flow):
         """
             Inputs:
@@ -53,10 +90,19 @@ class LoadAwareShortestPathSteering(Steering):
                 - returns None on failure
         """
 
+        orig_replica_sets = copy.deepcopy(replica_sets)
+        print "orig_replica_sets:",orig_replica_sets, replica_sets
         # Every time get_steering is called subgraph is updated.
         # This also updates the overlay link weights. Which means "hop_count" and "utilization"
         self.subgraph = self.network_model.get_overlay_subgraph(src[0], dst[0], replica_sets)
         self._remove_congested_links( )
+        replica_sets = self._remove_loaded_element_instances( replica_sets )
+        # Adding this code due to disparity of time scales.
+        # get_steering will be called at shorter time scale then 
+        # iterative place and steer.
+        print "A:",orig_replica_sets, replica_sets
+        replica_sets = self.update_replicas(orig_replica_sets, replica_sets, flow)
+        print replica_sets
         rv = self._get_element_instances(src[0], dst[0], replica_sets)
         return rv
 

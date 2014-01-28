@@ -117,11 +117,12 @@ class slick_controller (object):
         # Application Initialization and Configuration.
         Timer(5, self.timer_callback, recurring = True)
         # Network state callback
+        #Timer(1000, self.network_state_callback, recurring = True)
         Timer(5, self.network_state_callback, recurring = True)
         # Anything can be queried from the controller.
         self._query_engine = queryengine.QueryEngine(self, query)
         # Module repsonsible for continuosly performing placement or steering.
-        self._place_n_steer = PlacenSteer(self)
+        self.place_n_steer = PlacenSteer(self)
 
     def _get_unique_app_descriptor(self):
         self._latest_app_descriptor += 1
@@ -516,7 +517,7 @@ class POXInterface():
         # TODO if this fails, try to scale out the appropriate element(s)
         print "E2",element_descriptors
 
-        self.controller._place_n_steer.update_active_elements(element_descriptors)
+        self.controller.place_n_steer.update_active_elements(element_descriptors)
         for elem_desc in element_descriptors:
             mac_addr = self.controller.elem_to_mac.get(elem_desc)
             print self.controller.elem_to_mac
@@ -527,8 +528,8 @@ class POXInterface():
             element_macs.append((elem_desc, eth_addr))
             # For first flow we'll get the the original ed
             # for next new flow it should give the moved element instance.
-            #self.controller._place_n_steer.random_move()
-            #self.controller._place_n_steer.test_steer_traffic()
+            #self.controller.place_n_steer.random_move()
+            #self.controller.place_n_steer.test_steer_traffic()
         return element_macs
 
 
@@ -610,7 +611,7 @@ class POXInterface():
         else:
             # Call the function continuously if
             # no trigger message from shim or from user.
-            self.controller._place_n_steer.place_n_steer()
+            self.controller.place_n_steer.place_n_steer()
     """
     This is a utils function.
     This function returns a matching flow 

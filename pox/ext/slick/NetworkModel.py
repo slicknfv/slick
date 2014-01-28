@@ -442,3 +442,13 @@ class NetworkModel():
         # Maximum number of elements per machine.
         MAX_ELEMENTS_PER_MACHINE = 1
         return MAX_ELEMENTS_PER_MACHINE
+
+    def place_n_steer(self):
+        """A wrapper to call place_n_steer out of regular interval."""
+        self._controller.place_n_steer.place_n_steer()
+
+    def get_updated_replicas(self, flow):
+        """This is the function to get updated replicas if get_steering could
+        not find elements in initial attempt."""
+        replica_sets_temp = self._controller.flow_to_elems.get(flow.in_port, flow)
+        return replica_sets_temp
