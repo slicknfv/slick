@@ -25,8 +25,8 @@ def start(ip="127.0.0.1",port="6633",app="Netgaze"):
     net = Mininet(switch=ClickKernelSwitch)
 
     net.addController('c0')
-    h1 = net.addHost('h1', ip='144.0.3.0')
-    h2 = net.addHost('h2', ip='132.0.2.0')
+    h1 = net.addHost('h1', ip='144.0.3.1')
+    h2 = net.addHost('h2', ip='144.0.3.2')
     sw = net.addSwitch("click", dpid=1)
     sw.linkAs(h1, "h1")
     sw.linkAs(h2, "h2")

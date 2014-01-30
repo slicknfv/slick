@@ -17,8 +17,8 @@ def test_wget(ip="127.0.0.1",port="6633"):
                                                         defaultIP=ip, port=int(port)))
 
     net.addController('c0')
-    h1 = net.addHost('h1', ip='144.0.3.0')
-    h2 = net.addHost('h2', ip='132.0.2.0')
+    h1 = net.addHost('h1', ip='144.0.3.1')
+    h2 = net.addHost('h2', ip='144.0.3.2')
     print "Creating Click Switch."
     sw = net.addSwitch("click", dpid = 1)
     sw.linkAs(h1, "h1")
@@ -32,7 +32,7 @@ def test_wget(ip="127.0.0.1",port="6633"):
 
     # Run a simple file transfer test
     output(h1.cmd("./serve.sh"))
-    output(h2.cmd("wget 144.0.3.0"))
+    output(h2.cmd("wget 144.0.3.1"))
 
     time.sleep(1)
     CLI(net)
