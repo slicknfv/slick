@@ -1,0 +1,9 @@
+This directory has different aspects of experimental code for slick controller.
+
+click-mininet:
+    This project is copied from here:
+    https://github.com/basus/click-mininet
+    We have made some modifications to be able to have not errors while running test.py and sandbox.py.
+    Even though the click router is loaded we cannot ping the hosts or perform a wget. Needs more work.
+
+
