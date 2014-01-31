@@ -11,6 +11,7 @@ elements_path = parentdir +"/pox/ext/slick/elements"
 sys.path.insert(0, elements_path)
 
 from Logger.Logger import Logger
+from Logger1.Logger1 import Logger1
 from TriggerAll.TriggerAll import TriggerAll
 from DnsDpi.DnsDpi import DnsDpi
 from P0f.P0f import P0f
