@@ -231,6 +231,7 @@ class Shim:
             if(func_handles):
                 # Should a trigger be raised
                 self.shim_resources.calc_triggers(flow)
+                processed_pkt = None
                 for func_handle in func_handles:
                     processed_pkt = func_handle.process_pkt(buf)
                     if processed_pkt:
@@ -238,7 +239,8 @@ class Shim:
                         continue
                     else:
                         break
-                self.client_service.fwd_pkt(buf)
+                if processed_pkt:
+                    self.client_service.fwd_pkt(buf)
             # This is forwarding at the cost of computation.
             # This can be useful in future to show that number
             # rules can be reduced.
