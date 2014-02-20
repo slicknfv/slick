@@ -1,0 +1,14 @@
+#!/usr/bin/env python
+
+import socket
+import argparse
+
+parser = argparse.ArgumentParser(description="Send UDP Packet")
+parser.add_argument("host")
+parser.add_argument("port", type=int)
+parser.add_argument("message")
+args = parser.parse_args()
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.sendto(args.message, (args.host, args.port))
+

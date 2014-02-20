@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+
+import socket
+import argparse
+
+parser = argparse.ArgumentParser(description="Receive UDP Packet")
+parser.add_argument("host")
+parser.add_argument("port", type=int)
+args = parser.parse_args()
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.bind((args.host, args.port))
+
+while True:
+    message, addr = sock.recvfrom(1024)
+    print "Message:", message, "From:", addr
+
