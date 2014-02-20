@@ -18,8 +18,9 @@ from P0f.P0f import P0f
 from Drop.Drop import Drop
 from Noop.Noop import Noop
 from BloomFilter.BloomFilter import BloomFilter
-
-
+from DelayBuffer.DelayBuffer import DelayBuffer
+from Constant.Constant import Constant
+from Compress.Compress import Compress
 """
     These are the functions supported by the Shim  to the controller.
 """
