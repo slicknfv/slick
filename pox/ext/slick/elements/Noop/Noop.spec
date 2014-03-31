@@ -8,6 +8,7 @@
         "affinity" : false,
         "placement" : "middle",
         "bidirection" : true,
+        "leg" : "E",
         "stateful" : false,
         "triggers": [
         ]

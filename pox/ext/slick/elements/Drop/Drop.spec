@@ -7,6 +7,7 @@
         "inline": true,
         "affinity" : false,
         "placement" : "near",
+        "leg" : "G",
         "bidirection" : true,
         "stateful" : false,
         "triggers": [

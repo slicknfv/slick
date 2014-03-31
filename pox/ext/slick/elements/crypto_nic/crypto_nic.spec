@@ -6,6 +6,7 @@
         "software": "python",
         "affinity" : false,
         "placement" : "middle",
+        "leg" : "E",
         "inline": true,
         "bidirection" : true,
         "triggers": [
