@@ -60,6 +60,10 @@ def is_gt_topo(topo_file):
                 return True
         f.close()
 
+
+# This function simply checks if the topology is 
+# from Theo's IMC paper or not. As the file has
+# different format.
 def is_imc_topo(topo_file):
     f = None
     with open(topo_file, 'r') as f:

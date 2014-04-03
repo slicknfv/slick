@@ -34,7 +34,7 @@ def setup_switch_sflow_agents(switches, controller=None):
     for switch_name in switches:
         # Incase we need switch specific interface we need to use
         # s1-eth1 or s2-eth1 etc.
-        #agent_interface = ("%s-eth1", switch_name)
+        #agent_interface = ("%s-eth1" % switch_name)
         agent_interface = "eth0"
         target_str = '\"' + controller + '\"'
         #                                                          |
@@ -54,18 +54,21 @@ def setup_host_sflow_metrics(network):
     using cgroups instead of /proc/ or we need mininet to be
     able to support separate filesystem for each host.
     """
+    # TODO: Move this data to constants.
     rt = 'http://localhost:8008'
     for host in network.hosts:
         host_name = host.name
         host_ip = host.IP() # type(host_name)
-        print host_ip, host_name
-        command = ('curl -H "Content-Type:application/json" -X PUT --data "{value:\'bytes\',filter:\'ipdestination=%s\'}" http://localhost:8008/flow/%s/json' % (host_ip, host_name))
-        command = 'curl -H "Content-Type:application/json" -X PUT --data \'{value:"bytes",filter:"ipdestination=192.168.100.18"}\' http://localhost:8008/flow/h8/json'
+        #command = ('curl -H "Content-Type:application/json" -X PUT --data "{value:\'bytes\',filter:\'ipdestination=%s\'}" http://localhost:8008/flow/%s/json' % (host_ip, host_name))
+        #command = 'curl -H "Content-Type:application/json" -X PUT --data \'{value:"bytes",filter:"ipdestination=192.168.100.18"}\' http://localhost:8008/flow/h8/json'
         filter_value = ("ipdestination=%s" % host_ip)
         metric_str = ('/flow/%s/json' % host_name)
-        #metric_str = ('/flow/%s/json' % host_ip)
         params = {"value":"bytes", "filter":filter_value}
-        r = requests.put(rt + metric_str, data=json.dumps(params))
+        #r = requests.put(rt + metric_str, data=json.dumps(params))
+        #curl -H "Content-Type:application/json" -X PUT --data "{keys:'ipsource,ipdestination', value:'frames'}" http://localhost:8008/flow/incoming/json
+        #curl -H "Content-Type:application/json" -X PUT --data "{keys:'ipsource,ipdestination', value:'bytes'}" http://localhost:8008/flow/incoming/json
+        params = {'keys':'ipsource,ipdestination', 'value':'bytes'}
+        r = requests.put("http://localhost:8008/flow/incoming/json", data=json.dumps(params))
         print r
 
 def start_sflow_collector():

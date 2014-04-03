@@ -37,6 +37,7 @@ import time
 import middleboxes
 import build_topology
 import sflow
+#import demand_matrix
 import sys
 
 def read_json(filename,debug=None):
@@ -192,17 +193,18 @@ def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, tra
     #middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
 
 def setup_sflow(network, switch_names):
+    print "Setting up sflow agents on all the switches."
+    sflow.setup_switch_sflow_agents(switch_names)
+    time.sleep(3)
     # Need to start the collector first.
     print "Starting sflow collector."
     sflow.start_sflow_collector()
     # Wait for collector to start.
     time.sleep(3)
-    print "Setting up sflow agents on all the switches."
-    sflow.setup_switch_sflow_agents(switch_names)
     # collector and switch agents must be started before setting 
     # up host metrices.
-    print "Setting up host monitoring metrics."
-    sflow.setup_host_sflow_metrics(net)
+    #print "Setting up host monitoring metrics."
+    #sflow.setup_host_sflow_metrics(net)
 
 if __name__ == '__main__':
 
@@ -211,12 +213,6 @@ if __name__ == '__main__':
               '(type %prog -h for details)' )
 
     op = OptionParser( description=desc, usage=usage )
-    op.add_option( '--root-interface', '-i', action="store", 
-                     dest="rootInterface", help = 'the Ethernet interface that connects to the Internet'  )
-    op.add_option( '--depth', '-d', action="store", 
-                     dest="treedepth", help = 'Depth of Tree Topology'  )
-    op.add_option( '--fanout', '-f', action="store", 
-                     dest="fanout", help = 'Tree Fanout for tree topology'  )
     # Options -c, -m, -p and -k are for expriments.
     op.add_option( '--config', '-c', action="store", 
                      dest="config", help = 'Configuration file for middlebox machines and network hosts.'  )
@@ -226,14 +222,28 @@ if __name__ == '__main__':
                      dest="tpattern", help = 'Traffic pattern to generate. Please see documentation for identifiers.'  )
     op.add_option( '--kill-wait', '-k', action="store", 
                      dest="kill_wait", help = 'Number of seconds to wait before killing the experiment.'  )
+    # topologies related option
+    # These 2 options are for the depth and fanout of the tree.
+    op.add_option( '--depth', '-d', action="store", 
+                     dest="treedepth", help = 'Depth of Tree Topology'  )
+    op.add_option( '--fanout', '-f', action="store", 
+                     dest="fanout", help = 'Tree Fanout for tree topology'  )
+    # -t use this option if the topology is to be created from a custom file.
     op.add_option( '--topo-file', '-t', action="store", 
                      dest="topology_file", help = 'Path of topology file.'  )
+    # If -z is used then a Fat Tree topology will be created with the degree
+    # specified to -z
     op.add_option( '--fattree-degree', '-z', action="store", 
                      dest="ft_degree", help = 'Switch degree for FatTree.'  )
+    # Use this option to create a Jellyfish topology.
     op.add_option( '--jellyfish', '-j', action="store", 
                      dest="jellyfish_seed", help = 'JellyFish topology\'s seed.'  )
+    # This to identify the gateway box.
+    # Currently we have only one gateway per network support.
     op.add_option( '--gateway', '-g', action="store", 
                      dest="gateway_switch", help = 'Please specify the switch name (e.g, "s1") that should be connected to internet.'  )
+    op.add_option( '--root-interface', '-i', action="store", 
+                     dest="rootInterface", help = 'The Ethernet interface that connects to the Internet'  )
 
     options, args = op.parse_args()
     if options.rootInterface is None:   # if filename is not given
@@ -262,6 +272,7 @@ if __name__ == '__main__':
         print "Building Jellyfish Topology."
         topo = JellyfishTopo(seed = jellyfish_seed)
     elif options.treedepth and options.fanout:
+        print "Building Tree Topology."
         topo = TreeTopo( depth = int(options.treedepth), fanout = int(options.fanout) , bw =1)
     else:
         topo = TreeTopo( depth = 1, fanout = 3)
@@ -307,6 +318,7 @@ if __name__ == '__main__':
                                       '192.168.100.0/24')
 
     setup_sflow(net, switch_names)
+    #demand_matrix.generate_binary_demand_matrix(net.hosts)
     src_dst_pairs = [ ]
     # Wait for n seconds before starting the middlebox instacnes.
     time.sleep(5)
