@@ -44,6 +44,7 @@ from slick.steering.LoadAwareShortestPathSteering import LoadAwareShortestPathSt
 from slick.placement.RandomPlacement import RandomPlacement
 from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.placement.IncrementalKPlacement import IncrementalKPlacement
+from slick.placement.KPlacement import KPlacement
 from slick.NetworkModel import NetworkModel
 from slick.NetworkModel import ElementInstance
 from place_n_steer import PlacenSteer
@@ -69,7 +70,8 @@ class slick_controller (object):
         self.network_model = NetworkModel(self)
         #self.placement_module = RandomPlacement( self.network_model )
         #self.placement_module = RoundRobinPlacement( self.network_model )
-        self.placement_module = IncrementalKPlacement( self.network_model )
+        #self.placement_module = IncrementalKPlacement( self.network_model )
+        self.placement_module = KPlacement( self.network_model )
         #self.placement_module = OptimalKPlacement( self.network_model )
         #self.steering_module = RandomSteering( self.network_model )
         #self.steering_module = ShortestHopCountSteering( self.network_model )
@@ -237,7 +239,7 @@ class slick_controller (object):
         if  not len(registered_machines):
             log.warn("No middlebox is registered.")
             # Need to update the graph for placement.
-            self.network_model.overlay_net.update_topo_graph()
+            self.network_model.physical_net.update_topo_graph()
             # This is a hack
             # Wait until all shims are up.
             if len(registered_machines) < len(all_machines):

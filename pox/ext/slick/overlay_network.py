@@ -96,8 +96,6 @@ class OverlayNetwork(object):
         self.overlay_graph_nx = nx.DiGraph( )
         self.overlay_graph_eds = nx.DiGraph( )
         self.overlay_graph = defaultdict(Set)
-        # Simple switch topology graph.
-        self.topo_graph = nx.Graph()
         # Set of Edge switches. This set is used to add edges.
         self.edge_switches = Set([ ])
         # Set of switches that have element machines attached to them.
@@ -157,9 +155,6 @@ class OverlayNetwork(object):
         #self.switches.remove(event.dpid)
         switch_name = event.connection.ports[of.OFPP_LOCAL].name
         del self.switches[event.dpid]
-
-    def _handle_LinkEvent (self, event):
-        self.update_topo_graph()
 
     def _handle_ElementMachineUp(self, event):
         self.element_machines.add(event.mac)
@@ -516,24 +511,6 @@ class OverlayNetwork(object):
         # print self.overlay_graph_nx.edges()
         # print subgraph.edges()
         return subgraph
-
-    def get_placement_graph(self):
-        return self.topo_graph
-
-    def update_topo_graph(self):
-        """Update topology graph if new element instance is added, 
-        i.e. apply_elem is called. or a new link is discovered."""
-        from slick.l2_multi_slick import switches
-        from slick.l2_multi_slick import adjacency
-        sws = switches.values()
-        for i in sws:
-            for j in sws:
-                # Debug information
-                # print i.dpid, j.dpid
-                # print type(i.dpid), type(j.dpid)
-                if i.dpid != j.dpid:
-                    if adjacency[i][j] is not None:
-                        self.topo_graph.add_edge(i.dpid, j.dpid)
 
     def get_connected_switch(self, mac):
         """Given host mac address return the dpid for host
