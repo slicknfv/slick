@@ -7,7 +7,9 @@ from specs import MachineSpec
 from specs import ElementSpec
 from slick.overlay_network import OverlayNetwork
 from slick.overlay_network import dpid_to_str
+from slick.physical_network import PhysicalNetwork
 from slick.sflow_networkload import SFlowNetworkLoad
+from slick.element_demands import ElementDemands
 from pox.openflow.discovery import Discovery
 from pox.core import core
 
@@ -35,10 +37,12 @@ class NetworkModel():
         self.element_sequences = {}     # flow match -> [element names] XXX we may want this to map to descriptors
         # Build the overlay network
         self.overlay_net = OverlayNetwork(controller)
+        self.physical_net = PhysicalNetwork(controller)
         self.network_load = SFlowNetworkLoad(controller)
         # Element Decriptor to switch MAC address mapping.
         # Can be used in steering.
         self.elem_to_switch = { }
+        #self.element_demands = ElementDemands( )
 
     def update_function_loads(self, loaded_elem_descs):
         """This function is used to update the load
@@ -291,6 +295,14 @@ class NetworkModel():
         else:
             return None
 
+    def get_elem_descs(self, elem_name):
+        """Given the element name return all the descriptors corresponding to the name."""
+        elem_descs = [ ]
+        for ed, ei in self._ed_to_instance.iteritems():
+            if ei.name == elem_name:
+                elem_descs.append(ed)
+        return elem_descs
+
     def is_affinity_required(self, ed, element_name):
         """Given element instance check if the element affinity
         is requested by administrator else return the default affinity
@@ -324,7 +336,7 @@ class NetworkModel():
         """Given element_name string return the placement recommendation
         from the element specification."""
         spec_placement = None
-        elem_spec = self._elem_specs.get_element_spec(elem_name)
+        elem_spec = self._elem_specs.get_element_spec(elem_name)[elem_name]
         if elem_spec.has_key("placement"):
             spec_placement = elem_spec["placement"]
         return spec_placement
@@ -334,6 +346,27 @@ class NetworkModel():
         dictated by admin through application.
         TODO: Modify apply_elem and pass the parameters to network_model."""
         return None
+
+    def get_elem_placement_pref(self, elem_name):
+        """resolve between admin preference and default preference for placement."""
+        placement_pref = None
+        spec_placement  = self.get_elem_spec_placement(elem_name)
+        admin_placement = self.get_elem_admin_placement(elem_name)
+        if admin_placement:
+            placement_pref = admin_placement
+        elif spec_placement:
+            placement_pref = spec_placement
+        return placement_pref
+
+    def get_elem_leg_type(self, elem_name):
+        """Given element_name string return the leg heuristic
+        from the element specification."""
+        spec_leg = None
+        elem_spec = self._elem_specs.get_element_spec(elem_name)[elem_name]
+        if elem_spec.has_key("leg"):
+            spec_leg = elem_spec["leg"]
+            print elem_spec
+        return spec_leg
 
     def get_elem_spec_direction(self, element_name):
         """Return True/False for bidirection/unidirection,
@@ -446,6 +479,10 @@ class NetworkModel():
     def place_n_steer(self):
         """A wrapper to call place_n_steer out of regular interval."""
         self._controller.place_n_steer.place_n_steer()
+
+    def resolve_partitions(self, src, dst, eds):
+        """Wrapper."""
+        self._controller.place_n_steer.resolve_partitions(src, dst, eds)
 
     def get_updated_replicas(self, flow):
         """This is the function to get updated replicas if get_steering could
