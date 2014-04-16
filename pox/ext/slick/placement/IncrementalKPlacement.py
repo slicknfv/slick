@@ -107,7 +107,7 @@ class IncrementalKPlacement(Placement):
             switch_mac = self.network_model.overlay_net.get_connected_switch(machine)
             switch_list.append(switch_mac)
         # Get the graph for all the switches in the network.
-        placement_graph = self.network_model.overlay_net.get_placement_graph()
+        placement_graph = self.network_model.physical_net.get_placement_graph()
         # A dict of centralities node-> centrality
         node_cents = nx.betweenness_centrality(placement_graph, normalized = True)
         sorted_centralities = sorted(node_cents.iteritems(), key=operator.itemgetter(1), reverse=True)
