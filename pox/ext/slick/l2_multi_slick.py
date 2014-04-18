@@ -42,6 +42,7 @@ from pox.lib.util import dpid_to_str
 import time
 
 import copy
+import networkx as nx
 
 log = core.getLogger()
 
@@ -71,8 +72,8 @@ FLOOD_HOLDDOWN = 5
 # Flow timeouts
 #FLOW_IDLE_TIMEOUT = 60
 FLOW_IDLE_TIMEOUT = 6
-#FLOW_HARD_TIMEOUT = 90
-FLOW_HARD_TIMEOUT = 9
+FLOW_HARD_TIMEOUT = 120
+#FLOW_HARD_TIMEOUT = 9
 
 # How long is allowable to set up a path?
 PATH_SETUP_TIME = 4
@@ -287,6 +288,8 @@ class Switch (EventMixin):
     msg.hard_timeout = FLOW_HARD_TIMEOUT
     msg.actions.append(of.ofp_action_output(port = out_port))
     msg.buffer_id = buf
+    print switch, "match.in_port",msg.match.in_port, in_port,"->", out_port,"Flow:",
+    print "dl_type:",match.dl_type, "nw_proto:",match.nw_proto, "nw_src:",match.nw_src, "nw_dst:",match.nw_dst, "tp_src:",match.tp_src, "tp_dst:",match.tp_dst
     switch.connection.send(msg)
 
   def _install_path (self, p, match, packet_in=None):
@@ -297,7 +300,7 @@ class Switch (EventMixin):
       sw.connection.send(msg)
       wp.add_xid(sw.dpid,msg.xid)
 
-  def _send_dest_unreachable(self, match, switch1, switch2, switch1_port, switch2_port):
+  def _send_dest_unreachable(self, event, match, switch1, switch2, switch1_port, switch2_port):
     """Since path is not found send ICMP unreachable packet."""
     log.warning("Can't get from %s to %s", switch1, switch2)
 
@@ -345,6 +348,35 @@ class Switch (EventMixin):
     #print "OUTGOING.",mb_locations
     return mb_locations
 
+  def detect_loop(self, pathlets):
+    """Given the list of pathlets detect if there is a loop in the path.
+    Args: List of pathlets where each entry is of the form (switch, in_port, out_port) e.g. (00-00-00-00-00-03, 2, 3)
+    Returns: True/False
+    """
+    traversed_switches = [ ]
+    for pathlet in pathlets:
+      for sw,in_port,out_port in pathlet:
+        # This situation arises when we have a middlebox attached
+        # to a switch. One rule to send traffic to middlebox and other
+        # to get traffic back.
+        if sw == traversed_switches[-1]:
+          continue
+        else:
+          traversed_switches.append(sw)
+    # TODO: This will not work if we have  source and destination 
+    # on the same switch.
+    traversed_switches.pop(0)
+    traversed_switches.pop()
+    # Now we have removed the middlebox switches from path and traversed_switches
+    # should not have any middlexbox attached switch. Now if there is a duplicate switch
+    # we have cycle.
+    seen_switches = [ ]
+    for switch in traversed_switches:
+      if switch in seen_switches:
+        return True
+      seen_switches.append(switch)
+    return False
+
   def install_path_improved (self, dst_sw, last_port, match, event, mb_locations, element_descs):
     """
     Attempts to install a path between this switch and some destination
@@ -367,7 +399,7 @@ class Switch (EventMixin):
       switch2_port = mb_locations_forward[index+1][1]
       p = pathlets[index]
       if p is None:
-        return self._send_dest_unreachable(match, switch1, switch2, switch1_port, switch2_port)
+        return self._send_dest_unreachable(event, match, switch1, switch2, switch1_port, switch2_port)
       log.debug("Installing forward paths for %s -> %s (%i hops)",
           switch1, switch2, len(p))
       self._install_path(p, match, event.ofp)
@@ -398,8 +430,8 @@ class Switch (EventMixin):
       switch2_port = mb_locations_forward[index+1][1]
       p = pathlets[index]
       if p is None:
-        return self._send_dest_unreachable(match.flip(), switch1, switch2, switch1_port, switch2_port)
-      log.debug("Installing forward paths for %s -> %s (%i hops)",
+        return self._send_dest_unreachable(event, match.flip(), switch1, switch2, switch1_port, switch2_port)
+      log.debug("Installing backward paths for %s -> %s (%i hops)",
           switch1, switch2, len(p))
       self._install_path(p, match.flip())
 
