@@ -176,7 +176,66 @@ class FlowToElementsMapping():
         #               subjected to LoadBalancer once in a chain.
         self.flow_to_element_mapping = defaultdict(list)
         self.flow_to_element_instance_mapping = defaultdict(list)
+        self.flow_to_id = { } # FlowTuple -> unique_integer_for_flowspace
+        self.flowspace_id = 0
+        # list of element descriptors that are pivot.
+        # A pivot element is an element such that there is no other
+        # element of the same type.
+        # self.pivot_elem_descs = [ ]
 
+    #def add_pivot_element_desc(self, flow,ed):
+    #    """given the elem_desc. Get the element type 
+    #    # and decide if its pivot or not.
+    #    # if its pivot add it to the list else not
+    #    # For an element instance to be pivot it has to 
+    #    # be the first element instance that is created for that type and for that kind of flow.
+    #    Args:
+    #        flow: flow for which we want to add the pivot element.
+    #        ed: element descripto (int)
+    #    Returns:
+    #        None
+    #    """
+    #    incoming_element_name = self.get_elem_name(ed)
+    #    pivot_already_present = False
+    #    self.flow_to_element_instance_mapping
+    #    for ed in self.pivot_elem_descs:
+    #        element_name = self.get_elem_name(ed)
+    #        if element_name == incoming_element_name:
+    #            pivot_already_present = True
+    #    if not pivot_already_present:
+    #        self.pivot_elem_descs.append(ed)
+    #        log.info("Added a pivot element.")
+
+    #def is_pivot_element_instance(self, ed):
+    #    """Checks if an element descriptor is
+    #    of pivot element instance."""
+    #    if ed in self.pivot_elem_descs:
+    #        return True
+    #    else:
+    #        return False
+
+    def get_unique_flowspace_desc(self, flow):
+        src_mac =None
+        dst_mac = None
+        if(flow['dl_src'] != None):
+            src_mac = mac_to_int(flow['dl_src'])
+        if(flow['dl_dst'] != None):
+            dst_mac = mac_to_int(flow['dl_dst'])
+        f = self.FlowTuple(in_port= None,
+                           dl_src=src_mac,
+                           dl_dst=dst_mac,
+                           dl_vlan=flow['dl_vlan'],
+                           dl_vlan_pcp=flow['dl_vlan_pcp'],
+                           dl_type= flow['dl_type'],
+                           nw_src=flow['nw_src'],
+                           nw_dst=flow['nw_dst'],
+                           nw_proto=flow['nw_proto'],
+                           tp_src=flow['tp_src'],
+                           tp_dst=flow['tp_dst'])
+        if not self.flow_to_id.has_key(f):
+            self.flowspace_id += 1
+            self.flow_to_id[f] = self.flowspace_id
+        return self.flow_to_id[f]
     """
      These three functions: 
         add_flow,del_flow,modify_flow 
@@ -587,3 +646,41 @@ class ElementMigration():
                     pass
         return replica_sets
 
+# Keeps track of pivot elements for each policy and corresponding to each flow space.
+# An application can have multiple policies and each policy is a mapping between the flowspace and the list of 
+# element names in that policy.
+class PivotElementInstances():
+    def __init__(self):
+        # list of element descriptors that are pivot.
+        # A pivot element is an element such that there is no other
+        # element of the same type.
+        self.pivot_elem_descs = [ ]
+
+    def add_pivot_element_desc(self, ed):
+        """given the elem_desc. Get the element type 
+        # and decide if its pivot or not.
+        # if its pivot add it to the list else not
+        # For an element instance to be pivot it has to 
+        # be the first element instance that is created for that type and for that kind of flow.
+        Args:
+            ed: element descripto (int)
+        Returns:
+            None
+        """
+        incoming_element_name = self.get_elem_name(ed)
+        pivot_already_present = False
+        for ed in self.pivot_elem_descs:
+            element_name = self.get_elem_name(ed)
+            if element_name == incoming_element_name:
+                pivot_already_present = True
+        if not pivot_already_present:
+            self.pivot_elem_descs.append(ed)
+            log.info("Added a pivot element.")
+
+    def is_pivot_element_instance(self, ed):
+        """Checks if an element descriptor is
+        of pivot element instance."""
+        if ed in self.pivot_elem_descs:
+            return True
+        else:
+            return False

@@ -255,6 +255,9 @@ class slick_controller (object):
         if(self.elem_to_app.contains_app(app_desc)):# We have the application installed
             log.debug("Creating another element for application: %d", app_desc)
 
+        # Get unique flowspace id
+        flowspace_desc = self.flow_to_elems.get_unique_flowspace_desc(flow)
+
         ##
         # STEP 1: Find the middlebox where this function should be installed.
 
@@ -262,7 +265,11 @@ class slick_controller (object):
         #      take an array, but right now we're building it by hand
         # One of the benefits of passing arrays over iterative element passing
         # is Placement module has better view of how to place elements.
-        mac_addrs = self.placement_module.get_placement(element_names)
+        mac_addrs = self.placement_module.get_placement(flowspace_desc, element_names)
+
+        if len(mac_addrs) != len(element_names):
+#           # => we are creating copies of element instances because of placement algorithm.
+            pass
 
         # Return an error if there is no machine registered for function installation.
         placeless_element_names = self.__get_placeless_element_names(element_names, mac_addrs)
@@ -318,7 +325,7 @@ class slick_controller (object):
                 self.mac_to_ip.add(mac_addr, ip_addr)
 
                 # Update our internal state of flow to elements mapping
-                element_instance = ElementInstance(element_name, app_desc, elem_desc, mac_addr)
+                element_instance = ElementInstance(element_name, app_desc, elem_desc, mac_addr, flowspace_desc)
 
                 self.flow_to_elems.add_element(None, flow, element_instance)
                 self.flow_to_elems.add_element_instance(None, flow, element_instance)
@@ -326,9 +333,10 @@ class slick_controller (object):
                 # Update our internal state, noting that app_desc owns elem_desc
                 self.elem_to_app.update(elem_desc, application_object, app_desc, parameter, controller_param)
 
-                self.network_model.add_placement(element_name, app_desc, elem_desc, mac_addr)
+                self.network_model.add_placement(element_name, app_desc, elem_desc, mac_addr, flowspace_desc)
 
-                #return elem_desc
+                # Adding pivot element so it does not gets deleted.
+                #self.network_model.add_pivot_elem_desc(elem_desc)
             else:
                 # TODO rollback the updated states in case of failure.
                 return [-1]
@@ -380,13 +388,14 @@ class slick_controller (object):
         msg_dst = self.elem_to_mac.get(elem_desc)
         # Step 1 Tell the shim to remove the element.
         if(self.ms_msg_proc.send_remove_msg(elem_desc, parameters, msg_dst)):
-            print "ELEM TO MAC REMOVED::::::::::::::::::::::::::::::::::::::::::::::::::"
+            log.debug("Removing the elements by sending commands to shim layer.")
             desc_removed = self.elem_to_mac.remove(msg_dst, elem_desc)
         # Step 2 Remove all the mappings.
         self.flow_to_elems.remove_element_instance(elem_desc)
         self.elem_to_app.remove(elem_desc)
         # Step 3 Remove the element information from the controller.
         self.network_model.remove_placement(elem_desc)
+        log.debug("Removed element instance with element descriptor: " + str(elem_desc) + "application id:" + str(app_desc))
 
     def __get_placeless_element_names(self, element_names, mac_addrs):
         """Return elements that cannot be placed.

@@ -14,8 +14,8 @@ from slick.networkload import NetworkLoad
 log = core.getLogger()
 
 #LINK_USAGE_THRESHOLD = 0.2 # This is percentage.
-LINK_USAGE_THRESHOLD = 100 # This is percentage.
-MACHINE_USAGE_THRESHOLD = 0.2 # This is percentage.
+LINK_USAGE_THRESHOLD = 80 # This is percentage.
+MACHINE_USAGE_THRESHOLD = 80 # This is percentage.
 
 class SFlowNetworkLoad(NetworkLoad):
     def __init__(self, controller):

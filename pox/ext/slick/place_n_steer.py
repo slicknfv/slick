@@ -77,11 +77,12 @@ class PlacenSteer(object):
                     # Its possible that one switch has more than one rule for same ed.
                     # once any of the rules is removed we consider the element instnace
                     # to be inactive.
-                    if ed in self.active_elems[dpid]:
+                    #if (ed in self.active_elems[dpid]) and (not self.controller.network_model.is_pivot_element_instance(ed)):
+                    if (ed in self.active_elems[dpid]):
                         self.active_elems[dpid].remove(ed)
 
     def get_active_element_descs(self, eds):
-        """Given the element descriptors remove active elements only."""
+        """Given the element descriptors return active elements only."""
         active_elems = [ ]
         for ed in eds:
             for dpid, elem_descs in self.active_elems.iteritems():
@@ -203,10 +204,21 @@ class PlacenSteer(object):
 
     def handle_loaded_elements(self, loaded_element_descs):
         print "Handling Loaded Elements."
+        element_names = [ ]
         for ed in loaded_element_descs:
             element_name = self.controller.network_model.get_elem_name(ed)
+            element_names.append(element_name)
+        for element_name in element_names:
+            eds = self.controller.network_model.get_elem_descs(element_name)
+            if not len(eds):
+                raise RuntimeError
+            # For each new call to this function this can potentially return a different ed
+            # Thus resulting in load from many elements to be redirected to not_loaded_element_instance.
+            ed = eds[0]
             avail_eds = self.controller.network_model.get_not_loaded_element_descs(element_name)
-            print avail_eds
+            #print avail_eds
+            # TODO: Add the check to see if we don't have avail_eds in the same network partition.
+            # Then create new element instnace; even if there are available in other partitions.
             if len(avail_eds) == 0:
                 new_ed = self._create_element_instance(ed)
                 if new_ed:
@@ -219,10 +231,6 @@ class PlacenSteer(object):
                 # Any new flows should be redirected to new element.
                 self.steer_traffic(ed, new_ed)
         # TODO: After modifying apply_elem() and get_placement() make this call from get_placement()
-
-    def handle_loaded_links(self, loaded_links):
-        element_name = self.controller.network_model.get_elem_name(ed)
-        pass
 
     def _perform_stateless_migration(self, ed, dst_mac):
         """Even though the element is stateless it needs to maintain the affinities of the element.
@@ -304,7 +312,7 @@ class PlacenSteer(object):
                 min_elem_instances = self.controller.network_model.get_min_elem_descs(elem_name)
                 # Check to make sure we don't delete all the element instnaces.
                 if len(passive_eds) > min_elem_instances:
-                    # Remove element instances that are not being used any more.
+                    # Remove element instances that are not being used anymore.
                     for ed in passive_eds:
                         app_desc = self.controller.elem_to_app.get_app_desc(ed)
                         log.debug("Removing element %d for application: %d", ed, app_desc)
@@ -332,7 +340,8 @@ class PlacenSteer(object):
             pass
         if len(congested_links) and len(loaded_elements):
             pass
-        self.collect_garbage()
+        # self.collect_garbage()
+
         # If network is optimized i.e. we are minimizing the
         # resource usage for middlebox machines and network bandwidth
         # than we don't need to do much else we need to take further action.
@@ -397,4 +406,129 @@ class PlacenSteer(object):
         if (len(free_machines) >= 1) and (len(all_elem_descs) == 1):
             new_ed = self._create_element_copy(all_elem_descs[0], free_machines[0])
             self.steer_traffic(all_elem_descs[0], new_ed)
+
+    ##########################################################################################
+    # Use this module to help routing, placement and steering implement the heuristics.
+    # Perform loop detection for routing.
+    # Check partition boundary crossing over here.
+    # Check the placement of elements based on the LEG heuristic.
+    #########################################################################################
+
+    def update_elem_descriptors(self, eds):
+        pass
+
+    def resolve_partitions(self, src, dst, eds):
+        """
+        src: src switch mac address
+        dst: dst switch mac address
+        eds: *Ordered* list of element descriptors
+        """
+        print "RESOLVING PARTITION."
+        policy_direction = "NS"
+        src_partition_number = self.controller.network_model.physical_net.get_partition_number(src)
+        dst_partition_number = self.controller.network_model.physical_net.get_partition_number(dst)
+        element_partition_number_vector = [ ]
+        eds_to_create =  [ ] # list of element descriptors that are required to be created again.
+        new_eds = [ ] # List of new element descriptors.
+        for i in range(0, len(eds)):
+            element_partition_number_vector.append(-1)
+        assert len(element_partition_number_vector) == len(eds), "Local function assertion failed."
+        pivot_partition = None
+        #if (src_partition_number == dst_partition_number) and (policy_direction == "NS"):
+        if (policy_direction == "NS"):
+            log.debug("Source and Destination have same partition.")
+            # Source and destination are in the same partition so no need
+            # to cross the boundaries.
+            pivot_partition = src_partition_number
+            for index, ed in enumerate(eds):
+                machine_mac = self.controller.network_model.get_machine_mac(ed)
+                switch_mac = self.controller.network_model.overlay_net.get_connected_switch(machine_mac)
+                switch_partition_number = self.controller.network_model.physical_net.get_partition_number(switch_mac)
+                element_partition_number_vector[index] = switch_partition_number
+            print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",eds, src_partition_number, dst_partition_number, element_partition_number_vector
+            for index, elem_part_number in enumerate(element_partition_number_vector):
+                if elem_part_number != src_partition_number: #Note src and dst partition numbers are the same.
+                    eds_to_create.append(eds[index])
+            print "Missing elements:", eds_to_create
+            for ed in eds_to_create:
+                # Create new element instance as there are no crresponding elements in the network.
+                # in the required partition
+                new_ed = self._create_element_instance(ed)
+                if new_ed:
+                    print "Steering created new element instnace." 
+                else:
+                    print "Steering was unable to create the element instnace."
+        # This code section is for North-South/South-North traffic. 
+        # It will not work for the East-West/West-East traffic.
+        # NOTE: The EW code will be similar to this code, but with some tweaks.
+        """
+        if (src_partition_number != dst_partition_number) and (policy_direction == "NS"):
+            log.debug("Source and Destination have different partitions.")
+            # Get partition numbers for all the elements in the list.
+            for ed in eds:
+                machine_mac = self.controller.network_model.get_machine_mac(ed)
+                switch_mac = self.controller.network_model.overlay_net.get_connected_switch(machine_mac)
+                switch_partition_number = self.controller.network_model.physical_net.get_partition_number(switch_mac)
+                element_partition_number_vector.append(switch_partition_number)
+            # Check if we are only crossing boundaries in the same direction
+            # not doing zig zag.
+            # Assuming that the network has two partitions.
+            # Assuming only two partitions:
+            # Steering through partitions s->1,2,2->d is fine.
+            # But partitions s->1,2,1->d is not; assuming d is in partition 2.
+            # --
+            # but if d is in partition 1 then we'll not reach here as s and d 
+            # are in the same parition therefore it will be handled by src_partition_number == dst_partition_number
+            # --
+
+            # Please note here we assume instead of colors we have the parition numbers.
+            # Checks if we are crossing boundaries or not.
+            ascend = all(element_partition_number_vector[i] <= element_partition_number_vector[i+1] for i in xrange(len(element_partition_number_vector)-1))
+            descend = all(element_partition_number_vector[i] >= element_partition_number_vector[i+1] for i in xrange(len(element_partition_number_vector)-1))
+
+            print ascend, descend
+            if ascend or descend:
+                # We are fine as we are not crossing here.
+                pass
+            else:
+                log.debug("We are crossing boundary here.")
+                # We are crossing partition boundary, lets create the element instances where required.
+                visited_partitions = [ ]
+                prev_elem_part_number = src_partition_number
+                for index, elem_part_number in enumerate(element_partition_number_vector):
+                    if prev_elem_part_number == elem_part_number:
+                        continue
+                    else:
+                        if elem_part_number not in visited_partitions:
+                            visited_partitions.append(elem_part_number)
+                        elif elem_part_number in visited_partitions:
+                            if elem_part_number != visited_partitions[-1]:
+                                # We have a crossing between two parition. 
+                                # Lets create an element instance in the same prtition
+                                # Where it should be.
+                                eds_to_create.append(eds[index])
+                        prev_elem_part_number = elem_part_number
+                    if elem_part_number != pivot_position:
+                        eds_to_create.append(eds[index])
+            print "Missing elements:", eds_to_create
+            for ed in eds_to_create:
+                # Create new element instance as there are no crresponding elements in the network.
+                # in the required partition
+                new_ed = self._create_element_instance(ed)
+                if new_ed:
+                    print "Steering created new element instnace." 
+                else:
+                    print "Steering was unable to create the element instnace."
+        """
+        if (src_partition_number != dst_partition_number) and (policy_direction == "EW"):
+            # TODO: handle the case such that the boundarties are not crossed in case of "EW" traffic.
+            pass
+            #
+            #if switch_partition_number == pivot_partition:
+            #    continue
+            #else:
+            #    #element_name = self.get_element_name(ed)
+            #    #element_leg_type = self.get_element_leg_type(ed)
+            #    #element_placement_pref = self.get_element_placement_pref(ed)
+            #if dst in gateway_switches:
 

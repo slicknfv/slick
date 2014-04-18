@@ -40,7 +40,7 @@ class KPlacement(Placement):
         self.partitioned_graph = None
 
 
-    def get_placement (self, elements_to_install):
+    def get_placement (self, flowspace_desc, elements_to_install):
         """
             Inputs:
                 - elements_to_install: list of elements to be placed (can have repeats)
@@ -55,11 +55,11 @@ class KPlacement(Placement):
         ##if self.first_install:
         #    apply_leg(elements_to_install)
         for elem_name in elements_to_install:
-            machine = self._get_machine(elem_name)
+            machine = self._get_machine(flowspace_desc, elem_name)
             rv.append(machine)
         return rv
 
-    def _get_machine(self, elem_name):
+    def _get_machine(self, flowspace_desc, elem_name):
         """Given the element name return the element machine
         in the round robin fashion.
 
@@ -86,10 +86,71 @@ class KPlacement(Placement):
             return machines[0]
         # Check which partitions have the element and which do not and place the
         # elements based on that.
-        partition_number = 1
-        # second/third/fourth/... calls need to get the next optimal placement.
+        #partition_number = 1
+        partition_number = self._get_partition_number_to_place(flowspace_desc, elem_name)
+        #print "PARTTTTTTTTTTTTTTTTTTTTTTTTT NUMBERRRRRRRRRRRRRRRR", partition_number
+
+        # Place the element_name in the provided partition_number.
         machine_mac = self._get_partition_placement(elem_name, machines, partition_number)
         return machine_mac
+
+
+    def _get_partition_number_to_place(self, flowspace_desc, elem_name):
+        """Given the element_name return the partition number to place
+        the element in the network.
+        In other words look at the partitions that already have the pivot element
+        instance and return the partition where flow is instantiated.
+        Args: 
+            flowspace_desc: flowspace against which this elem_name corresponds.
+            elem_name: Name of the elemen as string(element type)
+        Returns:
+            partition number as int.
+        """
+        # Dict to keep track of partition and presence of pivot element instance in it.
+        partition_to_pivot_map = { }
+        number_of_partitions = self.network_model.physical_net.get_num_partitions()
+        for part_num in range(0, number_of_partitions):
+            partition_to_pivot_map[part_num] = False
+        # Check which partition does not has an element in it.
+        for part_num in partition_to_pivot_map:
+            print part_num
+            if self._is_element_instance_present(flowspace_desc, part_num, elem_name):
+                partition_to_pivot_map[part_num] = True
+            else:
+                partition_to_pivot_map[part_num] = False
+
+        # List of partition numbers that require a pivot element instance.
+        partitions_requiring_pivot = [ ]
+        # Select the partitions that require a pivot instance.
+        for part_num, elem_inst_present in partition_to_pivot_map.iteritems():
+            if not elem_inst_present:
+                partitions_requiring_pivot.append(part_num)
+        # TODO: This code will work for max. number of two partitions in the netowrk.
+        # To add support for more we need to integrate placement with steering to see
+        # which partitions to place the elements. So that we know the source and destination.
+        if len(partitions_requiring_pivot):
+            return partitions_requiring_pivot[0]
+        else:
+            # TODO: immediately
+            # If partition_number is -ve => we have pivots in all the paritions
+            # Now we are just creating the elements for load balancing.
+            # Then the question is which partition needs the new element 
+            # instance for load balancing?
+            return -1
+
+    def _is_element_instance_present(self, flowspace_desc, part_num, elem_name):
+        """If the partition has a single copy of element instance with the 
+        given element_name and for the given flowspace_desc. return True else return False."""
+        elem_descs = self.network_model.get_flowspace_elem_descs(flowspace_desc, elem_name)
+        for ed in elem_descs:
+            machine_mac = self.network_model.get_machine_mac(ed)
+            switch_mac = self.network_model.overlay_net.get_connected_switch(machine_mac)
+            switch_partition_number = self.network_model.physical_net.get_partition_number(switch_mac)
+            if switch_partition_number == part_num:
+                return True
+            else:
+                continue
+        return False
 
     def _get_partition_placement(self, elem_name, machines, partition_number):
         """
@@ -104,6 +165,9 @@ class KPlacement(Placement):
         # Get the recommended placement for the element.
         placement_pref = self.network_model.get_elem_placement_pref(elem_name)
         leg_type = self.network_model.get_elem_leg_type(elem_name)
+        print "X"*200
+        print elem_name, leg_type, placement_pref
+        print "X"*200
         if leg_type == "E":
             if (placement_pref == None or placement_pref == "middle"):
                 # If we calculate betweenness on all switches its possible to find

@@ -15,14 +15,15 @@ from pox.core import core
 
 
 class ElementInstance():
-    def __init__(self, name, app_desc, elem_desc, location):
+    def __init__(self, name, app_desc, elem_desc, location, flowspace_desc):
         self.name = name
         self.app_desc = app_desc
         self.elem_desc = elem_desc
-        self.location = location
+        self.location = location # Machine  mac address
+        self.flowspace_desc = flowspace_desc # flow id that is being served by this element instance.
 
     def __str__ (self):
-        return "ElementInstance(name:" + self.name + ", app_desc:" + str(self.app_desc) + ", elem_desc:" + str(self.elem_desc) + ", location:" + str(self.location) + ")"
+        return "ElementInstance(name:" + self.name + ", app_desc:" + str(self.app_desc) + ", elem_desc:" + str(self.elem_desc) + ", location:" + str(self.location) + ", flowspace_id:" + str(self.flowspace_id) + ")"
 
 class NetworkModel():
     def __init__ (self, controller):
@@ -131,6 +132,24 @@ class NetworkModel():
             element_descriptors.append(inst.elem_desc)
         return element_descriptors
 
+    def get_flowspace_elem_descs(self, flowspace_desc, element_name):
+        """ Return all the element_descriptors for an element_name for given flowspace_desc
+        """
+        element_descriptors = [ ]
+        element_instances = set( )
+        if element_name in self._name_to_instances:
+            element_instances = self._name_to_instances[element_name]
+        for inst in element_instances:
+            if inst.flowspace_desc == flowspace_desc:
+                element_descriptors.append(inst.elem_desc)
+        return element_descriptors
+
+    def get_app_elem_descs(self, app_id, element_name):
+        """ Return all the element_descriptors for an element_name for given app_id
+        """
+        # TODO
+        return None
+
     def get_all_registered_machines (self):
         return self._controller.get_all_registered_machines()
 
@@ -193,10 +212,10 @@ class NetworkModel():
         pass
 
     # Placement state
-    def add_placement (self, element_name, app_desc, element_desc, mac_addr):
+    def add_placement (self, element_name, app_desc, element_desc, mac_addr, flowspace_desc):
         # TODO return an error if this app_desc has already placed this element_desc
 
-        element_instance = ElementInstance(element_name, app_desc, element_desc, mac_addr)
+        element_instance = ElementInstance(element_name, app_desc, element_desc, mac_addr, flowspace_desc)
         if(element_name not in self._name_to_instances.keys()):
             self._name_to_instances[element_name] = set()
 

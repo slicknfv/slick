@@ -95,7 +95,10 @@ class LoadAwareShortestPathSteering(Steering):
         # Every time get_steering is called subgraph is updated.
         # This also updates the overlay link weights. Which means "hop_count" and "utilization"
         self.subgraph = self.network_model.get_overlay_subgraph(src[0], dst[0], replica_sets)
+        # This is the part where congested links are excluded from the consideration.
         self._remove_congested_links( )
+        # Here we are removing loaded element instances in the network,
+        # such that the steering algorithm only uses non-loaded elements.
         replica_sets = self._remove_loaded_element_instances( replica_sets )
         # Adding this code due to disparity of time scales.
         # get_steering will be called at shorter time scale then 
@@ -104,7 +107,12 @@ class LoadAwareShortestPathSteering(Steering):
         replica_sets = self.update_replicas(orig_replica_sets, replica_sets, flow)
         print replica_sets
         rv = self._get_element_instances(src[0], dst[0], replica_sets)
+        # check if we are steering across the boundaries??
+        # If we are crossing across the lines create new element instance 
+        # and then return an ordered list of element descriptors.
+        self.network_model.resolve_partitions(src[0], dst[0], rv)
         return rv
+
 
     def _is_valid_path(self, path, replica_sets):
         """ helper function to check if the path has 

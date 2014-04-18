@@ -2,7 +2,7 @@
 
 # Heuristics based.
 What are the scenarios where place and route should only work.
-1- When should controller steer than creating a new instance?
+1- When should controller steer over creating a new instance?
      If the link is the bottleneck than steer the traffic:
           congested_overlay_links = get_congested_overlay_links()
           #This can happen when the virtual link to be used is utilizing >=90% of
@@ -29,6 +29,24 @@ What are the scenarios where place and route should only work.
         else:
             installed_ed = install_new_element_instance_that_provides_shortest_alternate_path([[ ], ... ,[ ]]_of_non_overloaded_element_instances)
 
+maintain the list of loaded paths and instances to avoid or replicate...
+
+# There can be:
+# Loaded Links.
+# Loaded Middlebox machines
+# Loaded Loaded instances
+# We assume that middlebox machines cannot be the bottleneck and the load on middlebox machines is similar to load
+# on element instances.
+
+
+Heuristics:
+    if middlebox is loaded:
+        create_new_element_instance_closest_to_existing_machine.
+    if element_instance is loaded:
+        create_new_element_instance_closest_to_hosts_being_served.u
+    if link is loaded:
+        reroute the traffic.
+
 def oracle(self, physical_graph, overlay_graph, loaded_element_instances, overloaded_links, link_to_load_map, element_machine_mac_to_load_map):
     pass
 
@@ -47,3 +65,21 @@ def place_n_steer():
     congested_overlay_links = self._controller.network_model.get_congested_overlay_links()
     print loaded_middlebox_instances
     print loaded_overlay_links
+
+#######################################################################
+all_shortest_paths= get_k_shortest_paths(src, dst)
+shortest_path = None
+for path in all_possible_paths: 
+    if is_path_loaded(path):
+        continue
+    else:
+        shortest_path = path
+        break
+
+if not shortest_path:
+    # We are screwed.
+    pass
+
+elem_macs = get_steering()
+if no elem_macs:
+    apply_elem()

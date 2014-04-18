@@ -6,9 +6,10 @@ class Placement():
     def __init__ (self, network_model):
         self.network_model = network_model
 
-    def get_placement (self, elements_to_install):
+    def get_placement (self, flowspace_desc, elements_to_install):
         """
             Inputs:
+                - flowspace_desc: flowspace against which we are installing the element.
                 - elements_to_install: list of elements to be placed (can have repeats)
             Outputs:
                 - a list of mac addresses, of the same size as elements_to_install, providing a one-to-one mapping of where to install each element
