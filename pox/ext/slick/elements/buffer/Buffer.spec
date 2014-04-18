@@ -5,6 +5,8 @@
         "os_flavor": "Ubuntu",
         "os_flavor_version": "9.10",
         "inline": true,
+        "placement" : "middle",
+        "leg" : "E",
         "affinity" : false,
         "bidirection" : true,
         "stateful" : true,
