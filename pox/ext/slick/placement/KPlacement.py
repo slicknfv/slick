@@ -86,9 +86,7 @@ class KPlacement(Placement):
             return machines[0]
         # Check which partitions have the element and which do not and place the
         # elements based on that.
-        #partition_number = 1
         partition_number = self._get_partition_number_to_place(flowspace_desc, elem_name)
-        #print "PARTTTTTTTTTTTTTTTTTTTTTTTTT NUMBERRRRRRRRRRRRRRRR", partition_number
 
         # Place the element_name in the provided partition_number.
         machine_mac = self._get_partition_placement(elem_name, machines, partition_number)
@@ -174,7 +172,7 @@ class KPlacement(Placement):
                 # a central node where we cannot place the element instance.
                 # This betweenness should be found within a single partition
                 selected_machine_mac = self._get_betweenness_centrality(partition_number, machines)
-            if (placement_pref == "near"):
+            if (placement_pref == "near"): # For example in case of proxy we need it near the machines.
                 selected_machine_mac = self._get_element_instance_near_source(partition_number, machines)
             if (placement_pref == "far"):
                 selected_machine_mac = self._get_element_instance_near_destination(partition_number, machines)
@@ -182,7 +180,6 @@ class KPlacement(Placement):
         """Need a module that can detect the "near" and "far" for a policy
         and place the elements near the source or destination.
         """
-        #if (placement_pref == "near"):
         if (leg_type == "L"):
             # Given the demand matrix and element name find the max need for element instances.
             max_num_elem_instances = self.network_model.get_max_element_instances(element_name)
@@ -195,7 +192,6 @@ class KPlacement(Placement):
                 # This means there is room for optimization and element instances
                 # can be moved to free up resources.
                 log.warn (" We are going above the quota.")
-        #if (placement_pref == "near"):
         if (leg_type == "G"):
             selected_machine_mac = self._get_element_instance_near_source(machines)
         return selected_machine_mac
@@ -276,33 +272,37 @@ class KPlacement(Placement):
     """
     # This function should be used to resolve the LEG heuristic in the network.
     # This network allows us to save the bandwidth utiliztion.
-    def place_element(self, policy_direction, element_names):
+    """
+    def place_element(self, policy_direction, flowspace_desc, element_names):
+        """
         policy_direction: is an enumerator that tells us if the direction
             of the policy is: outgoing => South to North
                               incoming => North to South
                               inside => East to West or West to East
+        """
+        chain_elements = self.network_model.get_chain_elements(flowspace_desc)
         if len(element_names) == 1:
             element_name = element_names[0]
-            if policy_direction == incoming:
-                if type(elment_name) == G:
+            if policy_direction == "incoming":
+                if type(elment_name) == 'G':
                     place_element_near_north(element_name)
-                if type(elment_name) == L:
+                if type(elment_name) == 'L':
                     place_element_near_south(element_name)
-                if type(elment_name) == E:
+                if type(elment_name) == 'E':
                     place_element_anywhere(element_name)
-            elif policy_direction == outgoing:
-                if type(elment_name) == G:
+            elif policy_direction == "outgoing":
+                if type(elment_name) == 'G':
                     place_element_near_north(element_name)
-                if type(elment_name) == L:
+                if type(elment_name) == 'L':
                     place_element_near_south(element_name)
-                if type(elment_name) == E:
+                if type(elment_name) == 'E':
                     place_element_anywhere(element_name)
-            elif policy_direction == inside:
-                if type(elment_name) == G:
+            elif policy_direction == "inside":
+                if type(elment_name) == 'G':
                     place_element_near_sources(element_name)
-                if type(elment_name) == L:
+                if type(elment_name) == 'L':
                     place_element_near_destinations(element_name)
-                if type(elment_name) == E:
+                if type(elment_name) == 'E':
                     place_element_anywhere(element_name)
         if len(element_names) == 2:
             decision = should_consolidate(element_names)
@@ -318,4 +318,6 @@ class KPlacement(Placement):
                 macs = placement.get_placement(decision, element_names)
                 if len(macs) != 1 or len(macs) != 2:
                     raise Exception("This should not happen.")
-    """
+#    def should_consolidate(self, element_names):
+#        if len(element_names) == 2:
+#            fet_
