@@ -37,6 +37,8 @@ Running the Slick Controller.
 # Start the SlickMessageProcessor
 #Start the L2 packet forwarding after starting spanning tree module.
 sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=127.0.0.1 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi
+# To make the L2 packet forwarding and host_tracker and spanning module. 
+sudo ./pox.py --verbose host_tracker slick.slick_controller messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 sample.spanning_tree --forwarding=l2_multi_slicks
 
 To tun code with non pcap traffic use command:
 sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=10.0.0.254 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi

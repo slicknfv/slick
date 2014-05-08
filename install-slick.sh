@@ -91,6 +91,11 @@ sudo easy_install pybloomfiltermmap
 
 echo ""
 echo ""
+echo "*** Installing python-dumbnet..."
+sudo apt-get install python-dumbnet
+
+echo ""
+echo ""
 echo "*** Creating/Updating links to libraries..."
 sudo ldconfig
 
