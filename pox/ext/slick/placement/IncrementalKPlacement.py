@@ -17,7 +17,7 @@ class IncrementalKPlacement(Placement):
         Placement.__init__ (self, network_model)
         self._used_macs = [ ]
 
-    def get_placement (self, elements_to_install):
+    def get_placement (self, flowsapce_desc, elements_to_install):
         """
             Inputs:
                 - elements_to_install: list of elements to be placed (can have repeats)

@@ -17,7 +17,7 @@ class RoundRobinPlacement(Placement):
         self.elem_name_to_machine_macs = defaultdict(list)
         self.used_macs = [ ]
 
-    def get_placement (self, elements_to_install):
+    def get_placement (self, flowspace_desc, elements_to_install):
         """
             Inputs:
                 - elements_to_install: list of elements to be placed (can have repeats)

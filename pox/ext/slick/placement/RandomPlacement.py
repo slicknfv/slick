@@ -12,7 +12,7 @@ class RandomPlacement(Placement):
     def __init__ (self, network_model):
         Placement.__init__ (self, network_model)
 
-    def get_placement (self, elements_to_install):
+    def get_placement (self, flowspace_desc, elements_to_install):
         """
             Inputs:
                 - elements_to_install: list of elements to be placed (can have repeats)
