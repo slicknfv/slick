@@ -1,0 +1,19 @@
+# Taken this from sndlib and the problem instance's zip file is abilene--D-B-M-N-C-A-N-N-native.zip
+# LINK SECTION
+#
+# <link_id> ( <source> <target> ) <pre_installed_capacity> <pre_installed_capacity_cost> <routing_cost> <setup_cost> ( {<module_capacity> <module_cost>}* )
+ATLAM5_ATLAng ( ATLAng ATLAM5 ) 9920.00 0.00 0.00 0.00 ( 40000.00 133.00 )
+ATLAng_HSTNng ( HSTNng ATLAng ) 9920.00 0.00 0.00 0.00 ( 40000.00 1081.00 )
+ATLAng_IPLSng ( IPLSng ATLAng ) 2480.00 0.00 0.00 0.00 ( 40000.00 591.00 )
+ATLAng_WASHng ( WASHng ATLAng ) 9920.00 0.00 0.00 0.00 ( 40000.00 901.00 )
+CHINng_IPLSng ( IPLSng CHINng ) 9920.00 0.00 0.00 0.00 ( 40000.00 260.00 )
+CHINng_NYCMng ( NYCMng CHINng ) 9920.00 0.00 0.00 0.00 ( 40000.00 1147.00 )
+DNVRng_KSCYng ( KSCYng DNVRng ) 9920.00 0.00 0.00 0.00 ( 40000.00 745.00 )
+DNVRng_SNVAng ( SNVAng DNVRng ) 9920.00 0.00 0.00 0.00 ( 40000.00 1516.00 )
+DNVRng_STTLng ( STTLng DNVRng ) 9920.00 0.00 0.00 0.00 ( 40000.00 1573.00 )
+HSTNng_KSCYng ( KSCYng HSTNng ) 9920.00 0.00 0.00 0.00 ( 40000.00 1028.00 )
+HSTNng_LOSAng ( LOSAng HSTNng ) 9920.00 0.00 0.00 0.00 ( 40000.00 2196.00 )
+IPLSng_KSCYng ( KSCYng IPLSng ) 9920.00 0.00 0.00 0.00 ( 40000.00 903.00 )
+LOSAng_SNVAng ( SNVAng LOSAng ) 9920.00 0.00 0.00 0.00 ( 40000.00 505.00 )
+NYCMng_WASHng ( WASHng NYCMng ) 9920.00 0.00 0.00 0.00 ( 40000.00 336.00 )
+SNVAng_STTLng ( STTLng SNVAng ) 9920.00 0.00 0.00 0.00 ( 40000.00 1138.00 )
