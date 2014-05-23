@@ -16,8 +16,10 @@ class NetworkXTopo(Topo):
 
     def build_network(self, topo_graph, hosts_per_switch):
         node_count = 0
+        dpid = 0
         for switch in topo_graph.nodes():
-            self.addSwitch('%s' % str(switch))
+            dpid += 1
+            self.addSwitch('%s' % str(switch), dpid=str(dpid))
             for count in range(hosts_per_switch):
                 node_count += 1
                 # Add host to the switch.
@@ -75,6 +77,18 @@ def is_imc_topo(topo_file):
                 return True
         f.close()
 
+def is_snd_lib_topo(topo_file):
+    f = None
+    with open(topo_file, 'r') as f:
+        for index, line in enumerate(f.readlines()):
+            if line[0] == '#':
+                continue
+            elif line.rstrip('\n') == 'sndlib':
+                f.close()
+                return True
+        f.close()
+    pass
+
 def read_topo(topo_file):
     """Args:
         topo_file: String of the topology file path.
@@ -86,6 +100,10 @@ def read_topo(topo_file):
         topo_graph = get_gt_topo(topo_file)
     if is_imc_topo(topo_file):
         topo_graph = get_imc_topo(topo_file)
+    if is_snd_lib_topo(topo_file):
+        topo_graph = get_sndlib_topo(topo_file)
+    if not topo_graph:
+        raise IOError("Unable to read the topoogy file %s" % topo_file)
     return topo_graph
 
 def get_imc_capacity(source_str, dest_str):
@@ -165,6 +183,26 @@ def get_gt_topo(topo_file):
     f.close()
     return topo_graph
 
+def get_sndlib_topo(topo_file):
+    topo_graph = nx.Graph()
+    line_num = 0
+    with open(topo_file, 'r') as f:
+        for line in f.readlines():
+            if (len(line) > 10) and (line[0] != '#'):
+                split_data = line.split(' ')
+
+                src_node_id = str(split_data[2])
+                dst_node_id = str(split_data[3])
+
+                capacity = float(split_data[5])
+                print capacity
+                if not topo_graph.has_edge(src_node_id, dst_node_id):
+                    topo_graph.add_edge(src_node_id, dst_node_id, capacity = capacity)
+    topo_graph = validate_graph(topo_graph)
+    if not nx.is_connected(topo_graph):
+        print "WARNING: This network is not connected."
+    f.close()
+    return topo_graph
 
 
 def build_topo(topo_file, display_graph = False):
@@ -176,7 +214,7 @@ def build_topo(topo_file, display_graph = False):
     hosts = topo.hosts( )
     # Debug 
     print "Total number of Vertices:", len(topo.switches())
-    print "Total number of Edges:", len(topo.links())
+    print "Total number of Edges(including edges to hosts):", len(topo.links())
     #for host in hosts:
     #    print host
     #for link in net.links():
@@ -200,7 +238,8 @@ def main(argv):
     #build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/l2traceJuly29.2013.csv", True)
     #build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/unv2.cdp.txt", True)
     #build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/unv1.cdp.txt", True)
-    build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/prv1.cdp.txt", True)
+    #build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/prv1.cdp.txt", True)
+    build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/abilene.txt", True)
 
 if __name__ == "__main__":
     main(sys.argv[1:])
