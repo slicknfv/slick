@@ -137,12 +137,18 @@ def connectToInternet( network, switch='s1', rootInterface='eth1', rootip='10.25
  
     # Establish routes from end hosts
     i = 1
+    k = 100
     for host in network.hosts:
         j = i + 10
 
         # HACK: We should set the IP according to 'subnet'
         # dml: note that using ifconfig will not update mininet's bindings of h1, etc.; setIP is necessary
-        host.setIP( '192.168.100.' + str(j) )
+        host.setIP( '192.168.' + str(k) +'.'+ str(j) )
+        if (j >= 252):
+            # move to the next subnet
+            k += 1
+            # Reset the i counter.
+            i = 0
         host.cmd( 'ip route flush root 0/0' )
         host.cmd( 'route add -net', subnet, 'dev', host.defaultIntf() )
         host.cmd( 'route add default gw', rootip )
@@ -306,7 +312,7 @@ if __name__ == '__main__':
                                       gateway_switch,
                                       options.rootInterface,
                                       '192.168.100.1',
-                                      '192.168.100.0/24')
+                                      '192.168.0.0/16')
 
     else:
         # Pick a network that is different from your 
@@ -315,7 +321,7 @@ if __name__ == '__main__':
                                       's1', # This assumes that the root switch of a topology is s1
                                       options.rootInterface,
                                       '192.168.100.1',
-                                      '192.168.100.0/24')
+                                      '192.168.0.0/16')
 
     setup_sflow(net, switch_names)
     #demand_matrix.generate_binary_demand_matrix(net.hosts)
