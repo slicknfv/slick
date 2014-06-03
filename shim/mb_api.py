@@ -21,6 +21,13 @@ from BloomFilter.BloomFilter import BloomFilter
 from DelayBuffer.DelayBuffer import DelayBuffer
 from Constant.Constant import Constant
 from Compress.Compress import Compress
+# Dummy
+from Encrypt.Encrypt import Encrypt
+from StatefulFirewall.StatefulFirewall import StatefulFirewall
+from IDS.IDS import IDS
+from LoadBalancer.LoadBalancer import LoadBalancer
+
+
 """
     These are the functions supported by the Shim  to the controller.
 """
