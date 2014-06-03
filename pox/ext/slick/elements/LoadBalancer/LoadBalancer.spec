@@ -1,14 +1,14 @@
 {
-    "Compress": {
+    "LoadBalancer": {
         "processor_type": "x86",
         "os": "Linux",
         "os_flavor": "Ubuntu",
         "os_flavor_version": "9.10",
-        "inline": false,
+        "inline": true,
         "affinity" : true,
         "bidirection" : true,
-        "leg" : "G",
-        "stateful" : false,
+        "leg" : "E",
+        "stateful" : true,
         "triggers": [
         ]
     }

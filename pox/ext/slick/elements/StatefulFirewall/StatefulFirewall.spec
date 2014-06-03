@@ -1,14 +1,14 @@
 {
-    "Compress": {
+    "StatefulFirewall": {
         "processor_type": "x86",
         "os": "Linux",
         "os_flavor": "Ubuntu",
         "os_flavor_version": "9.10",
-        "inline": false,
-        "affinity" : true,
+        "inline": true,
+        "affinity" : false,
         "bidirection" : true,
         "leg" : "G",
-        "stateful" : false,
+        "stateful" : true,
         "triggers": [
         ]
     }
