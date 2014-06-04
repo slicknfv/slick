@@ -8,6 +8,7 @@
         "affinity" : false,
         "bidirection" : true,
         "leg" : "E",
+        "leg_factor" : 1,
         "stateful" : false,
         "triggers": [
         ]

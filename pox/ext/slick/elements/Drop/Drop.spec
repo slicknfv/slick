@@ -8,6 +8,7 @@
         "affinity" : false,
         "placement" : "near",
         "leg" : "G",
+        "leg_factor" : 1000000000,
         "bidirection" : true,
         "stateful" : false,
         "triggers": [
