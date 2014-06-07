@@ -45,6 +45,7 @@ from slick.placement.RandomPlacement import RandomPlacement
 from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.placement.IncrementalKPlacement import IncrementalKPlacement
 from slick.placement.KPlacement import KPlacement
+from slick.placement.NetworkAwarePlacement import NetworkAwarePlacement
 from slick.NetworkModel import NetworkModel
 from slick.NetworkModel import ElementInstance
 from place_n_steer import PlacenSteer
@@ -70,9 +71,9 @@ class slick_controller (object):
         self.network_model = NetworkModel(self)
         #self.placement_module = RandomPlacement( self.network_model )
         #self.placement_module = RoundRobinPlacement( self.network_model )
-        #self.placement_module = IncrementalKPlacement( self.network_model )
-        self.placement_module = KPlacement( self.network_model )
-        #self.placement_module = OptimalKPlacement( self.network_model )
+        self.placement_module = IncrementalKPlacement( self.network_model )
+        #self.placement_module = KPlacement( self.network_model )
+        #self.placement_module = NetworkAwarePlacement( self.network_model )
         #self.steering_module = RandomSteering( self.network_model )
         #self.steering_module = ShortestHopCountSteering( self.network_model )
         #self.steering_module = ShortestPathSteering( self.network_model )
@@ -267,9 +268,13 @@ class slick_controller (object):
         # is Placement module has better view of how to place elements.
         mac_addrs = self.placement_module.get_placement(flowspace_desc, element_names)
 
-        if len(mac_addrs) != len(element_names):
-#           # => we are creating copies of element instances because of placement algorithm.
-            pass
+        if mac_addrs:
+            if len(mac_addrs) != len(element_names):
+#               # => we are creating copies of element instances because of placement algorithm.
+                pass
+        else:
+            log.warn("No single middlebox machine found while attempting elements %s installation for application with descriptor (%d)" % (element_names, app_desc))
+            return [-1] 
 
         # Return an error if there is no machine registered for function installation.
         placeless_element_names = self.__get_placeless_element_names(element_names, mac_addrs)

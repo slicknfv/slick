@@ -43,15 +43,19 @@ class TrafficMatrix():
                             pass
                         pass
                         line_count +=1
+        print dict_matrix
+        return dict_matrix
 
-    def get_sources(self, traffic_matrix):
-        for key, value in traffic_matrix:
-            pass
-        pass
-
-    def get_destinations(self, traffic_matrix):
-        pass
-
+    def get_sources_and_destinations(self, traffic_matrix):
+        """Given the traffic matrix return the list of sources 
+        and destinations for the flowsapce."""
+        sources = [ ]
+        destinations =  [ ]
+        for key, value in traffic_matrix.iteritems():
+            if value != 0:
+                sources.append(key[0])
+                destinations.append(key[1])
+        return sources, destinations
 
 # TESTING CODE
 if __name__ == '__main__':
@@ -60,4 +64,5 @@ if __name__ == '__main__':
     tm_obj = TrafficMatrix(None, traffic_matrix_file)
     traffic_matrix = tm_obj.get_traffic_matrix(0)
     print traffic_matrix
+    tm_obj.get_sources(traffic_matrix)
 

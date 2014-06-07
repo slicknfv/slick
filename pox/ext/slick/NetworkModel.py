@@ -159,10 +159,10 @@ class NetworkModel():
 
         # Return all the hosts inside the network
         all_hosts = self.overlay_net.get_all_machines()
-        print all_hosts
+        #print all_hosts
         # Return all forwarding devices switches, routers.
         all_switches = self.overlay_net.get_all_forwarding_devices()
-        print all_switches
+        #print all_switches
         # Return all machines with shim running on them.
         registered_machines = self._controller.get_all_registered_machines()
         return registered_machines
@@ -296,10 +296,6 @@ class NetworkModel():
         """Return a list of active element names."""
         return self._name_to_instances.keys()
 
-    def get_elem_descs(self):
-        """Return a list of all elem descs."""
-        return self._ed_to_instance.keys()
-
     def get_elem_name(self, ed):
         """Given the element_desc return elem name.
         Args:
@@ -314,8 +310,11 @@ class NetworkModel():
         else:
             return None
 
-    def get_elem_descs(self, elem_name):
-        """Given the element name return all the descriptors corresponding to the name."""
+    def get_elem_descs(self, elem_name=None):
+        """Given the element name return all the descriptors corresponding to the name.
+        If no element name is specified return all the element instances."""
+        if not elem_name:
+            return self._ed_to_instance.keys()
         elem_descs = [ ]
         for ed, ei in self._ed_to_instance.iteritems():
             if ei.name == elem_name:
@@ -386,6 +385,19 @@ class NetworkModel():
             spec_leg = elem_spec["leg"]
             print elem_spec
         return spec_leg
+
+    def get_elem_leg_factor(self, elem_name, elem_desc=-1):
+        leg_factor = -1
+        if elem_desc > 0:
+            # Get the leg_factor from runtime module; that calculates the leg_factor based on
+            # existing deployment of element instance.
+            return leg_factor
+        else:
+            elem_spec = self._elem_specs.get_element_spec(elem_name)[elem_name]
+            if elem_spec.has_key("leg_factor"):
+                leg_factor = elem_spec["leg_factor"]
+                print elem_spec
+        return leg_factor
 
     def get_elem_spec_direction(self, element_name):
         """Return True/False for bidirection/unidirection,
@@ -508,3 +520,12 @@ class NetworkModel():
         not find elements in initial attempt."""
         replica_sets_temp = self._controller.flow_to_elems.get(flow.in_port, flow)
         return replica_sets_temp
+
+    def get_active_flowspace_descs(self):
+        flowspace_descs = [ ]
+        # Return flowspace_descs for which we have installed the element instances.
+        for ed, elem_instance in self._ed_to_instance.iteritems():
+            fd = elem_instance.flowsapce_desc
+            if fd not in flowspace_descs:
+                flowspace_descs.append(fd)
+        return flowspace_descs

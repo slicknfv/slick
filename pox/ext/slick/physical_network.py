@@ -102,6 +102,7 @@ class PhysicalNetwork(object):
                     print "ERROR: This should not happen."
 
     def get_partition_nodes(self, partition_number):
+        """Given the partition_number, return the partition_nodes list."""
         partition_nodes = [ ]
         for node in self.partitioned_graph.nodes():
             if 'part_number' in self.partitioned_graph.node[node]:

@@ -28,6 +28,7 @@ import metis # required for graph partitioning
 log = core.getLogger()
 
 
+# This is the maximum number of partitions in the network.
 USER_DEFINED_NETWORK_PARTITIONS = 2
 
 class KPlacement(Placement):
@@ -88,6 +89,7 @@ class KPlacement(Placement):
         # elements based on that.
         partition_number = self._get_partition_number_to_place(flowspace_desc, elem_name)
 
+        log.debug("Placing element in the partition: " + str(partition_number))
         # Place the element_name in the provided partition_number.
         machine_mac = self._get_partition_placement(elem_name, machines, partition_number)
         return machine_mac
@@ -176,24 +178,25 @@ class KPlacement(Placement):
                 selected_machine_mac = self._get_element_instance_near_source(partition_number, machines)
             if (placement_pref == "far"):
                 selected_machine_mac = self._get_element_instance_near_destination(partition_number, machines)
+            print selected_machine_mac
         # Figure out "near" and "far" for the flows.
         """Need a module that can detect the "near" and "far" for a policy
         and place the elements near the source or destination.
         """
         if (leg_type == "L"):
             # Given the demand matrix and element name find the max need for element instances.
-            max_num_elem_instances = self.network_model.get_max_element_instances(element_name)
+            max_num_elem_instances = 10#self.network_model.get_max_element_instances(element_name)
             # Get current element instances.
-            elem_descs = self.network_model.get_elem_descs(element_name)
+            elem_descs = self.network_model.get_elem_descs(elem_name)
             current_num_elem_descs = len(elem_descs)
             if current_num_elem_descs < max_num_elem_instances:
-                selected_machine_mac = self._get_element_instance_near_destination(machines)
+                selected_machine_mac = self._get_element_instance_near_destination(partition_number, machines)
             else:
                 # This means there is room for optimization and element instances
                 # can be moved to free up resources.
                 log.warn (" We are going above the quota.")
         if (leg_type == "G"):
-            selected_machine_mac = self._get_element_instance_near_source(machines)
+            selected_machine_mac = self._get_element_instance_near_source(partition_number, machines)
         return selected_machine_mac
 
     def _get_betweenness_centrality(self, partition_number, machines):
@@ -224,6 +227,7 @@ class KPlacement(Placement):
         print sorted_centralities
         log.debug("Sorted Centralities: " + str(sorted_centralities))
         central_machine_mac = self._select_not_used_machine(sorted_centralities, machines)
+        print "central_machine_mac:", central_machine_mac
         if not central_machine_mac:
             all_reg_machines = self.network_model.get_all_registered_machines()
             if len(self._used_macs) >= len(all_reg_machines):
@@ -245,6 +249,8 @@ class KPlacement(Placement):
             switch_mac = tup[0]
             # find the machine mac that is connected with switch_mac.
             machine_mac = self._get_switch_machine(switch_mac, machines)
+            print "switch_mac:", switch_mac
+            print "machine_mac:",machine_mac
             # This machine mac is already used get the next optimal placement.
             if machine_mac:
                 if machine_mac not in self._used_macs:
@@ -265,7 +271,7 @@ class KPlacement(Placement):
         for machine in machines:
             s_mac = self.network_model.overlay_net.get_connected_switch(machine)
             if s_mac == switch_mac:
-                # print "Machine", machine, "switch mac", s_mac
+                print "Machine", machine, "switch mac", s_mac
                 return machine
         return None
 

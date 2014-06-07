@@ -19,6 +19,8 @@
 """
 from collections import defaultdict
 import operator
+from consolidation import Consolidate
+from tm import TrafficMatrix
 
 from slick.placement.Placement import Placement
 
@@ -30,14 +32,18 @@ log = core.getLogger()
 
 USER_DEFINED_NETWORK_PARTITIONS = 2
 
-class KPlacement(Placement):
+PREFER_CONSOLIDATION = True
+
+class NetworkAwarePlacement(Placement):
     def __init__ (self, network_model):
-        log.debug("K Placement Algorithm")
+        log.debug("NetworkAware Placement Algorithm")
         Placement.__init__ (self, network_model)
         self._used_macs = [ ]
         # This is the first installation of the elements by the policy.
         #self.first_install = False
         self.partitioned_graph = None
+        self.consolidate = Consolidate(network_model)
+        self.tm = TrafficMatrix()
 
     def get_placement (self, flowspace_desc, elements_to_install):
         """
@@ -50,17 +56,165 @@ class KPlacement(Placement):
         rv = [ ]
         # Create appropriate number of partitions of the graph.
         self.network_model.physical_net.create_partitions()
-        #self.first_install = hint_vector["first_install"]
-        ##if self.first_install:
-        #    apply_leg(elements_to_install)
-        for elem_name in elements_to_install:
-            machine = self._get_machine(flowspace_desc, elem_name)
-            rv.append(machine)
+        if self.is_first_flowspace():
+            consolidated_chain, virtual_locs_to_place = self.consolidate_using_leg(elements_to_install)
+        else:
+            consolidated_chain, virtual_locs_to_place = self.consolidate_using_leg_n_existing_chains(elements_to_install)
+        placement_locs = self.place_consolidated_chain(flowspace_desc, consolidated_chain, virtual_locs_to_place)
+
         return rv
 
-    def _get_machine(self, flowspace_desc, elem_name):
-        """Given the element name return the element machine
-        in the round robin fashion.
+    def place_consolidated_chain(self, flowspace_desc, consolidated_chain, virtual_locs_to_place):
+        """
+        Args: 
+            flowspace_desc: An integer describing the flowspace for the element instance.
+            consolidated_chain: Its a list of list where each sublist is a consolidated element.
+            virtual_locs_to_place: Estimated locations to place the elements.
+
+            Given the flowspace_desc, consolidated_chian and virtual locations to place.
+           Place the elements in the network.
+        Returns the list of MAC addresses where the elements should be placed
+        This list can have repeated MAC addresses(for consolidated elements)."""
+        # Read the matrix from the data set of Internet. 
+        rv = [ ]
+        machine = None
+        traffic_matrix = self.tm.get_traffic_matrix(flowspace_desc)
+        sources, destinations = self.tm.get_sources_and_destinations(traffic_matrix)
+        print consolidated_chain, virtual_locs_to_place
+        #for consolidated_element in consolidated_chain:
+        #    consolidated_element_type = consolidated_element[0]
+        #    if consolidated_element_type == 'L':
+        #        machine = self._place_element_near_nodes(flowspace_desc, sources, consolidated_element)
+        #    if consolidated_element_type == 'G':
+        #        machine = self._place_element_near_nodes(flowspace_desc, destinations, consolidated_element)
+        #    if consolidated_element_type == 'E':
+        #        machine = self._place_element_anywhere(flowspace_desc, condolidated_element)
+        #rv.append(machine)
+        #return rv
+
+
+    def _place_element_near_nodes(self,flowspace_desc,  nodes, consolidated_element):
+        """Place the consoldiated_element near the nodes in all the partitions.i
+        Return the MAC address for the element machine name."""
+        for element_name in consolidated_element:
+            partition_number_to_install_element = self.get_partition_number_to_install_element(element_name)
+            # Check which partitions have the element and which do not and place the
+            # elements based on that.
+            partition_number = self._get_partition_number_to_place(flowspace_desc, elem_name)
+            machine = self._get_machine(nodes, element_name, partition_number)
+
+    def _place_element_anywhere(self, flowsapce_desc, consolidated_element):
+        """Given the consolidated element return the MAC address where this
+           element should be placed.
+            Return the MAC address for the machine as it where to place the element."""
+        for element_name in consolidated_element:
+            # Check which partitions have the element and which do not and place the
+            # elements based on that.
+            partition_number = self._get_partition_number_to_place(flowspace_desc, elem_name)
+            machine = self._get_machine(None, element_name, partition_number)
+
+    def _get_sources(self, traffic_matrix):
+        """Given the traffic matrix return the source mac addresses"""
+        pass
+
+    def _get_destinations(self, traffic_matrix):
+        """Given the traffic matrix return the destination mac address."""
+        pass
+
+
+    def consolidate_using_leg(self, element_names):
+        """Given the list of element_names list. 
+           Find the best possible partitioning of the elements
+           that corresponds to minimum link cost for deployment.
+           Args:
+               element_names: List of element name chain.
+           Returns:
+               List of lists with best partitioning for the elements.
+               Tuple for virtual assignment location.
+        """
+        if len(element_names) == 1:
+            return [element_names]
+        # Get the ordered list of leg_factors corresponding to each element in the element_names.
+        leg_factors = self.consolidate.get_leg_factors(element_names)
+        consolidation_combinations = self.consolidate.generate_consolidation_combinations(element_names)
+        least_cost_partition, least_cost_locs = self.consolidate.get_least_cost_assignment(consolidation_combinations, element_names, leg_factors)
+        print "The least cost assignment for the element_names: ", element_names, " is: ", least_cost_partition, least_cost_locs
+        return least_cost_partition, least_cost_locs
+
+
+        #if len(element_names) == 2:
+        #    first_element_name = element_chain[0]
+        #    second_element_name = elemnt_chian[1]
+        #    t1 = self.network_model.get_elem_leg_type(first_element_name)
+        #    t2 = self.network_model.get_elem_leg_type(second_element_name)
+        #    if not PREFER_CONSOLIDATION:
+        #        if t1 == 'L' and t2 == 'L':
+        #            # consolidating the elements.
+        #            return [('L', element_names)]
+        #        if t1 == "L" and t2 == "G":
+        #            # Dont care but we are not consolidating the elements together
+        #            # Decision to place depends on the configuration of element t1 and t2.
+        #            return [('L', [first_element_name]), ('G', [second_element_name])]
+        #        if t1 ==  'L' and t2 ==  'E':
+        #            # Consolidate
+        #            return [('L', element_names)]
+        #        if t1 == 'G' and t2 == 'G':
+        #            # Consolidate
+        #            return ['G', element_names]
+        #        if t1 == 'G' and t2 == 'L':
+        #            # STRICTLY Don't consolidate.
+        #            return [('G', [first_element_name]), ('L', [second_element_name])]
+        #        if t1 == 'G' and t2 == 'E':
+        #            # Dont care but we are not consolidating the elements together.
+        #            return [('G', [first_element_name]), ('E', [second_element_name])]
+        #        if t1 == 'E' and t2 == 'E':
+        #            # Dont care but we are not consolidating the elements together.
+        #            return [('E', [first_element_name]), ('E', [second_element_name])]
+        #        if t1 == 'E' and t2 == 'G':
+        #            # Consolidate
+        #            return [('G', element_names)]
+        #        if t1 == 'E' and t2 == 'L':
+        #            # Dont care but we are not consolidating the elements together.
+        #            return [('E', [first_element_name]), ('L', [second_element_name])]
+        #    else:
+        #        if t1 == 'L' and t2 == 'L':
+        #            # consolidating the elements.
+        #            return [('L', element_names)]
+        #        if t1 == 'L' and t2 == 'G':
+        #            #Dont care but we are not consolidating the elements together.
+        #            return [('L', [first_element_name]), ('G', [second_element_name])]
+        #        if t1 ==  'L' and t2 ==  'E':
+        #            # Consolidate
+        #            return [('L', element_names)]
+        #        if t1 == 'G' and t2 == 'G':
+        #            # Consolidate
+        #            return ['G', element_names]
+        #        if t1 == 'G' and t2 == 'L':
+        #            # STRICTLY Don't consolidate.
+        #            return [('G', [first_element_name]), ('L', [second_element_name])]
+        #        if t1 == 'G' and t2 == 'E':
+        #            # Dont care but we are consolidating the elements together.
+        #            # Due to CONSOLIDATION_PREF flag.
+        #            return [('G', element_names)]
+        #        if t1 == 'E' and t2 == 'E':
+        #            # Dont care but we are consolidating the elements together.
+        #            return [('E', element_names)]
+        #        if t1 == 'E' and t2 == 'G':
+        #            # Consolidate
+        #            return [('G', element_names)]
+        #        if t1 == 'E' and t2 == 'L':
+        #            # Dont care but we are consolidating the elements together.
+        #            # Due to CONSOLIDATE_PREF flag
+        #            return [('L', element_names)]
+
+    def consolidate_using_leg_n_existing_chains(self, element_names):
+        """Given the list of element_names list. Return list of lists."""
+        pass
+
+    def _get_machine(self, nodes, elem_name, partition_number):
+        """Given the element name return the element machine for
+            the given partition that is closer to the switches
+            in the nodes list.
 
         Args:
             elem_name: String of element name.
@@ -81,16 +235,20 @@ class KPlacement(Placement):
             log.warn("All compatibale middlebox machines are fully loaded. Element cannot be placed.")
             print "ERROR"*100
             return None
-        if (len(machines) == 1): # No need if we have only one available machine.
-            return machines[0]
-        # Check which partitions have the element and which do not and place the
-        # elements based on that.
-        partition_number = self._get_partition_number_to_place(flowspace_desc, elem_name)
 
+        #if (len(machines) == 1): # No need if we have only one available machine.
+        #    # Check if the machine is in the same partition.
+        #    return machines[0]
+
+        partition_machines = get_partition_machines(partition_number, machines)
         # Place the element_name in the provided partition_number.
-        machine_mac = self._get_partition_placement(elem_name, machines, partition_number)
+        machine_mac = self._get_partition_placement(elem_name, nodes, partition_machines, partition_number)
         return machine_mac
 
+    def get_partition_machines(self, partition_number, machines):
+        """Given the list list of all midldlebox machines and partition number,
+            return the list of machines that belong to the partition."""
+        pass
 
     def _get_partition_number_to_place(self, flowspace_desc, elem_name):
         """Given the element_name return the partition number to place
@@ -149,11 +307,12 @@ class KPlacement(Placement):
                 continue
         return False
 
-    def _get_partition_placement(self, elem_name, machines, partition_number):
+    def _get_partition_placement(self, elem_name, nodes, machines, partition_number):
         """
             Args: 
                 elem_name: element name string.
                 machines: list of machine mac addresses which are compatible with element name and are not at full capacity from Virtual machine perspective..
+                nodes: Place elements near the nodes.
                 partition_number: Network partition number where to place the elements.
             Returns:
                 machine mac address.
@@ -161,11 +320,7 @@ class KPlacement(Placement):
         selected_machine_mac = None
         # Get the recommended placement for the element.
         placement_pref = self.network_model.get_elem_placement_pref(elem_name)
-        leg_type = self.network_model.get_elem_leg_type(elem_name)
-        print "X"*200
-        print elem_name, leg_type, placement_pref
-        print "X"*200
-        if leg_type == "E":
+        if not nodes: # => we are placing in the partition for element of leg_type E
             if (placement_pref == None or placement_pref == "middle"):
                 # If we calculate betweenness on all switches its possible to find
                 # a central node where we cannot place the element instance.
@@ -175,25 +330,53 @@ class KPlacement(Placement):
                 selected_machine_mac = self._get_element_instance_near_source(partition_number, machines)
             if (placement_pref == "far"):
                 selected_machine_mac = self._get_element_instance_near_destination(partition_number, machines)
-        # Figure out "near" and "far" for the flows.
-        """Need a module that can detect the "near" and "far" for a policy
-        and place the elements near the source or destination.
-        """
-        if (leg_type == "L"):
-            # Given the demand matrix and element name find the max need for element instances.
-            max_num_elem_instances = self.network_model.get_max_element_instances(element_name)
-            # Get current element instances.
-            elem_descs = self.network_model.get_elem_descs(element_name)
-            current_num_elem_descs = len(elem_descs)
-            if current_num_elem_descs < max_num_elem_instances:
-                selected_machine_mac = self._get_element_instance_near_destination(machines)
-            else:
-                # This means there is room for optimization and element instances
-                # can be moved to free up resources.
-                log.warn (" We are going above the quota.")
-        if (leg_type == "G"):
-            selected_machine_mac = self._get_element_instance_near_source(machines)
+        if nodes:
+            selected_machine_mac = self._get_element_instance_near_destination(machines)
+        #if (leg_type == "L"):
+        #    # Given the demand matrix and element name find the max need for element instances.
+        #    max_num_elem_instances = self.network_model.get_max_element_instances(element_name)
+        #    # Get current element instances.
+        #    elem_descs = self.network_model.get_elem_descs(element_name)
+        #    current_num_elem_descs = len(elem_descs)
+        #    if current_num_elem_descs < max_num_elem_instances:
+        #        selected_machine_mac = self._get_element_instance_near_destination(machines)
+        #    else:
+        #        # This means there is room for optimization and element instances
+        #        # can be moved to free up resources.
+        #        log.warn (" We are going above the quota.")
+        #if (leg_type == "G"):
+        #    selected_machine_mac = self._get_element_instance_near_source(machines)
         return selected_machine_mac
+
+    def _get_closeneess_centrality(self, partition_number, machines):
+        # 1- Get machine to switch mapping.
+        central_machine_mac = None
+        switch_list = [ ]
+        for machine in machines:
+            switch_mac = self.network_model.overlay_net.get_connected_switch(machine)
+            switch_list.append(switch_mac)
+        # 2- Get the partition graph from the physical graph of the switches.
+        # Get the graph for all the switches in the network.
+        placement_graph = self.network_model.physical_net.get_placement_graph()
+        partition_nodes = self.network_model.physical_net.get_partition_nodes(partition_number)
+        print "Partition Nodes:", partition_nodes
+        partition_subgraph = nx.Graph(placement_graph.subgraph(partition_nodes))
+        print "Subgraph Edges:", partition_subgraph.edges()
+
+        # 3- Find the highest centrality node.
+        # A dict of centralities node-> centrality
+        node_cents = nx.closeness_centrality(partition_subgraph, normalized = True)
+        print node_cents
+        sorted_centralities = sorted(node_cents.iteritems(), key=operator.itemgetter(1), reverse=True)
+        print sorted_centralities
+        log.debug("Sorted Centralities: " + str(sorted_centralities))
+        central_machine_mac = self._select_not_used_machine(sorted_centralities, machines)
+        if not central_machine_mac:
+            all_reg_machines = self.network_model.get_all_registered_machines()
+            if len(self._used_macs) >= len(all_reg_machines):
+                self._used_macs[:] = [ ]
+                central_machine_mac = self._select_not_used_machine(sorted_centralities, machines)
+        return central_machine_mac
 
     def _get_betweenness_centrality(self, partition_number, machines):
         """Given the list of machines return the switch with highest betweenness
@@ -205,11 +388,13 @@ class KPlacement(Placement):
         Returns:
             machine mac address.
         """
+        # 1- Get machine to switch mapping.
         central_machine_mac = None
         switch_list = [ ]
         for machine in machines:
             switch_mac = self.network_model.overlay_net.get_connected_switch(machine)
             switch_list.append(switch_mac)
+        # 2- Get the partition graph from the physical graph of the switches.
         # Get the graph for all the switches in the network.
         placement_graph = self.network_model.physical_net.get_placement_graph()
         partition_nodes = self.network_model.physical_net.get_partition_nodes(partition_number)
@@ -217,6 +402,7 @@ class KPlacement(Placement):
         partition_subgraph = nx.Graph(placement_graph.subgraph(partition_nodes))
         print "Subgraph Edges:", partition_subgraph.edges()
 
+        # 3- Find the highest centrality node.
         # A dict of centralities node-> centrality
         node_cents = nx.betweenness_centrality(partition_subgraph, normalized = True)
         sorted_centralities = sorted(node_cents.iteritems(), key=operator.itemgetter(1), reverse=True)
@@ -268,60 +454,6 @@ class KPlacement(Placement):
                 return machine
         return None
 
-    """
-    # This function should be used to resolve the LEG heuristic in the network.
-    # This network allows us to save the bandwidth utiliztion.
-    """
-    def place_element(self, policy_direction, flowspace_desc, element_names):
-        """
-        policy_direction: is an enumerator that tells us if the direction
-            of the policy is: outgoing => South to North
-                              incoming => North to South
-                              inside => East to West or West to East
-        """
-        # Get the element name vector.
-        chain_elements = self.network_model.get_chain_elements(flowspace_desc)
-        if len(element_names) == 1:
-            element_name = element_names[0]
-            if policy_direction == "incoming":
-                if type(elment_name) == 'G':
-                    place_element_near_north(element_name)
-                if type(elment_name) == 'L':
-                    place_element_near_south(element_name)
-                if type(elment_name) == 'E':
-                    place_element_anywhere(element_name)
-            elif policy_direction == "outgoing":
-                if type(elment_name) == 'G':
-                    place_element_near_north(element_name)
-                if type(elment_name) == 'L':
-                    place_element_near_south(element_name)
-                if type(elment_name) == 'E':
-                    place_element_anywhere(element_name)
-            elif policy_direction == "inside":
-                if type(elment_name) == 'G':
-                    place_element_near_sources(element_name)
-                if type(elment_name) == 'L':
-                    place_element_near_destinations(element_name)
-                if type(elment_name) == 'E':
-                    place_element_anywhere(element_name)
-        if len(element_names) == 2:
-            decision = should_consolidate(element_names)
-            if decision == CONSOLIDATE:
-                macs = placement.get_placement(decision, element_names)
-                if len(macs) != 1:
-                    raise Exception("This should not happen.")
-            if decision  == DONT_CONSOLIDATE:
-                macs = placement.get_placement(decision, element_names)
-                if len(macs) != 2:
-                    raise Exception("This should not happen.")
-            if decision == DONT_CARE:
-                macs = placement.get_placement(decision, element_names)
-                if len(macs) != 1 or len(macs) != 2:
-                    raise Exception("This should not happen.")
-#    def should_consolidate(self, element_names):
-#        if len(element_names) == 2:
-#            fet_
-    
     def is_first_flowspace(self):
         active_fds = self.network_model.get_active_flowspace_descs()
         if len(active_fds):
@@ -329,3 +461,58 @@ class KPlacement(Placement):
         else:
             return True
 
+
+#    """
+#    # This function should be used to resolve the LEG heuristic in the network.
+#    # This network allows us to save the bandwidth utiliztion.
+#    """
+#    def place_element(self, policy_direction, flowspace_desc, element_names):
+#        """
+#        policy_direction: is an enumerator that tells us if the direction
+#            of the policy is: outgoing => South to North
+#                              incoming => North to South
+#                              inside => East to West or West to East
+#        """
+#        # Get the element name vector.
+#        chain_elements = self.network_model.get_chain_elements(flowspace_desc)
+#        if len(element_names) == 1:
+#            element_name = element_names[0]
+#            if policy_direction == "incoming":
+#                if type(elment_name) == 'G':
+#                    place_element_near_north(element_name)
+#                if type(elment_name) == 'L':
+#                    place_element_near_south(element_name)
+#                if type(elment_name) == 'E':
+#                    place_element_anywhere(element_name)
+#            elif policy_direction == "outgoing":
+#                if type(elment_name) == 'G':
+#                    place_element_near_north(element_name)
+#                if type(elment_name) == 'L':
+#                    place_element_near_south(element_name)
+#                if type(elment_name) == 'E':
+#                    place_element_anywhere(element_name)
+#            elif policy_direction == "inside":
+#                if type(elment_name) == 'G':
+#                    place_element_near_sources(element_name)
+#                if type(elment_name) == 'L':
+#                    place_element_near_destinations(element_name)
+#                if type(elment_name) == 'E':
+#                    place_element_anywhere(element_name)
+#        if len(element_names) == 2:
+#            decision = should_consolidate(element_names)
+#            if decision == CONSOLIDATE:
+#                macs = placement.get_placement(decision, element_names)
+#                if len(macs) != 1:
+#                    raise Exception("This should not happen.")
+#            if decision  == DONT_CONSOLIDATE:
+#                macs = placement.get_placement(decision, element_names)
+#                if len(macs) != 2:
+#                    raise Exception("This should not happen.")
+#            if decision == DONT_CARE:
+#                macs = placement.get_placement(decision, element_names)
+#                if len(macs) != 1 or len(macs) != 2:
+#                    raise Exception("This should not happen.")
+#    def should_consolidate(self, element_names):
+#        if len(element_names) == 2:
+#            fet_
+    

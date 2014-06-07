@@ -531,7 +531,7 @@ class ElementToApplication():
         if (self.application_handles.has_key(ed)):
             return self.application_handles[ed][0]
         else:
-            logging.error("No application for the element with element descriptor:", ed)
+            logging.error("No application for the element with element descriptor: %d", ed)
             raise slick_exceptions.InstanceNotFound("No application handle for element descriptor %d", ed)
 
     def get_app_desc(self, ed):
@@ -542,11 +542,11 @@ class ElementToApplication():
         Returns:
             Application descriptor
         """
-        if (self.application_handles.has_key(ed)):
-            return self.application_handles[ed][1]
-        else:
-            print "ERROR: There is no application for the function descriptor:",ed
-            return None
+        #if (self.application_handles.has_key(ed)):
+        return self.application_handles[ed][1]
+        #else:
+        #    logging.error("ERROR: There is no application for the function descriptor: %d",ed)
+        #    return None
 
     def contains_app(self, app_desc):
         """Return True if app_desc is registered as application.
@@ -573,7 +573,7 @@ class ElementToApplication():
         if (self.application_handles.has_key(ed)):
             return self.application_handles[ed][3] 
         else:
-            logging.error("No application for the element with element descriptor:", ed)
+            logging.error("No application for the element with element descriptor: %d", ed)
             raise slick_exceptions.InstanceNotFound("No parameters for element descriptor %d", ed)
 
 class FlowAffinity():

@@ -216,7 +216,7 @@ class PlacenSteer(object):
             # Thus resulting in load from many elements to be redirected to not_loaded_element_instance.
             ed = eds[0]
             avail_eds = self.controller.network_model.get_not_loaded_element_descs(element_name)
-            #print avail_eds
+            print "Available Element Descriptors: ",avail_eds
             # TODO: Add the check to see if we don't have avail_eds in the same network partition.
             # Then create new element instnace; even if there are available in other partitions.
             if len(avail_eds) == 0:
