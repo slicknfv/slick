@@ -7,8 +7,8 @@
         "inline": true,
         "affinity" : false,
         "bidirection" : true,
-        "leg" : "L",
-        "leg_factor" : 0.5,
+        "leg" : "G",
+        "leg_factor" : 2,
         "stateful" : false,
         "triggers": [
         ]

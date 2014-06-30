@@ -14,24 +14,27 @@ class Less(Element):
         # If this value is 9 => drop 9 packets out of 10 and so on.
         self.drop_rate = 2
         self.pkt_count = 0
+        self.total_count = 0
 
     def init( self, params ):
         filename = params["file_name"]
         filename += str(self.ed)
-        pkt_count = params["pkt_count"]
+        drop_count = params["drop_count"]
         if(filename):
             self.file_handle = open( filename, 'a+' , 0)
-        if pkt_count:
-            self.pkt_count = pkt_count
+        if drop_count:
+            self.drop_count = drop_count
 
     def process_pkt( self, buf ):
         flow = self.extract_flow( buf )
         timestamp = datetime.datetime.now()
-        self.file_handle.write( str(timestamp) + ' ' + str(flow) + '\n' )
         self.pkt_count +=1
-        if self.pkt_count >= self.drop_rate:
+        self.total_count += 1
+        if self.pkt_count >= self.drop_count:
+            print "Dropping packet number:",self.pkt_count
             self.pkt_count = 0
             return
+        self.file_handle.write( str(self.total_count) + ' '+ str(timestamp) + ' ' + str(flow) + '\n' )
         return buf
 
     def shutdown( self ):
