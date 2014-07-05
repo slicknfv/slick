@@ -16,11 +16,12 @@ class Logger1(Element):
         if(filename):
             self.file_handle = open( filename, 'a+' , 0)
 
-    def process_pkt( self, buf ):
-        flow = self.extract_flow( buf )
-        timestamp = datetime.datetime.now()
-        self.file_handle.write( str(timestamp) + ' ' + str(flow) + '\n' )
-        return buf
+    def process_pkt( self, packets ):
+        for buf in packets:
+            flow = self.extract_flow( buf )
+            timestamp = datetime.datetime.now()
+            self.file_handle.write( str(timestamp) + ' ' + str(flow) + '\n' )
+        return packets
 
     def shutdown( self ):
         print "Shutting down Logger1 with element descriptor:", self.ed
