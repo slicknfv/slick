@@ -31,8 +31,8 @@ class Less(Element):
         for index, buf in enumerate(packets):
             flow = self.extract_flow( buf )
             timestamp = datetime.datetime.now()
-            self.pkt_count +=1
-            self.total_count += 1
+            self.pkt_count = self.pkt_count + len(packets)
+            self.total_count = self.total_count + len(packets)
             if self.pkt_count >= self.drop_count:
                 print "Dropping packet number:",self.total_count
                 self.pkt_count = 0
