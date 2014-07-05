@@ -25,17 +25,26 @@ class Less(Element):
         if drop_count:
             self.drop_count = drop_count
 
-    def process_pkt( self, buf ):
-        flow = self.extract_flow( buf )
-        timestamp = datetime.datetime.now()
-        self.pkt_count +=1
-        self.total_count += 1
-        if self.pkt_count >= self.drop_count:
-            print "Dropping packet number:",self.pkt_count
-            self.pkt_count = 0
-            return
-        self.file_handle.write( str(self.total_count) + ' '+ str(timestamp) + ' ' + str(flow) + '\n' )
-        return buf
+    def process_pkt( self, packets ):
+        dropped = False
+        ret_packets = packets
+        for index, buf in enumerate(packets):
+            flow = self.extract_flow( buf )
+            timestamp = datetime.datetime.now()
+            self.pkt_count +=1
+            self.total_count += 1
+            if self.pkt_count >= self.drop_count:
+                print "Dropping packet number:",self.total_count
+                self.pkt_count = 0
+                del ret_packets[index]
+                dropped = True
+                #return
+            if not dropped:
+                self.file_handle.write( str(self.total_count) + ' '+ str(timestamp) + ' ' + str(flow) + '\n' )
+            else:
+                self.file_handle.write( str(self.total_count) + ' DROPPED '+ str(timestamp) + ' ' + str(flow) + '\n' )
+            print ret_packets
+            return ret_packets
 
     def shutdown( self ):
         print "Shutting down Logger with element descriptor:", self.ed
