@@ -203,7 +203,7 @@ class Shim:
         self.demux(buf)
 
 
-    def demux(self, buf):
+    def demux_old(self, buf):
         """Demuxes the traffic. 
 
         It takes a packet and extracts the flow.
@@ -250,6 +250,28 @@ class Shim:
             #    func_handle = self.client_service.get_function_handles_from_flow(reverse_flow)
             #    if(func_handle):
             #        func_handle.process_pkt(buf)
+
+    def demux(self, buf):
+        packet = dpkt.ethernet.Ethernet(buf)
+        flow = self.extract_flow(packet)
+        if(flow[NW_DST] == socket.inet_aton(self.mb_ip)):
+            print "NOT USING IT"
+        else:
+            func_handles = self.client_service.get_function_handles_from_flow(flow)
+            if(func_handles):
+                # Should a trigger be raised
+                self.shim_resources.calc_triggers(flow)
+                processed_pkt = [ ]
+                buf = [buf]
+                for func_handle in func_handles:
+                    processed_pkt = func_handle.process_pkt(buf)
+                    if processed_pkt:
+                        buf = processed_pkt
+                        continue
+                    else:
+                        break
+                if processed_pkt:
+                    self.client_service.fwd_pkt(buf)
 
     def get_active_flows(self):
         return self.client_service.shim_table.get_active_flows()
