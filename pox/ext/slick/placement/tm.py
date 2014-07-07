@@ -1,6 +1,5 @@
 # This file has code to get the traffic matrix for the given time period.
 
-
 traffic_matrix_dir = "/home/mininet/abiline/2004/"
 
 class TrafficMatrix():
@@ -32,29 +31,34 @@ class TrafficMatrix():
                     else:
                         if len(line) >= 10:
                             data_rates_GBytes_per_sec = line.split(',')
-                            print data_rates_GBytes_per_sec
                             for index, data_rate in enumerate(data_rates_GBytes_per_sec):
-                                print index, float(data_rate)
                                 row = (line_count%lines_to_skip)
-                                print lines_to_skip, line_count
+                                #print lines_to_skip, line_count
                                 col = index
                                 dict_matrix[(row, col)] = float(data_rate)
-                                print (row,col), float(data_rate)
+                                #print (row,col), float(data_rate)
                             pass
                         pass
                         line_count +=1
-        print dict_matrix
+        #print dict_matrix
         return dict_matrix
 
     def get_sources_and_destinations(self, traffic_matrix):
         """Given the traffic matrix return the list of sources 
-        and destinations for the flowsapce."""
+        and destinations for the flowsapce.
+        Args:
+            traffic_matrix: A dict of traffic matrix.
+        Returns:
+            Two lists.
+        """
         sources = [ ]
         destinations =  [ ]
         for key, value in traffic_matrix.iteritems():
             if value != 0:
-                sources.append(key[0])
-                destinations.append(key[1])
+                if key[0] not in sources:
+                    sources.append(key[0])
+                if key[1] not in destinations:
+                    destinations.append(key[1])
         return sources, destinations
 
 # TESTING CODE

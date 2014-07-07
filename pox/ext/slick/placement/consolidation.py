@@ -56,6 +56,32 @@ class Consolidate():
                 #print a_part
         return valid_partitions
 
+    def _get_single_element_assignment(self, element_name, leg_factor):
+        min_cost_partition = [[element_name]]
+        min_cost_combination = None
+        leg_type = self.network_model.get_elem_leg_type(element_name)
+        if leg_type == 'E':
+            min_cost_combination = ['ANY'] 
+        if leg_type == 'L':
+            min_cost_combination = ['DESTS'] 
+        if leg_type == 'G':
+            min_cost_combination = ['SRCS'] 
+        return min_cost_partition, min_cost_combination
+
+    def _translate_virtual_locs_to_place(self, element_names, virtual_locs_to_place):
+        """Given the virtual location assignment. Translate it into:
+        LEG for the consolidated element and return the resulting translated list
+        of the same size as virtual_locs_to_place."""
+        leg_translation = [ ]
+        for pos_to_place_element in virtual_locs_to_place:
+            if pos_to_place_element == 0:
+                leg_translation.append('SRCS') # Its a consolidated element with type G
+            if pos_to_place_element == len(element_names)-1:
+                leg_translation.append('DESTS') # Its a consoldiated element with type L
+            if (pos_to_place_element != len(element_names)-1) and (pos_to_place_element != 0):
+                leg_translation.append('ANY') # Its a non-consolidated element with E.
+        return leg_translation
+
     def get_least_cost_assignment(self, valid_partitions, element_names, leg_factors):
         """valid partitions: Its a list of list of valid partitions.
         leg_factors: Its a list of LEG factos for the element instances.
@@ -66,6 +92,9 @@ class Consolidate():
         min_cost_partition = None
         links = OrderedDict() # list of tuples src->elem1 -> elem2 -> elem3 ->dst
         total_links = len(element_names) + 2
+        if len(element_names) == 1:
+            min_cost_partition, min_cost_combination =  self._get_single_element_assignment(element_names[0], leg_factors[0])
+            return min_cost_partition, min_cost_combination
         for index, elem_name in enumerate(element_names):
             if index == 0:
                 # This is the first link from source hosts to switch so 
@@ -87,11 +116,20 @@ class Consolidate():
             for c in combos:
                 combination_cost = self._calculate_combinations_link_cost(locs, links, c, leg_factors, partition)
                 print "Cost for combination: ",c," =",combination_cost
-                if combination_cost < min_combination_cost:
+                # We want to check if even the same cost combination requires less consolidation or not.
+                # Hence equal to  in lte(less than or equal to) comparison.
+                if combination_cost <= min_combination_cost:
                     min_combination_cost = combination_cost
                     min_cost_combination = c
-                    min_cost_partition = partition
+                    # We prefer more distributed nodes than more consolidated nodes.
+                    if min_cost_partition:
+                        if len(partition) > len(min_cost_partition):
+                            min_cost_partition = partition
+                    else:
+                        min_cost_partition = partition
             print "Min. Cost combination:", min_cost_combination, min_combination_cost
+        print "Partition of Elements, min_cost_partition", min_cost_partition, min_cost_combination
+        min_cost_combination = self._translate_virtual_locs_to_place(element_names, min_cost_combination)
         return min_cost_partition, min_cost_combination
 
     def _get_cost_change(self, starting_cost, leg_factors, consolidated_element):
@@ -142,6 +180,19 @@ if __name__ == '__main__':
     print consolidate._is_valid_partition(['a','b','c','d'], [['a','b','c'],['d']])
     print consolidate._is_valid_partition(['a','b','c','d'], [['a','b','d'],['c']])
     consolidation_combinations = consolidate.generate_consolidation_combinations(elem_names)
-    leg_factors = [ ('a',0.5),('b',1), ('c',1), ('d',1)]
+    #leg_factors = [ ('a',0.5),('b',1), ('c',1), ('d',1)]
+    #                   L         E        E       E
+    #leg_factors = [ ('a',0.5),('b',1), ('c',1), ('d',2)]
+    #                   L        E         E        G
+    leg_factors = [ ('a',1.5),('b',1), ('c',1), ('d',0.5)]
+    # For this assignment the best combination for virtual locs to place elements is: (0,1,2,3)
+    # even though (0,3) with consolidation has the same cost but has less freedom to place the
+    # elements on the virtual locations.
+    #                   G        E         E        L
+
+    #leg_factors = [ ('a',1.5),('b',0.75), ('c',1.25), ('d',0.5)]
+    #                   G        L           G            L
+    #leg_factors = [ ('a',1.5),('b',0.75), ('c',1.25), ('d',0.5)]
+    #                   G        L           G            L
     least_cost_assignment = consolidate.get_least_cost_assignment(consolidation_combinations, elem_names, leg_factors)
 
