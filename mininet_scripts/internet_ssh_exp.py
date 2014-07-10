@@ -171,32 +171,38 @@ def start_sshd( network, cmd='/usr/sbin/sshd', opts='-D' ):
 #        print host.name, host.IP()
 #    print
 
-def read_config(filename):
+def read_config(network, filename):
     """Read the configuration file for the hosts that have the
     middlebox machine and hosts that can be used for sources and destinations.
     Args:
         filename: file name to read the config file.
     Returns:
         Two arrays of middlebox names and hosts."""
-    config_dict = read_json(filename)
-    middleboxes = config_dict["middlebox_machines"]
-    hosts = config_dict["hosts"]
+    middleboxes = [ ]
+    hosts = [ ]
+    for host in network.hosts:
+        # Experimenting with all hosts as middleboxes.
+        middleboxes.append(host.name)
+        hosts.append(host.name)
+    #config_dict = read_json(filename)
+    #middleboxes = config_dict["middlebox_machines"]
+    #hosts = config_dict["hosts"]
     return middleboxes, hosts
 
 def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, traffic_pattern, kill_wait_sec):
     """Perform the operation specified with provided parameters."""
     if filename:
-        middlebox_names , hosts = read_config(filename)
+        middlebox_names , hosts = read_config(network, filename)
         print "Middlebox Machines: ", middlebox_names
         print "Network Servers: ", hosts
     else:
         print "No filename provided to laod the network configuration."
-    if middlebox_machines:
+    if middlebox_machines: # In case user has provided with the middlebox machine names. Use those instead of config file.
         middlebox_names = middlebox_machines
     if src_dst_pairs:
         hosts = src_dst_pairs
     middleboxes.load_shims(network, middlebox_names)
-    #middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
+    middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
 
 def setup_sflow(network, switch_names):
     print "Setting up sflow agents on all the switches."
@@ -332,6 +338,19 @@ if __name__ == '__main__':
     if traffic_pattern and kill_wait_sec:
         # Once the network is built read the configuration file and start the software.
         perform_experiment( net, config_filename, middlebox_machines, src_dst_pairs, traffic_pattern, kill_wait_sec)
+
+        time.sleep(5)
+        # Shut down NAT
+        stopNAT( rootnode )
+        # Stop sflow
+        sflow.stop_sflow( )
+
+        print "**** Cleaning up ssh background jobs..."
+        # HACK: This assumes ssh is the only thing in the background on these hosts
+        for host in net.hosts:
+            host.cmd('kill %1')
+
+        net.stop()
     else:
         print "WARNING: Not performing the experiment as required parameters are missing."
 

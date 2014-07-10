@@ -8,7 +8,7 @@ import networkx as nx
 from mininet.topo import Topo
 import matplotlib.pyplot as plt
 
-HOSTS_PER_SWITCH = 1
+HOSTS_PER_SWITCH = 4
 
 class NetworkXTopo(Topo):
     def __init__(self):
@@ -239,7 +239,7 @@ def main(argv):
     #build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/unv2.cdp.txt", True)
     #build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/unv1.cdp.txt", True)
     #build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/prv1.cdp.txt", True)
-    build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/abilene.txt", True)
+    build_topo("/home/mininet/middlesox/mininet_scripts/topo_data/atlanta.txt", True)
 
 if __name__ == "__main__":
     main(sys.argv[1:])

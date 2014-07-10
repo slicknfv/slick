@@ -3,6 +3,7 @@ import time
 from signal import SIGINT
 from sets import Set
 from collections import defaultdict
+import subprocess, shlex
 import xml.etree.ElementTree as ET
 
 from mininet.util import custom, pmonitor
@@ -26,10 +27,25 @@ def load_shims(network, mblist):
     for mbhost in mblist:
         mb = network.getNodeByName(mbhost)
         print "Starting shim on host:", mbhost
-        popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", shell=False)
+        #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", shell=True)
+        popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE, shell=True)
         # Wait for n seconds to bring up one element instance.
         print "Waiting for shim layer to be started."
         time.sleep(0.25)
+
+### Start ping between hosts
+def startpings( host, target, wait_time, attach_str):
+  "Tell host to repeatedly ping targets"
+
+  # Simple ping loop
+  cmd = ( 'while true; do '
+          ' echo -n %s "->" %s ' % (host.IP(), target) + 
+          ' `ping %s -i %s -W 1.0 >> ../results/%s_%s__%s`;' % (target, str(wait_time), host.IP(), target, attach_str) + 
+          ' break;'
+          'done &' )
+  print '%s is pinging %s -i %s -W 1.0' \
+           % (  host.IP(),target, str(wait_time) )  
+  host.cmd( cmd )
 
 def execute_command_ping(network, hosts, command, single_command_timeoutms=1000, kill_wait_sec=15):
     """Args:
@@ -44,9 +60,12 @@ def execute_command_ping(network, hosts, command, single_command_timeoutms=1000,
     output = [ ]
     for hostname in hosts:
         host = network.get(hostname)
-        popens[ hostname ] = host.popen(command, shell=False)
+        #popens[ hostname ] = host.popen(command, shell=False)
+        popens[ hostname ] = host.popen(command)
     print "Monitoring output for", kill_wait_sec, "seconds"
     endTime = time.time() + kill_wait_sec
+    print endTime
+    print popens
     for h, line in pmonitor( popens, timeoutms=single_command_timeoutms ):
         if h:
             if len(line) > 10: # This is due to a bug where new lines are printed.
@@ -54,6 +73,8 @@ def execute_command_ping(network, hosts, command, single_command_timeoutms=1000,
         if time.time() >= endTime:
             for p in popens.values():
                 p.send_signal( SIGINT )
+            break
+    print output
     for line in output:
         if len(line) > 10:
             print line,
@@ -69,24 +90,52 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
     if len(hosts) == 0:
         # => All the hosts should be used as client.
         hstar = True
+    if traffic_pattern == 12345:
+        target = "www.google.com"
+        attach_str = 'TEMP'
+        wait_time = 1
+        for host in network.hosts:
+            startpings(host, target, wait_time, attach_str)
+   
+        time.sleep(30)
+
+        # Stop pings
+        for host in network.hosts:
+          host.cmd( 'kill %while' )
+          host.cmd( 'pkill ping' )
+
+        print "c. Stopping Mininet"
+        network.stop()
     if traffic_pattern == patterns.PING_SINGLE_IP_OUTSIDE_NETWORK:
         seconds = kill_wait_sec
         if hstar == True:
+            print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
             # Returns the list of host names.
             for h in network.hosts:
-                print h
                 all_hosts.add(h.name)
-            hosts = all_hosts - Set(middleboxes)
+            #hosts = all_hosts - Set(middleboxes)
         print all_hosts
         print Set(middleboxes)
         print hosts
         print network.hosts
-        #command = "ping -c 5 www.google.com"
-        command = "ping -c 50 143.215.129.1"
+        command = "ping -c 50 www.google.com"
+        #command = "ping -c 3 143.215.129.1"
         #command = "wget -S www.google.com"
-        output = execute_command_ping(network, hosts, command, 10000, kill_wait_sec)
+        output = execute_command_ping(network, hosts, command, 1000, kill_wait_sec)
         latency_dict = _get_latency(output)
         print latency_dict
+        min_lat = 1234567890
+        max_lat = 0
+        total_lat = 0
+        for host, avg_host_latency in latency_dict.iteritems():
+            if avg_host_latency < min_lat:
+                min_lat = avg_host_latency
+            if avg_host_latency > max_lat:
+                max_lat = avg_host_latency
+            total_lat += avg_host_latency
+        avg_lat = total_lat/len(network.hosts)
+        print "Average Latency experiment:", avg_lat
+        print "Total number of hosts:", len(network.hosts)
     if traffic_pattern == patterns.HARPOON_EAST_WEST:
         if hstar == True:
             # Returns the list of host names.
