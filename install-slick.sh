@@ -96,6 +96,11 @@ sudo apt-get install python-dumbnet
 
 echo ""
 echo ""
+echo "*** Installing python-dumbnet..."
+sudo pip install PartitionSets
+
+echo ""
+echo ""
 echo "*** Creating/Updating links to libraries..."
 sudo ldconfig
 
