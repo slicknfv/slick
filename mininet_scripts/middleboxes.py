@@ -28,7 +28,9 @@ def load_shims(network, mblist):
         mb = network.getNodeByName(mbhost)
         print "Starting shim on host:", mbhost
         #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", shell=True)
-        popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE, shell=True)
+        #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE, shell=True)
+        #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE) # Does not work on FatTree
+        mb.cmd("sudo python /home/mininet/middlesox/shim/shim.py &")
         # Wait for n seconds to bring up one element instance.
         print "Waiting for shim layer to be started."
         time.sleep(0.25)
@@ -47,7 +49,7 @@ def startpings( host, target, wait_time, attach_str):
            % (  host.IP(),target, str(wait_time) )  
   host.cmd( cmd )
 
-def execute_command_ping(network, hosts, command, single_command_timeoutms=1000, kill_wait_sec=15):
+def execute_command_ping1(network, hosts, command, time_between_commands = 1, single_command_timeoutms=1000, kill_wait_sec=15):
     """Args:
         hosts: List of hosts to execute the command.
         command: string of command to execute.
@@ -60,8 +62,31 @@ def execute_command_ping(network, hosts, command, single_command_timeoutms=1000,
     output = [ ]
     for hostname in hosts:
         host = network.get(hostname)
-        #popens[ hostname ] = host.popen(command, shell=False)
-        popens[ hostname ] = host.popen(command)
+        print "Pinging from host:", hostname, " with command:" ,command
+        ping_result = host.cmd(command)
+        output_array = ping_result.split("\n")
+        for line in output_array:
+            output.append( '<%s>: %s' % ( hostname,  line ))
+            print '<%s>: %s' % ( hostname,  line )
+        time.sleep(time_between_commands)
+    return output
+
+def execute_command_ping(network, hosts, command, time_between_commands = 1, single_command_timeoutms=1000, kill_wait_sec=15):
+    """Args:
+        hosts: List of hosts to execute the command.
+        command: string of command to execute.
+        single_command_timeoutms: timeout in ms for the command.
+        kill_wait_sec: Time to wait in sec before sending SIGINT.
+    Returns:
+        A list of stdout line by line.
+    """
+    popens = { }
+    output = [ ]
+    for hostname in hosts:
+        host = network.get(hostname)
+        print "Pinging from host:", hostname, " with command:" ,command
+        popens[ hostname ] = host.popen(command, stdout=subprocess.PIPE) # Does not work on FatTree
+        time.sleep(time_between_commands)
     print "Monitoring output for", kill_wait_sec, "seconds"
     endTime = time.time() + kill_wait_sec
     print endTime
@@ -118,15 +143,26 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
         print Set(middleboxes)
         print hosts
         print network.hosts
-        command = "ping -c 50 www.google.com"
+        #command = "ping -c 50 www.google.com"
         #command = "ping -c 3 143.215.129.1"
         #command = "wget -S www.google.com"
-        output = execute_command_ping(network, hosts, command, 1000, kill_wait_sec)
+        time.sleep(15)
+        # Performing single pings to create new instances.
+        command = "ping -c 1 192.168.56.101"
+        #output = execute_command_ping(network, hosts, command, 1, 1000, 30) # This will work for other Topos
+        output = execute_command_ping1(network, hosts, command, 1, 1000, 30) # This will work for FatTree Topo
+        time.sleep(15)
+        command = "ping -i 0.5 -c 100 192.168.56.101"
+        #output = execute_command_ping(network, hosts, command, 12, 1000, kill_wait_sec)# This will work for other Topos
+        output = execute_command_ping1(network, hosts, command, 12, 1000, kill_wait_sec)# This will work for FatTree Topo
         latency_dict = _get_latency(output)
         print latency_dict
         min_lat = 1234567890
         max_lat = 0
         total_lat = 0
+
+        for host in hosts:
+            print host,',',int(latency_dict[host])
         for host, avg_host_latency in latency_dict.iteritems():
             if avg_host_latency < min_lat:
                 min_lat = avg_host_latency
@@ -214,11 +250,17 @@ def _get_latency(output):
         if ("rtt min/avg/max/mdev" in line) or ("min/avg/max/stddev" in line):
             line.rstrip()
             output_array = line.replace("/"," ").split(" ")
-            print output_array
+            #print output_array
             min_lat = float(output_array[7])
             avg_lat = float(output_array[8])
             host_name = output_array[0].strip('<').strip('>:')
             latency_dict[host_name] = avg_lat
+        if ("transmitted" in line):
+            line.rstrip()
+            output_array = line.split(" ")
+            print output_array
+            if output_array[6] != "0%":
+                print "Error: There was a packet drop."
     return latency_dict
 
 def start_iperf(network, mblist):

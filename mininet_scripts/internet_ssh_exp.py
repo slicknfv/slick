@@ -202,6 +202,7 @@ def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, tra
     if src_dst_pairs:
         hosts = src_dst_pairs
     middleboxes.load_shims(network, middlebox_names)
+    time.sleep(10)
     middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
 
 def setup_sflow(network, switch_names):
@@ -285,7 +286,7 @@ if __name__ == '__main__':
         topo = JellyfishTopo(seed = jellyfish_seed)
     elif options.treedepth and options.fanout:
         print "Building Tree Topology."
-        topo = TreeTopo( depth = int(options.treedepth), fanout = int(options.fanout) , bw =1)
+        topo = TreeTopo( depth = int(options.treedepth), fanout = int(options.fanout) , bw =1, delay='1ms')
     else:
         topo = TreeTopo( depth = 1, fanout = 3)
     # 6633 is controller port, 6634 is for dpctl queries, dump-flows etc.
@@ -339,18 +340,18 @@ if __name__ == '__main__':
         # Once the network is built read the configuration file and start the software.
         perform_experiment( net, config_filename, middlebox_machines, src_dst_pairs, traffic_pattern, kill_wait_sec)
 
-        time.sleep(5)
-        # Shut down NAT
-        stopNAT( rootnode )
-        # Stop sflow
-        sflow.stop_sflow( )
+        #time.sleep(5)
+        ## Shut down NAT
+        #stopNAT( rootnode )
+        ## Stop sflow
+        #sflow.stop_sflow( )
 
-        print "**** Cleaning up ssh background jobs..."
-        # HACK: This assumes ssh is the only thing in the background on these hosts
-        for host in net.hosts:
-            host.cmd('kill %1')
+        #print "**** Cleaning up ssh background jobs..."
+        ## HACK: This assumes ssh is the only thing in the background on these hosts
+        #for host in net.hosts:
+        #    host.cmd('kill %1')
 
-        net.stop()
+        #net.stop()
     else:
         print "WARNING: Not performing the experiment as required parameters are missing."
 
