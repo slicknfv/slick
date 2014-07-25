@@ -98,9 +98,10 @@ class JellyfishTopo(StructuredTopo):
     return d
 
   def __init__(self, seed=0, switches=16, nodes=4, ports_per_switch=4,
-               hosts_per_switch=1, bw=40):
+               hosts_per_switch=1, bw=40, delay='1ms'):
     # Add default members to class.
     self.bw = bw
+    self.delay = delay
     self.id_gen = JellyfishNodeID
     random.seed(seed)
 
@@ -139,7 +140,7 @@ class JellyfishTopo(StructuredTopo):
         switch = self.addSwitch(switch_id, **switch_opts)
         lg.debug("Adding switch: %s\n" % (switch_id))
         for host in host_list:
-          self.addLink(host, switch, bw=self.bw)
+          self.addLink(host, switch, bw=self.bw, delay=self.delay)
           lg.debug("Adding link: %s to %s\n" % (str(host), str(switch)))
         host_list = []
         switch_num += 1
@@ -226,7 +227,7 @@ class JellyfishTopo(StructuredTopo):
         break
 
     for link in added_links:
-      self.addLink(link[0], link[1], bw=self.bw)
+      self.addLink(link[0], link[1], bw=self.bw, delay=self.delay)
 
 topos = {'jellyfish': JellyfishTopo}
 
