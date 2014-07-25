@@ -10,6 +10,7 @@ repeated structure.  The main class is StructuredTopo, which augments the
 standard Mininet Topo object with layer metadata plus convenience functions to
 enumerate up, down, and layer edges.
 '''
+import networkx as nx
 
 from mininet.topo import Topo
 
@@ -174,48 +175,50 @@ class StructuredTopo(Topo):
         edges = [(name, n) for n in self.down_nodes(name)]
         return edges
 
-#    def draw(self, filename = None, edge_width = 1, node_size = 1,
-#             node_color = 'g', edge_color = 'b'):
-#        '''Generate image of RipL network.
-#
-#        @param filename filename w/ext to write; if None, show topo on screen
-#        @param edge_width edge width in pixels
-#        @param node_size node size in pixels
-#        @param node_color node color (ex 'b' , 'green', or '#0000ff')
-#        @param edge_color edge color
-#        '''
-#        import matplotlib.pyplot as plt
-#
-#        pos = {} # pos[vertex] = (x, y), where x, y in [0, 1]
-#        for layer in range(len(self.node_specs)):
-#            v_boxes = len(self.node_specs)
-#            height = 1 - ((layer + 0.5) / v_boxes)
-#
-#            layer_nodes = sorted(self.layer_nodes(layer, False))
-#            h_boxes = len(layer_nodes)
-#            for j, dpid in enumerate(layer_nodes):
-#                pos[dpid] = ((j + 0.5) / h_boxes, height)
-#
-#        fig = plt.figure(1)
-#        fig.clf()
-#        ax = fig.add_axes([0, 0, 1, 1], frameon = False)
-#
-#        draw_networkx_nodes(self.g, pos, ax = ax, node_size = node_size,
-#                               node_color = node_color, with_labels = False)
-#        # Work around networkx bug; does not handle color arrays properly
-#        for edge in self.edges(False):
-#            draw_networkx_edges(self.g, pos, [edge], ax = ax,
-#                                edge_color = edge_color, width = edge_width)
-#
-#        # Work around networkx modifying axis limits
-#        ax.set_xlim(0, 1.0)
-#        ax.set_ylim(0, 1.0)
-#        ax.set_axis_off()
-#
-#        if filename:
-#            plt.savefig(filename)
-#        else:
-#            plt.show()
+    def draw(self, filename = None, edge_width = 1, node_size = 1,
+             node_color = 'g', edge_color = 'b'):
+        '''Generate image of RipL network.
+
+        @param filename filename w/ext to write; if None, show topo on screen
+        @param edge_width edge width in pixels
+        @param node_size node size in pixels
+        @param node_color node color (ex 'b' , 'green', or '#0000ff')
+        @param edge_color edge color
+        '''
+        nx.write_dot(self.g, "miniet_graph.dot")
+        #import matplotlib.pyplot as plt
+
+        #pos = {} # pos[vertex] = (x, y), where x, y in [0, 1]
+        #for layer in range(len(self.node_specs)):
+        #    v_boxes = len(self.node_specs)
+        #    height = 1 - ((layer + 0.5) / v_boxes)
+
+        #    #layer_nodes = sorted(self.layer_nodes(layer, False))
+        #    layer_nodes = sorted(self.layer_nodes(layer))
+        #    h_boxes = len(layer_nodes)
+        #    for j, dpid in enumerate(layer_nodes):
+        #        pos[dpid] = ((j + 0.5) / h_boxes, height)
+
+        #fig = plt.figure(1)
+        #fig.clf()
+        #ax = fig.add_axes([0, 0, 1, 1], frameon = False)
+
+        #nx.draw_networkx_nodes(self.g, pos, ax = ax, node_size = node_size,
+        #                       node_color = node_color, with_labels = False)
+        ## Work around networkx bug; does not handle color arrays properly
+        #for edge in self.edges(False):
+        #    nx.draw_networkx_edges(self.g, pos, [edge], ax = ax,
+        #                        edge_color = edge_color, width = edge_width)
+
+        ## Work around networkx modifying axis limits
+        #ax.set_xlim(0, 1.0)
+        #ax.set_ylim(0, 1.0)
+        #ax.set_axis_off()
+
+        #if filename:
+        #    plt.savefig(filename)
+        #else:
+        #    plt.show()
 
 
 class FatTreeTopo(StructuredTopo):
