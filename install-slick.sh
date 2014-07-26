@@ -39,6 +39,11 @@ sudo apt-get install python-setuptools
 
 echo ""
 echo ""
+echo "*** Installing python-pip so I can pip..."
+sudo apt-get install python-pip
+
+echo ""
+echo ""
 echo "*** Adding support for SSHv3..."
 sudo easy_install paramiko
 cd $ARCHIVE_DIR/scp.py/
