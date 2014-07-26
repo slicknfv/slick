@@ -68,6 +68,7 @@ class PhysicalNetwork(object):
     def create_partitions(self):
         #print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"*10
         self.partitioned_graph = self.topo_graph.copy()
+        nx.write_dot(self.partitioned_graph, 'slick.dot')
         #http://metis.readthedocs.org/en/latest/
         # We are using off the shelf software to partition the network.
         num_partitions = self.get_num_partitions( )
@@ -80,10 +81,14 @@ class PhysicalNetwork(object):
         print "Partitions:", partitions
         # Add more colors to this array if get_num_partitions is > 4
         colors = ['red','blue','green','orange']
-        print len(self.partitioned_graph.nodes())
+        node_ids = [ ]
+        for node in self.partitioned_graph.nodes():
+            node_ids.append(node)
         for i, p in enumerate(partitions):
-            # Please not p starts from zero, one, two etc.
-            self.partitioned_graph.node[i+1] = {'color': colors[p], 'part_number': p}
+            # Please note p starts from zero, one, two etc.
+            #self.partitioned_graph.node[i+1] = {'color': colors[p], 'part_number': p}
+            node_id = node_ids[i]
+            self.partitioned_graph.node[node_id] = {'color': colors[p], 'part_number': p}
         nx.write_dot(self.partitioned_graph, 'slick_parts.dot')
 
     def get_partition_number(self, src_switch_mac):
