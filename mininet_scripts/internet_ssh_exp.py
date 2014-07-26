@@ -31,6 +31,7 @@ from optparse import OptionParser
 
 from topologies.dctopo import FatTreeTopo
 from topologies.jellyfish import JellyfishTopo
+from topologies.DCell import DCellTopo
 
 import json
 import time
@@ -251,6 +252,9 @@ if __name__ == '__main__':
     # Use this option to create a Jellyfish topology.
     op.add_option( '--jellyfish', '-j', action="store", 
                      dest="jellyfish_seed", help = 'JellyFish topology\'s seed.'  )
+    # Use this option to create a DCell Topo.
+    op.add_option( '-y', action="store_true", 
+                     dest="create_dcell_network", help = 'Flag to create DCell Network'  )
     # This to identify the gateway box.
     # Currently we have only one gateway per network support.
     op.add_option( '--gateway', '-g', action="store", 
@@ -269,11 +273,14 @@ if __name__ == '__main__':
     ft_degree = int(options.ft_degree) if options.ft_degree else None
     jellyfish_seed = int(options.jellyfish_seed) if options.jellyfish_seed else None
     gateway_switch = str(options.gateway_switch) if options.gateway_switch else None
+    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXX", options.create_dcell_network
 
     lg.setLogLevel( 'info')
 
     topo = None
     rootnode = None
+    host = CPULimitedHost
+    link = TCLink
     # If the topology is to be read.
     if topo_file_name:
         print "Building network topology from file: ", topo_file_name
@@ -283,7 +290,14 @@ if __name__ == '__main__':
         topo = FatTreeTopo(ft_degree)
     elif jellyfish_seed:
         print "Building Jellyfish Topology."
-        topo = JellyfishTopo(seed = jellyfish_seed)
+        topo = JellyfishTopo(seed = jellyfish_seed, switches=16, nodes=16,bw=1)
+        topo.draw()
+    elif options.create_dcell_network:
+        print "Building DCell Topology."
+        topo = DCellTopo(bw=1, delay='1ms')
+        #host = custom(CPULimitedHost, cpu=.15)  # 15% of system bandwidth
+        #link = custom(TCLink, bw=1, delay='1ms', max_queue_size=20000)
+        #net = Mininet(topo=topo, host=host, link=link, controller=RemoteController, autoStaticArp=True)
     elif options.treedepth and options.fanout:
         print "Building Tree Topology."
         topo = TreeTopo( depth = int(options.treedepth), fanout = int(options.fanout) , bw =1, delay='1ms')
@@ -294,7 +308,7 @@ if __name__ == '__main__':
     # if we also start up another controller.  We should have this listen
     # somewher else since it is just for the NAT.
     print "Using the topo:", topo
-    net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=CPULimitedHost, link=TCLink)
+    net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=host, link=link)
 
     #net = Mininet(switch=OVSKernelSwitch, topo=topo, host=CPULimitedHost, link=TCLink)
     #net.start( )
