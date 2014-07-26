@@ -73,7 +73,7 @@ starting POX) first.
 	- Running the following commands will start the Slick controller:
 
 		$ cd middlesox/pox/pox/
-		$ sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=0.0.0.0 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
+		$ sudo ./pox.py --verbose host_tracker slick.slick_controller --application=TwoLoggers messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
 
     - Alternatively, you can bind to the NAT IP address in the root context (--tcp_address=192.168.56.101)
 
