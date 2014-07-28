@@ -89,10 +89,18 @@ make
 sudo make install
 sudo ldconfig
 
+#echo ""
+#echo ""
+#echo "*** Installing pybloomfiltermmap..."
+#sudo easy_install pybloomfiltermmap
+
 echo ""
 echo ""
-echo "*** Installing pybloomfiltermmap..."
-sudo easy_install pybloomfiltermmap
+echo "*** Installing pybloomfiltermmap from source..."
+cd $ARCHIVE_DIR
+tar xzf pybloomfiltermmap-0.3.14.tar.gz
+cd $ARCHIVE_DIR/pybloomfiltermmap-0.3.14
+sudo python setup.py install
 
 echo ""
 echo ""
