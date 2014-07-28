@@ -136,6 +136,14 @@ sudo easy_install pygraphviz
 
 echo ""
 echo ""
+echo "*** Installing Java 7 for sflow"
+sudo apt-get install python-software-properties
+sudo add-apt-repository ppa:webupd8team/java
+sudo apt-get update
+sudo apt-get install oracle-java7-installer
+
+echo ""
+echo ""
 echo "*** Creating/Updating links to libraries..."
 sudo ldconfig
 
