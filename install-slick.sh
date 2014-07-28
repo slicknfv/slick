@@ -101,8 +101,30 @@ sudo apt-get install python-dumbnet
 
 echo ""
 echo ""
-echo "*** Installing python-dumbnet..."
+echo "*** Installing PartitionSets..."
 sudo pip install PartitionSets
+
+echo ""
+echo ""
+echo "*** Installing NetworkX for topology..."
+sudo pip install networkx
+
+
+echo "*** Installing compilation tools for metis library..."
+sudo apt-get install cmake
+
+
+echo "*** Installing metis library..."
+cd $ARCHIVE_DIR
+tar xzf metis-5.1.0.tar.gz
+cd $ARCHIVE_DIR/metis-5.1.0
+make config shared=1
+sudo make install
+
+echo ""
+echo ""
+echo "*** Installing metis python wrapper for placement..."
+sudo easy_install metis
 
 echo ""
 echo ""
