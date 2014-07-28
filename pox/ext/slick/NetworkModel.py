@@ -9,7 +9,6 @@ from slick.overlay_network import OverlayNetwork
 from slick.overlay_network import dpid_to_str
 from slick.physical_network import PhysicalNetwork
 from slick.sflow_networkload import SFlowNetworkLoad
-from slick.element_demands import ElementDemands
 from pox.openflow.discovery import Discovery
 from pox.core import core
 

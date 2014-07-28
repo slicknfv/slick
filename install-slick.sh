@@ -128,6 +128,14 @@ sudo easy_install metis
 
 echo ""
 echo ""
+echo "*** Installing modules for mininet scripts..."
+sudo apt-get install python-matplotlib
+sudo apt-get install graphviz
+sudo apt-get install libgraphviz-dev
+sudo easy_install pygraphviz
+
+echo ""
+echo ""
 echo "*** Creating/Updating links to libraries..."
 sudo ldconfig
 
