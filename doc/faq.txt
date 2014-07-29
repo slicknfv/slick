@@ -1,0 +1,10 @@
+Question: When I run "sudo python shim.py" command in shim/ folder. 
+          I get this error: "socket.gaierror: [Errno -2] Name or service not known"
+Answer:   Please make sure that the /etc/hostname file contains just the name of the machine.
+For example if your machine name is "mininet-vm", the file should contain the exact name.
+
+That /etc/hosts has an entry for localhost and machine name:
+127.0.0.1    localhost
+127.0.1.1    mininet-vm
+
+
