@@ -9,10 +9,12 @@ import signal
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, parentdir) 
 #sys.path.insert(0, "/home/mininet/middlesox/pox/ext") 
-sys.path.insert(0, "/home/bilal/middlesox/pox/ext") 
+#sys.path.insert(0, "/home/bilal/middlesox/pox/ext") 
+sys.path.insert(0, "../pox/ext") 
 
 #sys.path.insert(0, '/home/mininet/middlesox/lib/')
-sys.path.insert(0, '/home/bilal/middlesox/lib/')
+#sys.path.insert(0, '/home/bilal/middlesox/lib/')
+sys.path.insert(0, '../lib/')
 import pcap as pcap
 
 import socket
