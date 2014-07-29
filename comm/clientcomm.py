@@ -13,9 +13,9 @@ import ast
 LOCAL_DBG = False
 
 class ClientComm():
-    def __init__(self):
-        self.host = constants.OPEN_FLOW_CONTROLLER_IP
-        self.port = constants.OPEN_FLOW_CONTROLLER_PORT 
+    def __init__(self, ip, port):
+        self.host = ip #constants.OPEN_FLOW_CONTROLLER_IP
+        self.port = port #constants.OPEN_FLOW_CONTROLLER_PORT 
         self.size = constants.BUF_SIZE
         self.timeout = 3 # seconds?
         self.sock = self.establish_connection(self.timeout)

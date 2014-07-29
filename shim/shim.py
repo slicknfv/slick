@@ -8,9 +8,11 @@ import signal
 
 parentdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, parentdir) 
-sys.path.insert(0, "/home/mininet/middlesox/pox/ext") 
+#sys.path.insert(0, "/home/mininet/middlesox/pox/ext") 
+sys.path.insert(0, "/home/bilal/middlesox/pox/ext") 
 
-sys.path.insert(0, '/home/mininet/middlesox/lib/')
+#sys.path.insert(0, '/home/mininet/middlesox/lib/')
+sys.path.insert(0, '/home/bilal/middlesox/lib/')
 import pcap as pcap
 
 import socket
@@ -32,6 +34,7 @@ from shim_table import ShimTable
 import shim
 
 from dynamic_load import MiddleboxModules
+import constants
 
 IN_PORT    = "in_port"
 DL_SRC     = "dl_src"
@@ -57,7 +60,7 @@ def signal_handler(unused_signal, unused_frame):
 
 class Shim:
 
-    def __init__(self, iface, oface, filename):
+    def __init__(self, iface, oface, of_controller_ip, of_controller_port, filename):
         self.iface = iface
         self.oface = oface
         print self.iface
@@ -70,9 +73,11 @@ class Shim:
         self.mb_ip = socket.gethostbyname(socket.gethostname())
         self.mac = get_mac()
 
+	self.of_controller_ip = of_controller_ip
+	self.of_controller_port = of_controller_port
         # Create new connection
         # HACK: This should not be hardcoded to the OF controller.
-        self.client = ClientComm()
+        self.client = ClientComm(self.of_controller_ip, self.of_controller_port)
         self.register_machine()
 
         # These are needed to maintain the state.
@@ -355,11 +360,13 @@ def main(argv):
     default_interface = commands.getoutput("ifconfig -s | grep eth0 | awk '{print $1}'")
     iface = default_interface
     oface = default_interface
+    of_controller_ip = constants.OPEN_FLOW_CONTROLLER_IP#"192.168.57.101"
+    of_controller_port = constants.OPEN_FLOW_CONTROLLER_PORT #7790
     freq = 0
     mode = 2
     file_name = None
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hdi:f:o:", ["help", "debug", "iface", "file", "oface"])
+        opts, args = getopt.getopt(sys.argv[1:], "hdi:f:o:c:p:", ["help", "debug", "iface", "file", "oface"])
     except getopt.GetoptError:
         print "Option error!"
         usage()
@@ -379,17 +386,23 @@ def main(argv):
         elif opt in("-o", "--oface"):
             oface = str(arg)
             print "Listening on the interface: ", iface
+	elif opt in("-c", "--controller"):
+	    of_controller_ip = str(arg)
+	    print "Connecting with controller: ", of_controller_ip
+	elif opt in("-p", "--port"):
+	    of_controller_port = int(arg)
+	    print "Connecting on port: ", of_controller_port
         else:
             assert False, "Unhandled Option"
             usage()
     if(iface):
         print "Listening on the interface: ", iface
         print "Sending on the interface: ", oface
-        cd_pcap = Shim(iface, oface, None)
+        cd_pcap = Shim(iface, oface, of_controller_ip, of_controller_port, None)
         cd_pcap.sniff() # hopefully you have done all the hw
     if(file_name):
         print "Sending on the interface: ", oface
-        cd_pcap = Shim(None, oface, file_name)
+        cd_pcap = Shim(None, oface, of_controller_ip, of_controller_port, file_name)
         cd_pcap.loadpcap()
 
 if __name__ == "__main__":
