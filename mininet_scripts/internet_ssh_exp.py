@@ -190,7 +190,7 @@ def read_config(network, filename):
     #hosts = config_dict["hosts"]
     return middleboxes, hosts
 
-def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, traffic_pattern, kill_wait_sec):
+def perform_experiment(network, slick_controller, filename, middlebox_machines, src_dst_pairs, traffic_pattern, kill_wait_sec):
     """Perform the operation specified with provided parameters."""
     if filename:
         middlebox_names , hosts = read_config(network, filename)
@@ -202,7 +202,7 @@ def perform_experiment(network, filename, middlebox_machines, src_dst_pairs, tra
         middlebox_names = middlebox_machines
     if src_dst_pairs:
         hosts = src_dst_pairs
-    middleboxes.load_shims(network, middlebox_names)
+    middleboxes.load_shims(network, slick_controller, middlebox_names)
     time.sleep(10)
     middleboxes.generate_traffic(network, hosts, middlebox_names, traffic_pattern, kill_wait_sec)
 
@@ -261,6 +261,8 @@ if __name__ == '__main__':
                      dest="gateway_switch", help = 'Please specify the switch name (e.g, "s1") that should be connected to internet.'  )
     op.add_option( '--root-interface', '-i', action="store", 
                      dest="rootInterface", help = 'The Ethernet interface that connects to the Internet'  )
+    op.add_option( '--slick_controller', '-s', action="store", 
+                     dest="slick_controller", help = 'IP Address of the slick contrller.'  )
 
     options, args = op.parse_args()
     if options.rootInterface is None:   # if filename is not given
@@ -273,7 +275,8 @@ if __name__ == '__main__':
     ft_degree = int(options.ft_degree) if options.ft_degree else None
     jellyfish_seed = int(options.jellyfish_seed) if options.jellyfish_seed else None
     gateway_switch = str(options.gateway_switch) if options.gateway_switch else None
-    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXX", options.create_dcell_network
+    slick_controller = options.slick_controller
+    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXX", options.create_dcell_network, slick_controller
 
     lg.setLogLevel( 'info')
 
@@ -352,7 +355,7 @@ if __name__ == '__main__':
     print "Generating Traffic Pattern: ", traffic_pattern
     if traffic_pattern and kill_wait_sec:
         # Once the network is built read the configuration file and start the software.
-        perform_experiment( net, config_filename, middlebox_machines, src_dst_pairs, traffic_pattern, kill_wait_sec)
+        perform_experiment( net, slick_controller, config_filename, middlebox_machines, src_dst_pairs, traffic_pattern, kill_wait_sec)
 
         #time.sleep(5)
         ## Shut down NAT

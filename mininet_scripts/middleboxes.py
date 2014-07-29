@@ -19,18 +19,25 @@ import patterns
             b- Makes clients fetch webpages.
 """
 
-def load_shims(network, mblist):
+def load_shims(network, slick_controller,  mblist):
     """List of middlebox names.
     Loads shim for host names provided."""
+    if not slick_controller:
+	slick_controller = "192.168.56.101"
+	print ("Using the default IP Address %s for the slick controller." % slick_controller)
+	print "Please use -s option to specify the slick controller IP address."
     # To get the output of the opened process; maintain handles.
     popens = { }
     for mbhost in mblist:
         mb = network.getNodeByName(mbhost)
         print "Starting shim on host:", mbhost
-        #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", shell=True)
+        #cmd = ("sudo python /home/bilal/middlesox/shim/shim.py -c %s" % (slick_controller))
+        #popens[ mbhost ] = mb.popen(cmd, shell=True)
         #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE, shell=True)
         #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE) # Does not work on FatTree
-        mb.cmd("sudo python /home/mininet/middlesox/shim/shim.py &")
+        cmd = ("sudo python /home/bilal/middlesox/shim/shim.py -c %s &" % (slick_controller))
+	print cmd
+	mb.cmd(cmd)
         # Wait for n seconds to bring up one element instance.
         print "Waiting for shim layer to be started."
         time.sleep(0.25)
