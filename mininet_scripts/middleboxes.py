@@ -1,4 +1,5 @@
 # Code to start the middlebox instances on the element instances.
+import sys
 import time
 from signal import SIGINT
 from sets import Set
@@ -35,7 +36,7 @@ def load_shims(network, slick_controller,  mblist):
         #popens[ mbhost ] = mb.popen(cmd, shell=True)
         #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE, shell=True)
         #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE) # Does not work on FatTree
-        cmd = ("sudo python /home/bilal/middlesox/shim/shim.py -c %s &" % (slick_controller))
+        cmd = ("sudo python /home/mininet/middlesox/shim/shim.py -c %s &" % (slick_controller))
 	print cmd
 	mb.cmd(cmd)
         # Wait for n seconds to bring up one element instance.
@@ -138,6 +139,30 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
 
         print "c. Stopping Mininet"
         network.stop()
+    if traffic_pattern == patterns.PING_SINGLE_DOMAIN_OUTSIDE_NETWORK:
+        seconds = kill_wait_sec
+        # Returns the list of host names.
+        for h in network.hosts:
+	    all_hosts.add(h.name)
+	    break
+        time.sleep(5)
+        command = "ping -c 10 www.google.com"
+        output = execute_command_ping1(network, all_hosts, command, 12, 1000, kill_wait_sec)# This will work for FatTree Topo
+        latency_dict = _get_latency(output)
+        min_lat = sys.maxint #1234567890
+        max_lat = 0
+        total_lat = 0
+
+        for host in all_hosts:
+            print host,',',int(latency_dict[host])
+        for host, avg_host_latency in latency_dict.iteritems():
+            if avg_host_latency < min_lat:
+                min_lat = avg_host_latency
+            if avg_host_latency > max_lat:
+                max_lat = avg_host_latency
+            total_lat += avg_host_latency
+        avg_lat = total_lat/len(network.hosts)
+        print "Average Latency experiment:", avg_lat
     if traffic_pattern == patterns.PING_SINGLE_IP_OUTSIDE_NETWORK:
         seconds = kill_wait_sec
         if hstar == True:
@@ -155,11 +180,11 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
         #command = "wget -S www.google.com"
         time.sleep(15)
         # Performing single pings to create new instances.
-        command = "ping -c 1 192.168.56.101"
+        command = "ping -c 1 192.168.57.101"# Please change this to the IP address of vboxnetX IP corresponding to virtual machines.
         #output = execute_command_ping(network, hosts, command, 1, 1000, 30) # This will work for other Topos
         output = execute_command_ping1(network, hosts, command, 1, 1000, 30) # This will work for FatTree Topo
         time.sleep(15)
-        command = "ping -i 0.5 -c 100 192.168.56.101"
+        command = "ping -i 0.5 -c 100 192.168.57.101"# Please change this to the IP address of vboxnetX IP corresponding to virtual machines.
         #output = execute_command_ping(network, hosts, command, 12, 1000, kill_wait_sec)# This will work for other Topos
         output = execute_command_ping1(network, hosts, command, 12, 1000, kill_wait_sec)# This will work for FatTree Topo
         latency_dict = _get_latency(output)

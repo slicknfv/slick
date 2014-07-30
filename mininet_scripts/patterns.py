@@ -2,39 +2,50 @@
 # This file has information about the traffic patterns
 # that can be used to generate in the code.
 
+#
+# Demos
+#
 
+# Demo 1
+# Ping a single domain name from single host in the network.
+PING_SINGLE_DOMAIN_OUTSIDE_NETWORK = 1
+
+
+#
+# Experiments
+#
 
 # 1-to-m relationship between the single host
 # outside the network and the hosts sitting inside the network.
-PING_SINGLE_IP_OUTSIDE_NETWORK = 1
+PING_SINGLE_IP_OUTSIDE_NETWORK = 11
 OUTSIDE_IP_ADDRESS_LIST = ["143.215.129.1"] # This IP Address should be on the Internet.
 # m-to-n relationship between many hosts
 # outside the network and the hosts sitting inside the network.
-PING_MULTIPLE_IPS_OUTSIDE_NETWORK = 2
+PING_MULTIPLE_IPS_OUTSIDE_NETWORK = 12
 
 
 # 1-to-m relationship between the single host
 # outside the network and the hosts sitting inside the network.
-HTTP_SINGLE_IP_OUTSIDE_NETWORK = 3
+HTTP_SINGLE_IP_OUTSIDE_NETWORK = 13
 # m-to-n relationship between multiple hosts
 # outside the network and the hosts sitting inside the network.
-HTTP_MULTIPLE_IP_OUTSIDE_NETWORK = 4
+HTTP_MULTIPLE_IP_OUTSIDE_NETWORK = 14
 
 
 # 1-to-m relationship between the single host
 # outside the network and the hosts sitting inside the network.
-UDP_SINGLE_IP_OUTSIDE_NETWORK = 5
+UDP_SINGLE_IP_OUTSIDE_NETWORK = 15
 # m-to-n relationship between multiple hosts
 # outside the network and the hosts sitting inside the network.
-UDP_MULTIPLE_IP_OUTSIDE_NETWORK = 6
+UDP_MULTIPLE_IP_OUTSIDE_NETWORK = 16
 
 
 # 1-to-m relationship between the single host
 # outside the network and the hosts sitting inside the network.
-TCP_SINGLE_IP_OUTSIDE_NETWORK = 7
+TCP_SINGLE_IP_OUTSIDE_NETWORK = 17
 # m-to-n relationship between multiple hosts
 # outside the network and the hosts sitting inside the network.
-TCP_MULTIPLE_IP_OUTSIDE_NETWORK = 8
+TCP_MULTIPLE_IP_OUTSIDE_NETWORK = 18
 
 
 # Harpoon traffic direction
