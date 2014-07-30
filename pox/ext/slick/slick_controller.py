@@ -438,7 +438,8 @@ class slick_controller (object):
         Returns:
             element_names: List of element names that cannot be placed.
         """
-        assert len(mac_addrs) == len(element_names) , 'Number of Element Names != Number of Places'
+        print mac_addrs, element_names
+        assert len(mac_addrs) == len(element_names) , ('Number of Element Names %d != Number of Places %d' % len(mac_addrs), len(element_names))
         homeless_element_names =  [ ]
         if mac_addrs:
             for index, mac_addr in enumerate(mac_addrs):

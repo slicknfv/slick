@@ -11,7 +11,8 @@ class TwoLoggers(Application):
         # Start the first Logger:
         parameters = [{"file_name":"/tmp/dns_log"}]
         flow = self.make_wildcard_flow()
-        flow['tp_dst'] = 53
+        flow["dl_type"] = 0x800
+        flow["nw_proto"] = 1
         # Parameters is an array of dicts that should be passed 
         # to apply_elem corresponding to the element_name
         # that we want to apply the parameters to.
