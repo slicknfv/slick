@@ -35,12 +35,12 @@ echo "Performing install from base directory $BASE_DIR/"
 echo ""
 echo ""
 echo "*** Installing python-setuptools so I can easy_install..."
-sudo apt-get install python-setuptools
+sudo apt-get -y install python-setuptools
 
 echo ""
 echo ""
 echo "*** Installing python-pip so I can pip..."
-sudo apt-get install python-pip
+sudo apt-get -y install python-pip
 
 echo ""
 echo ""
@@ -53,13 +53,13 @@ echo ""
 echo ""
 echo "*** Installing other dependencies"
 sudo easy_install jsonpickle
-sudo apt-get install python-dpkt
+sudo apt-get -y install python-dpkt
 
 echo ""
 echo ""
 echo "*** Installing pcap (for shim)"
-sudo apt-get install python-dev
-sudo apt-get install libpcap-dev
+sudo apt-get -y install python-dev
+sudo apt-get -y install libpcap-dev
 cd $ARCHIVE_DIR
 tar xzf pcap_ylg-1.1.tar.gz
 cd $ARCHIVE_DIR/pcap_ylg-1.1/
@@ -105,7 +105,7 @@ sudo python setup.py install
 echo ""
 echo ""
 echo "*** Installing python-dumbnet..."
-sudo apt-get install python-dumbnet
+sudo apt-get -y install python-dumbnet
 
 echo ""
 echo ""
@@ -119,7 +119,7 @@ sudo pip install networkx
 
 
 echo "*** Installing compilation tools for metis library..."
-sudo apt-get install cmake
+sudo apt-get -y install cmake
 
 
 echo "*** Installing metis library..."
@@ -137,19 +137,19 @@ sudo easy_install metis
 echo ""
 echo ""
 echo "*** Installing modules for mininet scripts..."
-sudo apt-get install python-matplotlib
-sudo apt-get install graphviz
-sudo apt-get install libgraphviz-dev
+sudo apt-get -y install python-matplotlib
+sudo apt-get -y install graphviz
+sudo apt-get -y install libgraphviz-dev
 sudo easy_install pygraphviz
 
 echo ""
 echo ""
 echo "*** Installing Java 7 for sflow"
-sudo apt-get install python-software-properties
-sudo apt-get install software-properties-common # For add-apt-repository command
+sudo apt-get -y install python-software-properties
+sudo apt-get -y install software-properties-common # For add-apt-repository command
 sudo add-apt-repository ppa:webupd8team/java
 sudo apt-get update
-sudo apt-get install oracle-java7-installer
+sudo apt-get -y install oracle-java7-installer
 
 echo ""
 echo ""
