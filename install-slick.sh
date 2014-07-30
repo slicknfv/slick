@@ -146,6 +146,7 @@ echo ""
 echo ""
 echo "*** Installing Java 7 for sflow"
 sudo apt-get install python-software-properties
+sudo apt-get install software-properties-common # For add-apt-repository command
 sudo add-apt-repository ppa:webupd8team/java
 sudo apt-get update
 sudo apt-get install oracle-java7-installer
