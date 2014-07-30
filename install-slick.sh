@@ -35,12 +35,23 @@ echo "Performing install from base directory $BASE_DIR/"
 echo ""
 echo ""
 echo "*** Installing python-setuptools so I can easy_install..."
-sudo apt-get -y install python-setuptools
+cmd="sudo apt-get -y install python-setuptools"
+if $cmd; then
+	echo ""
+else
+	echo "Failure: $cmd";exit
+fi
+	
 
 echo ""
 echo ""
 echo "*** Installing python-pip so I can pip..."
-sudo apt-get -y install python-pip
+cmd="sudo apt-get -y install python-pip"
+if $cmd; then
+	echo ""
+else
+	echo "Failure: $cmd";exit
+fi
 
 echo ""
 echo ""
