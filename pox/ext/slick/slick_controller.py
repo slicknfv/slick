@@ -59,7 +59,7 @@ class slick_controller (object):
     """
     Waits for OpenFlow switches to connect 
     """
-    def __init__ (self, transparent, application, query):
+    def __init__ (self, transparent, application, placement, steering, query):
         print "INITIALIZING SLICK with application '" + application + "'"
 
         self.transparent = transparent
@@ -69,15 +69,39 @@ class slick_controller (object):
 
         # Modules
         self.network_model = NetworkModel(self)
-        #self.placement_module = RandomPlacement( self.network_model )
-        #self.placement_module = RoundRobinPlacement( self.network_model )
-        self.placement_module = IncrementalKPlacement( self.network_model )
+	if placement == "Random":
+            log.debug("Starting %s placement algorithm." % (placement))
+            self.placement_module = RandomPlacement( self.network_model )
+	elif placement == "RoundRobin":
+            log.debug("Starting %s placement algorithm." % (placement))
+            self.placement_module = RoundRobinPlacement( self.network_model )
+	elif placement == "IncrementalKPlacement":
+            log.debug("Starting %s placement algorithm." % (placement))
+            self.placement_module = IncrementalKPlacement( self.network_model )
         #self.placement_module = KPlacement( self.network_model )
-        #self.placement_module = NetworkAwarePlacement( self.network_model )
-        #self.steering_module = RandomSteering( self.network_model )
-        #self.steering_module = ShortestHopCountSteering( self.network_model )
-        #self.steering_module = ShortestPathSteering( self.network_model )
-        self.steering_module = LoadAwareShortestPathSteering( self.network_model )
+	elif placement == "NetworkAwarePlacement":
+            log.debug("Starting %s placement algorithm." % (placement))
+            self.placement_module = NetworkAwarePlacement( self.network_model )
+	else:
+            log.debug("Starting Random placement algorithm.")
+            self.placement_module = RandomPlacement( self.network_model )
+
+	if steering == "Random":
+            log.debug("Starting %s steering algorithm." % (steering))
+            self.steering_module = RandomSteering( self.network_model )
+	if steering == "BreadthFirst": # Breadth First
+            log.debug("Starting %s steering algorithm." % (steering))
+            self.steering_module = ShortestHopCountSteering( self.network_model )
+	if steering == "DepthFirst": # Depth First
+            log.debug("Starting %s steering algorithm." % (steering))
+            self.steering_module = ShortestPathSteering( self.network_model )
+	if steering == "LoadAwareShortestPath": 
+            log.debug("Starting %s steering algorithm." % (steering))
+            self.steering_module = LoadAwareShortestPathSteering( self.network_model )
+	else:
+            log.debug("Starting LoadAwareShortestPath steering algorithm." )
+            self.steering_module = LoadAwareShortestPathSteering( self.network_model )
+
         self.routing_module = ShortestPathRouting( self.network_model )
 
         # add the standard OpenFlow event handlers
@@ -658,7 +682,7 @@ class POXInterface():
 ##############################
 # POX Launch the application.
 ##############################
-def launch (transparent=False, application="TwoLoggers", query="summary"):
+def launch (transparent=False, application="TwoLoggers", placement="Random", steering = "LoadAwareShortestPath", query="summary"):
 #def launch (transparent=False, application="LoggerTriggerChain"):
     # The second component is argument for slick_controller.
-    core.registerNew(slick_controller, str_to_bool(transparent), application, query)
+    core.registerNew(slick_controller, str_to_bool(transparent), application, placement, steering, query)
