@@ -1,10 +1,37 @@
 Question: When I run "sudo python shim.py" command in shim/ folder. 
           I get this error: "socket.gaierror: [Errno -2] Name or service not known"
-Answer:   Please make sure that the /etc/hostname file contains just the name of the machine.
-For example if your machine name is "mininet-vm", the file should contain the exact name.
+          
+Answer: Please make sure that the /etc/hostname file contains just the name of the machine.
+        For example if your machine name is "mininet-vm", the file should contain the exact name.
 
-That /etc/hosts has an entry for localhost and machine name:
-127.0.0.1    localhost
-127.0.1.1    mininet-vm
+        That /etc/hosts has an entry for localhost and machine name:
+        127.0.0.1    localhost
+        127.0.1.1    mininet-vm
 
 
+
+Question: I am getting the error when I start the controller: "AuthenticationException: Authentication failed."
+
+Answer: Please make sure that the file middlesox/pox/ext/slick/conf.py
+        has the correct username and password in the file.
+        MB_USERNAME
+        MB_PASSWORD
+
+
+
+Question: How do I know which interface of mininet is connected with the internet, so that
+          I can provide it as root-interface to the mininet script?
+
+Answer: Please use -I option of ping.
+        ping -I eth0 www.google.com
+
+        If you are getting a reply back it means eth0 is your interface that is connected to Internet.
+
+
+
+Question: When I start slick controller, I get this error immediately.
+          "error: [Errno 99] Cannot assign requested address"
+
+Answer: Please make sure that you are specifying a valid IP address for
+        ethernet interface on machine for pox controller option of
+        --tcp_address
