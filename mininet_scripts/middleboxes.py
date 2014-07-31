@@ -146,7 +146,7 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
 	    all_hosts.add(h.name)
 	    break
         time.sleep(5)
-        command = "ping -c 10 www.google.com"
+        command = "ping -c 20 www.google.com"
         output = execute_command_ping1(network, all_hosts, command, 12, 1000, kill_wait_sec)# This will work for FatTree Topo
         latency_dict = _get_latency(output)
         min_lat = sys.maxint #1234567890
@@ -163,6 +163,7 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
             total_lat += avg_host_latency
         avg_lat = total_lat/len(network.hosts)
         print "Average Latency experiment:", avg_lat
+	print "Demo is complete. Please check the log file in /tmp/dns_logX to see if the TwoLoggers application is working correctly."
     if traffic_pattern == patterns.PING_SINGLE_IP_OUTSIDE_NETWORK:
         seconds = kill_wait_sec
         if hstar == True:
