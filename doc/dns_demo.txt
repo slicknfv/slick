@@ -1,4 +1,7 @@
-This document has been updated to work for mininet 2.0
+This document has been updated to work for mininet 2.1
+
+Please check the FAQ first to search for common problems while following these instructions.
+In case of problems please send an email to bilal@gatech.edu with the error description.
 
 INSTALLING SLICK
 ----------------
@@ -115,8 +118,8 @@ starting POX) first.
 	- Once the experiment is completed it will drop the terminal into a mininet CLI.
 
 
-Troubleshooting:
----------------
+TROUBLESHOOTING SLICK:
+---------------------
 
 In case you do not see any dns flow logs in the /tmp/dns_logX file. It means that
 the Slick setup is not working properly. In this section we'll try to perform some of the 
@@ -173,78 +176,4 @@ automatic steps to pin point the problem.
 
 	  The dns_logX file should have the DNS flows that are being sent
 	  from host h1 or h2 to the Internet.
-
-APPLICATIONS
-------------
-
-    You can now specify an application to run as a commandline option to pox.
-    It goes after "slick_controller" and before "messenger".  For example, to
-    run an application the tests out triggers:
-
-		$ cd middlesox/pox/pox/
-		$ sudo ./pox.py --verbose host_tracker slick.slick_controller --application=TriggerAllUnitTest --query=details messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
-
-    If no application is specified on the commandline, it will default to
-    running the TwoLoggers application (which logs both port 53 and port 80
-    traffic).
-
-    As you develop new applications, please do the following:
-
-        - Place them in ~/middlesox/pox/ext/slick/apps/
-        - Name the file the same as the class (it is case sensitive for now)
-        - Add the name of the app to ~/middlesox/pox/ext/slick/apps/__init__.py
-        - Reflect the case sensitive naming in your applications .spec file
-
-    Applications can be found in:
-        ~/middlesox/pox/ext/slick/apps/
-
-    Elements can be found in
-        ~/middlesox/pox/ext/slick/elements/
-
-PLACEMENT ALGORITHMS:
---------------------
-    You can now specify a placement algorithm to run as a commandline option to pox.
-    It goes after "slick_controller". To specify the placement algorithm
-    you can use the command line option of --placement. By default the Random Placement
-    algorithm is started but other algorithms can also be specified. Currently there
-    are four placement algorithms that are implemented.
-    a- Random Placement
-    b- RoundRobin Placement
-    c- IncrementalK Placement
-    d- Network Aware Placement 
-    	
-     To start the controller for a specific placement algorithm please use this command.
-	$ cd middlesox/pox/pox/
-	$ sudo ./pox.py --verbose host_tracker slick.slick_controller --application=TwoLoggers --placement=RoundRobin --query=details messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
-
-
-     You can write your own placement algorithm using the placement interface. To write an algorithm please check existing
-     placement algorithms in directory slick/placement and use the interface provided in abstract class slick/placement/Placement.py.
-        - Test and place your placement algorithm file in slick/placement/
-        - Modify the slick_controller.py file to invoke your placement algorithm.
-        - Run the new placement algorithm using the --placement command line option of pox controller. 
-
-STEERING ALGORITHMS:
---------------------
-    You can now specify a steering algorithm to run as a commandline option to pox.
-    It goes after "slick_controller". To specify the steering algorithm
-    you can use the command line option of --steering. By default the LoadAwareShortestPath steering
-    algorithm is started but other algorithms can also be specified. Currently there
-    are four steering algorithms that are implemented.
-
-    a- Random Steering
-    b- Breadth First Steering
-    c- Depth First Steering
-    d- Load Aware Shortest Path Steering/ Load Aware Depth First Steering
-    	
-     To start the controller for a specific steering algorithm please use this command.
-	$ cd middlesox/pox/pox/
-	$ sudo ./pox.py --verbose host_tracker slick.slick_controller --application=TwoLoggers --steering=Random --query=details messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
-
-
-     You can write your own steering algorithm using the slick steering interface. To write an algorithm please check existing
-     steering algorithms in directory slick/steering and use the interface provided in abstract class slick/steering/Steering.py
-        - Test and place your steering algorithm file in slick/steering/
-        - Modify the slick_controller.py file to invoke your steering algorithm.
-        - Run the new steering algorithm using the --steering command line option of pox controller. 
 
