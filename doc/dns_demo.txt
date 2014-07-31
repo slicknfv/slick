@@ -7,7 +7,8 @@ INSTALLING SLICK
 	  running on VirtualBox.
 
 	- It has been tested with the following image:
-		https://github.com/downloads/mininet/mininet/mininet-2.0.0-113012-amd64-ovf.zip
+		http://onlab.vicci.org/mininet-vm/mininet-2.1.0p2-140718-ubuntu-14.04-server-amd64-ovf.zip
+		OLD:https://github.com/downloads/mininet/mininet/mininet-2.0.0-113012-amd64-ovf.zip
 
 	- Note that, since it is AMD64, if you are using an Intel machine,
 	  you may have to modify your BIOS settings to turn on AMD
@@ -51,18 +52,12 @@ INSTALLING SLICK
 
 	    export PYTHONPATH=/home/mininet/middlesox/pox:/home/mininet/mininet/:/home/mininet/pox
 
-4. Other dependencies
-	- Run the following commands from within your minint VM:
-		
-		$ easy_install request
-		$ easy_install dumbnet
-		$ sudo apt-get update; sudo apt-get install openjdk-7-jre
 
 RUNNING SLICK
 -------------
 The script to set up the topology and start running mininet treats our
-controller as a "Remote Controller" (so as to play nice with mininet
-2.0).  When mininet starts up, it will try to contact the controller;
+controller as a "Remote Controller" (so as to play nice with mininet).  
+When mininet starts up, it will try to contact the controller;
 as a result, we need to start up the Slick controller (by means of
 starting POX) first.
 
@@ -73,8 +68,7 @@ starting POX) first.
 	- Running the following commands will start the Slick controller:
 
 		$ cd middlesox/pox/pox/
-		$ sudo ./pox.py --verbose host_tracker slick.slick_controller --application=TwoLoggers messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
-
+		$ sudo ./pox.py --verbose host_tracker slick.slick_controller --application=TwoLoggers --query=details messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
     - Alternatively, you can bind to the NAT IP address in the root context (--tcp_address=192.168.56.101)
 
 5. Starting the network:
@@ -88,11 +82,19 @@ starting POX) first.
       and the fanout and depth of the tree can be specified with -f and -d 
       options respectively.:
 
-		$ sudo python ~/middlesox/mininet_scripts/internet_ssh4.py -i <interface> -f 2 -d 3
+		$ time sudo python internet_ssh_exp.py -i <interface> -d 2 -f 3 -s 192.168.57.104 -p 1 -k 60 -c exp.config -g s1
+		Example:
+		$ time sudo python internet_ssh_exp.py -i eth1 -d 2 -f 3 -s 192.168.57.104 -p 1 -k 60 -c exp.config -g s1
 
-	 where <interface> is your virtual Ethernet interface that connects to the Internet.
+	 where <interface> is your virtual Ethernet interface that connects to the Internet and -s option
+	 specified the IP address where element machines should connect with the controller. Please note
+	 -i and -s are two different interfaces. -p option tell the experiment number to run.
+	
+	Specifying "-p 1" automatically starts ping command on one of the hosts
+	in the network and pings www.google.com ten times. This command should result in logging
+	of dns requests to the DNS server for www.google.com domain name, in file /tmp/dns_logX.
 
-	- This will drop this terminal into a mininet CLI.
+	- Once the experiment is completed it will drop the terminal into a mininet CLI.
 
 
 6. Sanity checking the network

@@ -117,6 +117,7 @@ echo ""
 echo ""
 echo "*** Installing python-dumbnet..."
 sudo apt-get -y install python-dumbnet
+sudo easy_install dumbnet
 
 echo ""
 echo ""
