@@ -61,19 +61,19 @@ When mininet starts up, it will try to contact the controller;
 as a result, we need to start up the Slick controller (by means of
 starting POX) first.
 
-4. Please make sure that the configuration file at:
-middlesox/pox/ext/slick/conf.py
-
-has the correct username and password in the file.
-For example if you are running the demo with user "mininet"
-and password "mininetpass".
-MB_USERNAME = "mininet"
-MB_PASSWORD = "mininetpass"
-
-This is required to make sure that slick controller can log into
-the element machines and download the code on on them and run the 
-commands. Slick also assumes that this user has sudo access to run
-the shim code etc.
+4. Slick Controller Configuration:
+    - Please make sure that the configuration file at:
+      middlesox/pox/ext/slick/conf.py
+      has the correct username and password in the file.
+    - For example if you are running the demo with user "mininet"
+      and password "mininetpass".
+      MB_USERNAME = "mininet"
+      MB_PASSWORD = "mininetpass"
+    
+    - This is required to make sure that slick controller can log into
+      the element machines and download the code on on them and run the 
+      commands. Slick also assumes that this user has sudo access to run
+      the shim code etc.
 
 5. Starting the controller:
 	- Open up a new terminal on your host machine and ssh into your
