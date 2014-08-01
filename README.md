@@ -113,14 +113,14 @@ In case you do not see any dns flow logs in the /tmp/dns_logX file. It means tha
 the Slick setup is not working properly. In this section we'll try to perform some of the 
 automatic steps to pin point the problem. 
 
-7. Sanity checking the network
+1. Sanity checking the network
 	- You should be able to ping hosts on the Internet from the mininet
 	  hosts.  You do this from within the mininet CLI; the following
 	  should return typical ping output:
 
 	```mininet> h1 ping -c 10 google.com```
 
-8. Setting up the shim
+2. Setting up the shim
 	- If you flip back over to the controller terminal, you'll see that
 	  it is failing to find middlebox machines on which to place
 	  elements.  This is because the shims aren't running on the
@@ -135,20 +135,19 @@ automatic steps to pin point the problem.
 
 	```h3# python ~/middlesox/shim/shim.py -c 192.168.56.101```
 
-   This will start the shim layer and will register h3 as a
-   middlebox so that slick controller can redirect traffic to this
-   middlebox. Please not the slick controller ip address is the same address
-   that is used while starting the controller and provided as --tcp_address
-   option to pox controller command line.
+	This will start the shim layer and will register h3 as a
+   	middlebox so that slick controller can redirect traffic to this
+   	middlebox. Please not the slick controller ip address is the same address
+   	that is used while starting the controller and provided as --tcp_address
+   	option to pox controller command line. 
+   	
+   	You can optionally specify input and output interfaces (though the
+      	default should do the right thing)
+        This should print some debug output showing that it has 
+      	successfully connected to the Slick controller.  The Slick
+      	controller should by now say that it has successfully installed Logger.
 
-    - You can optionally specify input and output interfaces (though the
-      default should do the right thing)
-
-    - This should print some debug output showing that it has 
-      successfully connected to the Slick controller.  The Slick
-      controller should by now say that it has successfully installed Logger.
-
-9. Pinging hosts:
+3. Pinging hosts:
    - As a final test, you should be able to use h1 or h2 to ping
 	  external hosts:
 ```Shell
