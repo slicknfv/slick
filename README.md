@@ -21,7 +21,7 @@ INSTALLING SLICK
 2. Code Download:
 	- From within your mininet VM, in the default /home/mininet folder,
 	  download the following:
-		git clone https://github.com/bilalanwer/slick.git
+		```git clone https://github.com/bilalanwer/slick.git```
     - This will download slick code and pox code that is required by slick.
 3. Installing dependencies:
 	- Run the following commands from within your mininet VM:
