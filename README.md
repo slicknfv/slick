@@ -72,11 +72,10 @@ starting POX) first.
    - Open up a new terminal on your host machine and ssh into your
 	  mininet VM (recall that the user/pass is mininet/mininet).
    - Running the following commands will start the Slick controller:
-```Shell
-		$ cd middlesox/pox/pox/
 
-		$ sudo ./pox.py --verbose host_tracker slick.slick_controller --application=TwoLoggers --query=details messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick
-```
+	```$ cd middlesox/pox/pox/```
+
+	```$ sudo ./pox.py --verbose host_tracker slick.slick_controller --application=TwoLoggers --query=details messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick```
    
    - Please make sure that you are giving the right address as argument to --tcp_address. The demo will not work if the address is wrong.
    - Alternatively, you can bind to the NAT IP address in the root context (--tcp_address=192.168.56.101)
