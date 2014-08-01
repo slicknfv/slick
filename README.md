@@ -27,9 +27,9 @@ INSTALLING SLICK
 3. Installing dependencies:
 	- Run the following commands from within your mininet VM:
 
-	```$ cd ~/middlesox```
+		```$ cd ~/middlesox```
 	
-	```$ ./install-slick.sh```
+		```$ ./install-slick.sh```
 	- This will install various dependencies:
 		* paramiko (for SSHv3 support)
 		* scp.py module.
