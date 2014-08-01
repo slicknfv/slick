@@ -150,9 +150,9 @@ automatic steps to pin point the problem.
 3. Pinging hosts:
    - As a final test, you should be able to use h1 or h2 to ping
 	  external hosts:
-```Shell
-		mininet> h1 ping google.com
-```
+
+	```mininet> h1 ping google.com```
+
    - Please check:
 
 	(1) that you get the ping replies back.
