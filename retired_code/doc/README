@@ -1,0 +1,65 @@
+MiddleSox Code
+
+lib:
+    System required libraries the are required to be installed before.
+
+dns-dpi:
+    has code for dns packet handling exaqmple, which works separately from the shim code.
+
+p0f:
+    will have code for p0f based traffic function.
+
+comm:
+    Provide the utiltiy functions to talk with the controller.
+
+logger:
+    has code the logger function.
+
+shim:
+    This folder has the shim layer code/
+        shim.py is responsbile for getting the packets and calling respective process_pkt() for the function.
+        mb_api.py is responsioble for the interface to the controller.
+
+controller:
+    This folder has the copntroller side code, There are three main files in this:
+        pyswitch.py:  It acts as the controller for the applications.
+        msmessageproc.py: This has the application classes
+        networkmaps.py: has flow to function mapping. It also has function and machine maps.
+
+
+POX Invocation:
+--------------
+./pox.py --verbose samples.spanning_tree --forwarding=l2_multi
+
+Running the Slick Controller.
+./pox.py --verbose samples.spanning_tree --forwarding=l2_multi slick.slick_controller
+# Start the slick controller
+# Start the SlickMessageProcessor
+#Start the L2 packet forwarding after starting spanning tree module.
+sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=127.0.0.1 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi
+# To make the L2 packet forwarding and host_tracker and spanning module. 
+sudo ./pox.py --verbose host_tracker slick.slick_controller messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 sample.spanning_tree --forwarding=l2_multi_slicks
+
+To tun code with non pcap traffic use command:
+sudo ./pox.py --verbose slick.slick_controller messenger slick.tcp_transport --tcp_address=10.0.0.254 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi
+set OPEN_FLOW_CONTROLLER = 10.0.0.254 in the constants.py file.
+
+
+Running the Middlebox Functions:
+--------------------------------
+For the real interface.
+sudo python shim.py -i eth0 -o eth0
+or
+sudo python shim.py -i eth0 -o eth1
+
+#python shim.py
+
+python shim.py -f <file_name>.pcap -o eth0
+
+
+
+
+
+
+
+
