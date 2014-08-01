@@ -80,6 +80,8 @@ starting POX) first.
    - Please make sure that you are giving the right address as argument to --tcp_address. The demo will not work if the address is wrong.
    - Alternatively, you can bind to the NAT IP address in the root context (--tcp_address=192.168.56.101)
 
+
+
 3. Starting the network and experiment:
    - Open up another terminal on your host machine and again ssh into
      your mininet VM.  This time, be sure to include the -X option to
@@ -89,11 +91,11 @@ starting POX) first.
      on the Internet. This script by default creates a tree topology
      and the fanout and depth of the tree can be specified with -f and -d 
      options respectively.:
-```Shell
-		$ time sudo python internet_ssh_exp.py -i <interface> -d 2 -f 3 -s <second-interface-ip-address> -p 1 -k 60 -c exp.config -g s1
-		Example:
-		$ time sudo python internet_ssh_exp.py -i eth1 -d 2 -f 3 -s 192.168.57.104 -p 1 -k 60 -c exp.config -g s1
-```
+
+	```$ sudo python internet_ssh_exp.py -i <interface> -d 2 -f 3 -s <second-interface-ip-address> -p 1 -k 60 -c exp.config -g s1```
+
+	```$ sudo python internet_ssh_exp.py -i eth1 -d 2 -f 3 -s 192.168.57.104 -p 1 -k 60 -c exp.config -g s1```
+
    - where <interface> is your virtual Ethernet interface that connects to the Internet and -s option
      specifies the IP address where element machines should connect with the controller. This is the same 
      address that is specified in --tcp_address option for slick controller. Please note 
@@ -120,7 +122,7 @@ automatic steps to pin point the problem.
 	  hosts.  You do this from within the mininet CLI; the following
 	  should return typical ping output:
 
-		mininet> h1 ping -c 10 google.com
+	```mininet> h1 ping -c 10 google.com```
 
 8. Setting up the shim
 	- If you flip back over to the controller terminal, you'll see that
@@ -129,16 +131,13 @@ automatic steps to pin point the problem.
 	  mininet hosts yet.
 
 	- Open up a terminal to h3:
-```Shell
-		mininet> xterm h3
-```
+	```mininet> xterm h3```
 
 	- From this terminal, run:
-```Shell
-		h3# python ~/middlesox/shim/shim.py -c <slick_controller_ip_address>
-		Example:
-		h3# python ~/middlesox/shim/shim.py -c 192.168.56.101
-```
+
+	```h3# python ~/middlesox/shim/shim.py -c <slick_controller_ip_address>```
+
+	```h3# python ~/middlesox/shim/shim.py -c 192.168.56.101```
 
    This will start the shim layer and will register h3 as a
    middlebox so that slick controller can redirect traffic to this
