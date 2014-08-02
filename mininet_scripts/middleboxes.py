@@ -36,7 +36,8 @@ def load_shims(network, slick_controller,  mblist):
         #popens[ mbhost ] = mb.popen(cmd, shell=True)
         #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE, shell=True)
         #popens[ mbhost ] = mb.popen("sudo python /home/mininet/middlesox/shim/shim.py", stdout=subprocess.PIPE) # Does not work on FatTree
-        cmd = ("sudo python /home/mininet/middlesox/shim/shim.py -c %s &" % (slick_controller))
+        #cmd = ("sudo python /home/mininet/middlesox/shim/shim.py -c %s &" % (slick_controller))
+        cmd = ("sudo python ../shim/shim.py -c %s &" % (slick_controller))
 	print cmd
 	mb.cmd(cmd)
         # Wait for n seconds to bring up one element instance.
