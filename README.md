@@ -1,7 +1,9 @@
 This document has been updated to work for mininet 2.1
 
-Please check the FAQ first to search for common problems while following these instructions.
+Please check the FAQ (http://goo.gl/th88Sx) first to search for common problems while following these instructions.
 In case of problems please send an email to bilal@gatech.edu with the error description.
+
+Slick Wiki: http://goo.gl/YkaJ19
 
 INSTALLING SLICK
 ----------------
