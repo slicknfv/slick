@@ -27,7 +27,7 @@ INSTALLING SLICK
 3. Installing dependencies:
 	- Run the following commands from within your mininet VM:
 
-		```$ cd ~/middlesox```
+		```$ cd ~/slick```
 	
 		```$ ./install-slick.sh```
 	- This will install various dependencies:
@@ -44,7 +44,7 @@ INSTALLING SLICK
 	  connected to the Internet, it should be fine).
 	- As the script says at the end, add the following line to .bashrc
 	  (or whatever shell you decide to use):
-	    export PYTHONPATH=/home/mininet/middlesox/pox:/home/mininet/mininet/:/home/mininet/pox
+	    export PYTHONPATH=/home/mininet/slick/pox:/home/mininet/mininet/:/home/mininet/pox
 
 
 RUNNING SLICK
@@ -57,7 +57,7 @@ starting POX) first.
 
 1. Slick Controller Configuration:
     - Please make sure that the configuration file at:
-      middlesox/pox/ext/slick/conf.py
+      slick/pox/ext/slick/conf.py
       has the correct username and password in the file.
     - For example if you are running the demo with user "mininet"
       and password "mininetpass".
@@ -73,7 +73,7 @@ starting POX) first.
 	  mininet VM (recall that the user/pass is mininet/mininet).
    - Running the following commands will start the Slick controller:
 
-	```$ cd middlesox/pox/pox/```
+	```$ cd slick/pox/pox/```
 
 	```$ sudo ./pox.py --verbose host_tracker slick.slick_controller --application=TwoLoggers --query=details messenger slick.tcp_transport --tcp_address=192.168.56.101 --tcp_port=7790 samples.spanning_tree --forwarding=l2_multi_slick```
    - Please make sure that you are giving the right address as argument to --tcp_address. The demo will not work if the address is wrong.
@@ -131,9 +131,9 @@ automatic steps to pin point the problem.
 
 	- From this terminal, run:
 
-	```h3# python ~/middlesox/shim/shim.py -c <slick_controller_ip_address>```
+	```h3# python ~/slick/shim/shim.py -c <slick_controller_ip_address>```
 
-	```h3# python ~/middlesox/shim/shim.py -c 192.168.56.101```
+	```h3# python ~/slick/shim/shim.py -c 192.168.56.101```
 
 	This will start the shim layer and will register h3 as a
    	middlebox so that slick controller can redirect traffic to this
