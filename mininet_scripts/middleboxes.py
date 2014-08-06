@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 from mininet.util import custom, pmonitor
 
 import patterns
+import plot_graphs
 
 """
     Traffic Pattern Identifier:
@@ -182,11 +183,11 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
         #command = "wget -S www.google.com"
         time.sleep(15)
         # Performing single pings to create new instances.
-        command = "ping -c 1 192.168.57.101"# Please change this to the IP address of vboxnetX IP corresponding to virtual machines.
+        command = "ping -c 1 192.168.56.101"# Please change this to the IP address of vboxnetX IP corresponding to virtual machines.
         #output = execute_command_ping(network, hosts, command, 1, 1000, 30) # This will work for other Topos
         output = execute_command_ping1(network, hosts, command, 1, 1000, 30) # This will work for FatTree Topo
         time.sleep(15)
-        command = "ping -i 0.5 -c 100 192.168.57.101"# Please change this to the IP address of vboxnetX IP corresponding to virtual machines.
+        command = "ping -i 0.5 -c 10 192.168.56.101"# Please change this to the IP address of vboxnetX IP corresponding to virtual machines.
         #output = execute_command_ping(network, hosts, command, 12, 1000, kill_wait_sec)# This will work for other Topos
         output = execute_command_ping1(network, hosts, command, 12, 1000, kill_wait_sec)# This will work for FatTree Topo
         latency_dict = _get_latency(output)
@@ -195,8 +196,10 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
         max_lat = 0
         total_lat = 0
 
+        all_latencies = [ ]
         for host in hosts:
             print host,',',int(latency_dict[host])
+            all_latencies.append(int(latency_dict[host]))
         for host, avg_host_latency in latency_dict.iteritems():
             if avg_host_latency < min_lat:
                 min_lat = avg_host_latency
@@ -204,8 +207,9 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
                 max_lat = avg_host_latency
             total_lat += avg_host_latency
         avg_lat = total_lat/len(network.hosts)
-        print "Average Latency experiment:", avg_lat
+        print "Average Min. Latency experiment:", avg_lat
         print "Total number of hosts:", len(network.hosts)
+        #plot_graphs.plot_cdf("icmp_log.eps", all_latencies)
     if traffic_pattern == patterns.HARPOON_EAST_WEST:
         if hstar == True:
             # Returns the list of host names.
@@ -288,7 +292,8 @@ def _get_latency(output):
             min_lat = float(output_array[7])
             avg_lat = float(output_array[8])
             host_name = output_array[0].strip('<').strip('>:')
-            latency_dict[host_name] = avg_lat
+            #latency_dict[host_name] = avg_lat
+            latency_dict[host_name] = min_lat
         if ("transmitted" in line):
             line.rstrip()
             output_array = line.split(" ")
