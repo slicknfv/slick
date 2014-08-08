@@ -78,6 +78,7 @@ FLOW_HARD_TIMEOUT = 120
 # How long is allowable to set up a path?
 PATH_SETUP_TIME = 4
 
+
 slick_controller_interface = core.slick_controller.controller_interface
 
 def _calc_paths ():
@@ -250,6 +251,7 @@ class PathInstalled (Event):
     self.path = path
 
 
+RULES_INSTALLED = 0
 class Switch (EventMixin):
   def __init__ (self):
     self.connection = None
@@ -277,6 +279,7 @@ class Switch (EventMixin):
     switch.connection.send(msg)
 
   def _install (self, switch, in_port, out_port, match, buf = None):
+    global RULES_INSTALLED
     msg = of.ofp_flow_mod()
     # We need the switches to send the message when the flows
     # are expired, to help in element migration.
@@ -290,6 +293,9 @@ class Switch (EventMixin):
     msg.buffer_id = buf
     print switch, "match.in_port",msg.match.in_port, in_port,"->", out_port,"Flow:",
     print "dl_type:",match.dl_type, "nw_proto:",match.nw_proto, "nw_src:",match.nw_src, "nw_dst:",match.nw_dst, "tp_src:",match.tp_src, "tp_dst:",match.tp_dst
+    if match.nw_proto == 1:
+        RULES_INSTALLED = RULES_INSTALLED + 1
+        print "Total Rules Installed: ", RULES_INSTALLED
     switch.connection.send(msg)
 
   def _install_path (self, p, match, packet_in=None):

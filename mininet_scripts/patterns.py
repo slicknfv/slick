@@ -18,34 +18,35 @@ PING_SINGLE_DOMAIN_OUTSIDE_NETWORK = 1
 # 1-to-m relationship between the single host
 # outside the network and the hosts sitting inside the network.
 PING_SINGLE_IP_OUTSIDE_NETWORK = 11
+PING_SINGLE_IP_OUTSIDE_NETWORK_ONCE = 12
 OUTSIDE_IP_ADDRESS_LIST = ["143.215.129.1"] # This IP Address should be on the Internet.
 # m-to-n relationship between many hosts
 # outside the network and the hosts sitting inside the network.
-PING_MULTIPLE_IPS_OUTSIDE_NETWORK = 12
+PING_MULTIPLE_IPS_OUTSIDE_NETWORK = 13
 
 
 # 1-to-m relationship between the single host
 # outside the network and the hosts sitting inside the network.
-HTTP_SINGLE_IP_OUTSIDE_NETWORK = 13
+HTTP_SINGLE_IP_OUTSIDE_NETWORK = 14
 # m-to-n relationship between multiple hosts
 # outside the network and the hosts sitting inside the network.
-HTTP_MULTIPLE_IP_OUTSIDE_NETWORK = 14
+HTTP_MULTIPLE_IP_OUTSIDE_NETWORK = 15
 
 
 # 1-to-m relationship between the single host
 # outside the network and the hosts sitting inside the network.
-UDP_SINGLE_IP_OUTSIDE_NETWORK = 15
+UDP_SINGLE_IP_OUTSIDE_NETWORK = 16
 # m-to-n relationship between multiple hosts
 # outside the network and the hosts sitting inside the network.
-UDP_MULTIPLE_IP_OUTSIDE_NETWORK = 16
+UDP_MULTIPLE_IP_OUTSIDE_NETWORK = 17
 
 
 # 1-to-m relationship between the single host
 # outside the network and the hosts sitting inside the network.
-TCP_SINGLE_IP_OUTSIDE_NETWORK = 17
+TCP_SINGLE_IP_OUTSIDE_NETWORK = 18
 # m-to-n relationship between multiple hosts
 # outside the network and the hosts sitting inside the network.
-TCP_MULTIPLE_IP_OUTSIDE_NETWORK = 18
+TCP_MULTIPLE_IP_OUTSIDE_NETWORK = 19
 
 
 # Harpoon traffic direction

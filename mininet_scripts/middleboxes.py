@@ -210,6 +210,16 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
         print "Average Min. Latency experiment:", avg_lat
         print "Total number of hosts:", len(network.hosts)
         #plot_graphs.plot_cdf("icmp_log.eps", all_latencies)
+    if traffic_pattern == patterns.PING_SINGLE_IP_OUTSIDE_NETWORK_ONCE:
+        seconds = kill_wait_sec
+        if hstar == True:
+            # Returns the list of host names.
+            for h in network.hosts:
+                all_hosts.add(h.name)
+        time.sleep(15)
+        # Performing single pings to check number of rules installed.
+        command = "ping -c 1 192.168.56.101"# Please change this to the IP address of vboxnetX IP corresponding to virtual machines.
+        output = execute_command_ping1(network, hosts, command, 1, 1000, 30) # This will work for FatTree Topo
     if traffic_pattern == patterns.HARPOON_EAST_WEST:
         if hstar == True:
             # Returns the list of host names.
