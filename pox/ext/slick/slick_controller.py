@@ -41,6 +41,7 @@ from slick.steering.RandomSteering import RandomSteering
 from slick.steering.ShortestHopCountSteering import ShortestHopCountSteering
 from slick.steering.ShortestPathSteering import ShortestPathSteering
 from slick.steering.LoadAwareShortestPathSteering import LoadAwareShortestPathSteering
+from slick.steering.LASPSHeuristics import LASPSHeuristics
 from slick.placement.RandomPlacement import RandomPlacement
 from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.placement.IncrementalKPlacement import IncrementalKPlacement
@@ -98,6 +99,9 @@ class slick_controller (object):
 	if steering == "LoadAwareShortestPath": 
             log.debug("Starting %s steering algorithm." % (steering))
             self.steering_module = LoadAwareShortestPathSteering( self.network_model )
+	if steering == "LASPSHeuristics": 
+            log.debug("Starting %s steering algorithm." % (steering))
+            self.steering_module = LASPSHeuristics( self.network_model )
 	else:
             log.debug("Starting LoadAwareShortestPath steering algorithm." )
             self.steering_module = LoadAwareShortestPathSteering( self.network_model )

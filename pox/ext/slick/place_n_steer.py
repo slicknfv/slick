@@ -435,7 +435,8 @@ class PlacenSteer(object):
         assert len(element_partition_number_vector) == len(eds), "Local function assertion failed."
         pivot_partition = None
         #if (src_partition_number == dst_partition_number) and (policy_direction == "NS"):
-        if (policy_direction == "NS"):
+        # Policy direction is NS if one of the switches either source or destination is gateway switch.
+        if (policy_direction == "NS"): 
             log.debug("Source and Destination have same partition.")
             # Source and destination are in the same partition so no need
             # to cross the boundaries.

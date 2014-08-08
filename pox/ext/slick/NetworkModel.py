@@ -385,13 +385,17 @@ class NetworkModel():
             print elem_spec
         return spec_leg
 
-    def get_elem_leg_factor(self, elem_name, elem_desc=-1):
+    def get_elem_leg_factor(self, elem_name=None, elem_desc=-1):
         leg_factor = -1
         if elem_desc > 0:
-            # Get the leg_factor from runtime module; that calculates the leg_factor based on
+            # FUTURE TODO: Get the leg_factor from runtime module; that calculates the leg_factor based on
             # existing deployment of element instance.
-            return leg_factor
-        else:
+            element_name = self.get_elem_name(elem_desc)
+            print element_name
+            elem_spec = self._elem_specs.get_element_spec(element_name)[element_name]
+            if elem_spec.has_key("leg_factor"):
+                leg_factor = elem_spec["leg_factor"]
+        elif elem_name:
             elem_spec = self._elem_specs.get_element_spec(elem_name)[elem_name]
             if elem_spec.has_key("leg_factor"):
                 leg_factor = elem_spec["leg_factor"]
@@ -511,7 +515,7 @@ class NetworkModel():
         self._controller.place_n_steer.place_n_steer()
 
     def resolve_partitions(self, src, dst, eds):
-        """Wrapper."""
+        """Wrapper function to resolve partition boundary crossing for steering"""
         self._controller.place_n_steer.resolve_partitions(src, dst, eds)
 
     def get_updated_replicas(self, flow):
