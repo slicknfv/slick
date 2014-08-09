@@ -117,8 +117,10 @@ class OverlayNetwork(object):
         self.vertex_descriptor = 0 
         # Utilization of links 
         self.phy_link_utilizations = { }
+        self.max_phy_link_utilizations = { }
         # Network state callback
         Timer(5, self.update_overlay_graph_link_weights, recurring = True)
+        Timer(5, self.update_physical_network_utilization, recurring = True)
 
 
     def _handle_host_tracker_HostEvent(self, event):
@@ -534,3 +536,13 @@ class OverlayNetwork(object):
             utilization = self._get_link_utilization(v1,v2)
             self.overlay_graph_nx[v1][v2]['utilization'] = utilization
 
+
+    def update_physical_network_utilization(self):
+        #print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", self.phy_link_utilizations
+        self.phy_link_utilizations = self.controller.network_model.get_physical_link_utilizations()
+        for link, utilization in self.phy_link_utilizations.iteritems():
+            if link not in self.max_phy_link_utilizations:
+                self.max_phy_link_utilizations[link] = utilization
+            elif utilization > self.max_phy_link_utilizations[link]:
+                self.max_phy_link_utilizations[link] = utilization
+        print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", self.max_phy_link_utilizations

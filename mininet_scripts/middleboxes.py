@@ -1,4 +1,5 @@
 # Code to start the middlebox instances on the element instances.
+import os
 import sys
 import time
 from signal import SIGINT
@@ -8,9 +9,14 @@ import subprocess, shlex
 import xml.etree.ElementTree as ET
 
 from mininet.util import custom, pmonitor
+from mininet.log import setLogLevel, info, warn, error, debug
 
 import patterns
 import plot_graphs
+
+from subprocess import Popen, PIPE
+import multiprocessing
+from monitor.monitor import monitor_devs_ng
 
 """
     Traffic Pattern Identifier:
@@ -252,6 +258,13 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
             output = execute_command(network, client_hosts, client_command, 10000, kill_wait_sec)
             for h, output_lines in output:
                 print output_lines
+    if traffic_pattern == patterns.TCP_SINGLE_IP_OUTSIDE_NETWORK:
+        hosts = network.hosts
+        exp_time_duration = 60 # seconds
+        time_duration = exp_time_duration
+        input_file = "traffic_data/ns_all_to_one"
+        output_dir = "traffic_data/"
+        start_iperfTrafficGen(input_file, output_dir, time_duration, hosts, network)
 
 def execute_command(network, hosts, command, single_command_timeoutms=1000, kill_wait_sec=15):
     """Args:
@@ -312,5 +325,66 @@ def _get_latency(output):
                 print "Error: There was a packet drop."
     return latency_dict
 
-def start_iperf(network, mblist):
-    pass
+def start_tcpprobe():
+    ''' Install tcp_probe module and dump to file '''
+    os.system("rmmod tcp_probe; modprobe tcp_probe full=1;")
+    Popen("cat /proc/net/tcpprobe > tcp.txt" , shell=True)
+
+def stop_tcpprobe():
+    os.system("killall -9 cat")
+
+def start_iperfTrafficGen(input_file, output_dir, time_duration, hosts, net):
+    '''Copied code 
+    Generate traffic pattern using iperf and monitor all of thr interfaces
+    
+    input format:
+    src_ip dst_ip dst_port type seed start_time stop_time flow_size r/e
+    repetitions time_between_flows r/e (rpc_delay r/e)
+    
+    '''
+    
+    host_list = {} 
+    for h in hosts:
+        host_list[h.IP()] = h
+    
+    port = 5001
+    
+    data = open(input_file)
+    
+    start_tcpprobe()
+    
+    info('*** Starting iperf ...\n')
+    for line in data:
+        flow = line.split(' ')
+        src_ip = flow[0]
+        dst_ip = flow[1]
+        if src_ip not in host_list:
+            continue
+        time.sleep(0.4)
+        if dst_ip in host_list:
+            server = host_list[dst_ip]
+            server.popen('iperf -s -p %s > server.txt' % port, shell = True)
+
+            client = host_list[src_ip]
+            client.popen('iperf -c %s -p %s -t %d > client.txt' 
+                    % (server.IP(), port, time_duration ), shell=True)
+        else: # The case when server is hosted outside the network
+            Popen('iperf -s -p %s > server.txt' % port, shell = True)
+            client = host_list[src_ip]
+            client.popen('iperf -c %s -p %s -t %d > client.txt' 
+                    % (dst_ip, port, time_duration ), shell=True)
+
+    monitor = multiprocessing.Process(target = monitor_devs_ng, args =
+                ('%s/rate.txt' % output_dir, 0.01))
+
+    monitor.start()
+
+    time.sleep(time_duration)
+
+    monitor.terminate()
+    
+    info('*** stoping iperf ...\n')
+    stop_tcpprobe()
+
+    Popen("killall iperf", shell=True).wait()
+
