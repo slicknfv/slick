@@ -1,0 +1,7 @@
+This folder contains two components, first buildLP.py, conceptually it can take in any topology and traffic matrix and compute, right now it only build fattree and uniform traffic.
+
+Second part is runscript.m, it is a matlab file and we can simply plug it in and compute the utilization. It right now for simplicity only minimize the maximum utilization, both for links and middleboxes, U1 and U2 respectively. 
+
+to run it, you can type python buildLP.py [number of pairs you want to talk to, value 1-16], and it will give you an LP, and you can redirect the stdout to runscript.m, by adding >runscript.m
+
+then run the matlab file in matlab by simply type the file name. 
