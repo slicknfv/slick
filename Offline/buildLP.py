@@ -72,10 +72,10 @@ def printKthMatrix(k):
     print "Aeq("+ str(2+line) +", [" + MB + "E37, " +MB+"E38, "+MB+"E39, "+MB +"E40, " + MB+"E3, " + MB + "E4 , " + MB+  "P2 ])" + "= [1,1,1,1,-1,-1,-1];"
     print "Aeq("+ str(3+line) +", [" + MB + "E41, " +MB+"E42, "+MB+"E43, "+MB +"E44, " + MB+"E9, " + MB + "E10 , " + MB+  "P3 ])" + "= [1,1,1,1,-1,-1,-1];"
     print "Aeq("+ str(4+line) +", [" + MB + "E45, " +MB+"E46, "+MB+"E47, "+MB +"E48, " + MB+"E11, " + MB + "E12 , " + MB+  "P4 ])" + "= [1,1,1,1,-1,-1,-1];"
-    print "Aeq("+ str(5+line) +", [" + MB + "E49, " +MB+"E50, "+MB+"E51, "+MB +"E52, " + MB+"E17, " + MB + "E18 , " + MB+  "P5 ])" + "= [1,1,1,1,-1,-1,-1];"
-    print "Aeq("+ str(6+line) +", [" + MB + "E53, " +MB+"E54, "+MB+"E55, "+MB +"E56, " + MB+"E19, " + MB + "E20, " + MB+  "P6 ])" + "= [1,1,1,1,-1,-1,-1];"
-    print "Aeq("+ str(7+line) +", [" + MB + "E57, " +MB+"E58, "+MB+"E59, "+MB +"E60, " + MB+"E25, " + MB + "E26 , " + MB+  "P7 ])" + "= [1,1,1,1,-1,-1,-1];"
-    print "Aeq("+ str(8+line) +", [" + MB + "E61, " +MB+"E62, "+MB+"E63, "+MB +"E64, " + MB+"E27, " + MB + "E28 , " + MB+  "P8 ])" + "= [1,1,1,1,-1,-1,-1];"
+    print "Aeq("+ str(5+line) +", [" + MB + "E49, " +MB+"E50, "+MB+"E51, "+MB +"E52, " + MB+"E17, " + MB + "E18 , " + MB+  "P5 ])" + "= [1,1,1,1,-1,-1, 1];"
+    print "Aeq("+ str(6+line) +", [" + MB + "E53, " +MB+"E54, "+MB+"E55, "+MB +"E56, " + MB+"E19, " + MB + "E20, " + MB+  "P6 ])" + "= [1,1,1,1,-1,-1, 1];"
+    print "Aeq("+ str(7+line) +", [" + MB + "E57, " +MB+"E58, "+MB+"E59, "+MB +"E60, " + MB+"E25, " + MB + "E26 , " + MB+  "P7 ])" + "= [1,1,1,1,-1,-1, 1];"
+    print "Aeq("+ str(8+line) +", [" + MB + "E61, " +MB+"E62, "+MB+"E63, "+MB +"E64, " + MB+"E27, " + MB + "E28 , " + MB+  "P8 ])" + "= [1,1,1,1,-1,-1, 1];"
     #########Above is for edge switches MB conservation#####################################
 
     print "Aeq("+ str(9+line) +", [" + MB + "E1, " +MB+"E3, "+MB+"E5, "+MB +"E6 , " + MB+  "P9])" + "= [1,1,-1,-1,-1];"
@@ -83,10 +83,10 @@ def printKthMatrix(k):
     print "Aeq("+ str(11+line) +", [" + MB + "E9, " +MB+"E11, "+MB+"E13, "+MB +"E14, " + MB+  "P11 ]) " + "= [1,1,-1,-1,-1];"
     print "Aeq("+ str(12+line) +", [" + MB + "E10, " +MB+"E12, "+MB+"E15, "+MB +"E16, " + MB+  "P12 ]) " + "= [1,1,-1,-1,-1];"
 
-    print "Aeq("+ str(13+line) +", [" + MB + "E17, " +MB+"E19, "+MB+"E21, "+MB +"E22, " + MB+  "P13 ]) " + "= [1,1,-1,-1,-1];"
-    print "Aeq("+ str(14+line) +", [" + MB + "E18, " +MB+"E20, "+MB+"E23, "+MB +"E24, " + MB+  "P14 ]) " + "= [1,1,-1,-1,-1];"
-    print "Aeq("+ str(15+line) +", [" + MB + "E25, " +MB+"E27, "+MB+"E29, "+MB +"E30, " + MB+  "P15 ]) " + "= [1,1,-1,-1,-1];"
-    print "Aeq("+ str(16+line) +", [" + MB + "E26, " +MB+"E28, "+MB+"E31, "+MB +"E32, " + MB+  "P16 ]) " + "= [1,1,-1,-1,-1];"
+    print "Aeq("+ str(13+line) +", [" + MB + "E17, " +MB+"E19, "+MB+"E21, "+MB +"E22, " + MB+  "P13 ]) " + "= [1,1,-1,-1, 1];"
+    print "Aeq("+ str(14+line) +", [" + MB + "E18, " +MB+"E20, "+MB+"E23, "+MB +"E24, " + MB+  "P14 ]) " + "= [1,1,-1,-1, 1];"
+    print "Aeq("+ str(15+line) +", [" + MB + "E25, " +MB+"E27, "+MB+"E29, "+MB +"E30, " + MB+  "P15 ]) " + "= [1,1,-1,-1, 1];"
+    print "Aeq("+ str(16+line) +", [" + MB + "E26, " +MB+"E28, "+MB+"E31, "+MB +"E32, " + MB+  "P16 ]) " + "= [1,1,-1,-1, 1];"
 
     print "Aeq("+ str(17+line) +", [" + MB + "E5, " +MB+"E13, "+MB+"E21, "+MB +"E29, " + MB+  "P17 ])" + "= [1,1,-1,-1,-1];"
     print "Aeq("+ str(18+line) +", [" + MB + "E6, " +MB+"E14, "+MB+"E22, "+MB +"E30, " + MB+  "P18 ])" + "= [1,1,-1,-1,-1];"
@@ -107,6 +107,16 @@ def printKthMatrix(k):
 #############################################################################################################################
 #############################################################################################################################
 
+
+def printKthIneqalityMatrix(k):
+    #add the constraints first
+    #add the objective part second
+    FLOW = "X"+ str(k)
+    WORK = "W" + str(k)
+    line = 64 * (k-1) +52
+    for j in range(1, 65):
+        print "A("+str(j+line) +", [" + FLOW + "E"+str(j) + ", " + WORK + "E" + str(j)+ " ])" + "=[-1,1];"
+    return
 
 
 print "variables = {",
@@ -148,7 +158,7 @@ for i in range(1, kvalue+1):
 
 
 
-print "A = zeros( 52, N); b=zeros(52, 1)"
+print "A = zeros("+ str(52+64*kvalue) +", N); b=zeros("+ str(52+64*kvalue) +", 1)"
 
 for i in range(1,33):
     print "A("+ str(i) +", [",
@@ -171,7 +181,8 @@ for i in range(1,21):
     for j in range(1, kvalue +1):
         print  " 1 ,",
     print   "-1 ];"
-
+for i in range(1, kvalue +1):
+    printKthIneqalityMatrix(i)
 
 
 #intlinprog
