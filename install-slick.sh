@@ -165,6 +165,11 @@ sudo apt-get -y install oracle-java7-installer
 
 echo ""
 echo ""
+echo "*** Installing python analysis/plotting packages"
+sudo apt-get install python-numpy python-scipy python-matplotlib python-pandas
+
+echo ""
+echo ""
 echo "*** Creating/Updating links to libraries..."
 sudo ldconfig
 
