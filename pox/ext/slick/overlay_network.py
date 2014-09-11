@@ -537,6 +537,12 @@ class OverlayNetwork(object):
             self.overlay_graph_nx[v1][v2]['utilization'] = utilization
 
 
+    def write_max_utilization(self, filename):
+	file_handle = open(filename, 'w')
+	for link, utilization in self.max_phy_link_utilizations.iteritems():
+	    file_handle.write(str(int(utilization)) + "," )
+	file_handle.close()
+
     def update_physical_network_utilization(self):
         #print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", self.phy_link_utilizations
         self.phy_link_utilizations = self.controller.network_model.get_physical_link_utilizations()
@@ -546,3 +552,4 @@ class OverlayNetwork(object):
             elif utilization > self.max_phy_link_utilizations[link]:
                 self.max_phy_link_utilizations[link] = utilization
         print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", self.max_phy_link_utilizations
+	self.write_max_utilization("max_link_utilizations.txt")
