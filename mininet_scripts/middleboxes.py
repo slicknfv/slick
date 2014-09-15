@@ -363,16 +363,19 @@ def start_iperfTrafficGen(input_file, output_dir, time_duration, hosts, net):
         time.sleep(0.4)
         if dst_ip in host_list:
             server = host_list[dst_ip]
-            server.popen('iperf -s -p %s > server.txt' % port, shell = True)
+            server.popen('iperf -u -s -p %s > server.txt' % port, shell = True)
 
             client = host_list[src_ip]
-            client.popen('iperf -c %s -p %s -t %d > client.txt' 
+            client.popen('iperf -u -c %s -p %s -t %d > client.txt' 
                     % (server.IP(), port, time_duration ), shell=True)
         else: # The case when server is hosted outside the network
-            Popen('iperf -s -p %s > server.txt' % port, shell = True)
+	    print "Starting server... on port", str(port)
+            Popen('iperf -u -s -p %s > server_%s.txt' % (port, port), shell = True)
             client = host_list[src_ip]
-            client.popen('iperf -c %s -p %s -t %d > client.txt' 
-                    % (dst_ip, port, time_duration ), shell=True)
+	    print "Starting client... on port", str(port)
+            client.popen('iperf -u -b 1073741824 -c %s -p %s -t %d > client_%s.txt' 
+                % (dst_ip, port, time_duration, port ), shell=True)
+	    port += 1
 
     monitor = multiprocessing.Process(target = monitor_devs_ng, args =
                 ('%s/rate.txt' % output_dir, 0.01))
@@ -388,3 +391,48 @@ def start_iperfTrafficGen(input_file, output_dir, time_duration, hosts, net):
 
     Popen("killall iperf", shell=True).wait()
 
+''' Output of bwm-ng has the following format:
+    unix_timestamp;iface_name;bytes_out;bytes_in;bytes_total;packets_out;packets_in;packets_total;errors_out;errors_in
+    '''
+from monitor.helper import *
+from math import fsum
+import numpy as np
+def get_bandwidth(input_file, pat_iface):
+    pat_iface = re.compile(pat_iface)
+    
+    data = read_list(input_file)
+
+    rate = {} 
+    column =4
+        
+    for row in data:
+        try:
+            ifname = row[1]
+        except:
+            break
+
+        if ifname not in ['eth0', 'lo', 'eth1']:
+            if not rate.has_key(ifname):
+                rate[ifname] = []
+            
+            try:
+                rate[ifname].append(float(row[column]) * 8.0 / (1 << 20))
+            except:
+                break
+    print rate
+    print pat_iface
+    vals = []
+    vals1 =  [ ]
+    for k in rate.keys():
+        if pat_iface.match(k): 
+            avg_rate = avg(rate[k][10:-10])
+	    print k, avg_rate
+	    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+            vals1.append((k,avg_rate))
+	    vals.append(avg_rate)
+            
+    print vals1
+    return fsum(vals)
+
+sw = 's[1-9]-eth*'
+#get_bandwidth("traffic_data/rate_back.txt", sw)

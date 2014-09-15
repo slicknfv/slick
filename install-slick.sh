@@ -166,7 +166,9 @@ sudo apt-get -y install oracle-java7-installer
 echo ""
 echo ""
 echo "*** Installing python analysis/plotting packages"
+sudo easy_install termcolor
 sudo apt-get install python-numpy python-scipy python-matplotlib python-pandas
+sudo apt-get install bwm-ng
 
 echo ""
 echo ""

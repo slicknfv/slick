@@ -73,6 +73,6 @@ print data_random_dcell
 print data_partition_dcell
 #plot_two_cdfs("test_cdf.eps", data_random_tree, data_partition_tree)
 #plot_two_cdfs("test_cdf.eps", data_random_fattree, data_partition_fattree)
-plot_two_cdfs("test_cdf.eps", data_random_dcell, data_partition_dcell)
+#plot_two_cdfs("test_cdf.eps", data_random_dcell, data_partition_dcell)
 #plot_two_cdfs("test_cdf.eps", [1,2,3,4,6], [1,2,3,4,5])
 
