@@ -373,7 +373,8 @@ def start_iperfTrafficGen(input_file, output_dir, time_duration, hosts, net):
             Popen('iperf -u -s -p %s > server_%s.txt' % (port, port), shell = True)
             client = host_list[src_ip]
 	    print "Starting client... on port", str(port)
-            client.popen('iperf -u -b 1073741824 -c %s -p %s -t %d > client_%s.txt' 
+            #client.popen('iperf -u -b 1073741824 -c %s -p %s -t %d > client_%s.txt' 
+            client.popen('iperf -c %s -u -b 10240 -p %s -t %d > client_%s.txt' 
                 % (dst_ip, port, time_duration, port ), shell=True)
 	    port += 1
 
@@ -416,15 +417,17 @@ def get_bandwidth(input_file, pat_iface):
                 rate[ifname] = []
             
             try:
-                rate[ifname].append(float(row[column]) * 8.0 / (1 << 20))
+                #rate[ifname].append(float(row[column]) * 8.0 / (1 << 20))
+                rate[ifname].append(float(row[column]) * 8.0 / (1024))
             except:
                 break
-    print rate
-    print pat_iface
+    #print rate
+    #print pat_iface
     vals = []
     vals1 =  [ ]
     for k in rate.keys():
         if pat_iface.match(k): 
+	    #print rate[k]
             avg_rate = avg(rate[k][10:-10])
 	    print k, avg_rate
 	    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -432,6 +435,7 @@ def get_bandwidth(input_file, pat_iface):
 	    vals.append(avg_rate)
             
     print vals1
+    print fsum(vals)
     return fsum(vals)
 
 sw = 's[1-9]-eth*'
