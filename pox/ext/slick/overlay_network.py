@@ -531,7 +531,7 @@ class OverlayNetwork(object):
     def update_overlay_graph_link_weights(self):
         """Use this function to update the weight for links of the overlay graph
         based on the utilization readings got from the NetworkLoad."""
-        self.phy_link_utilizations = self.controller.network_model.get_physical_link_utilizations()
+        #self.phy_link_utilizations = self.controller.network_model.get_physical_link_utilizations()
         for v1, v2, data in self.overlay_graph_nx.edges(data=True):
             utilization = self._get_link_utilization(v1,v2)
             self.overlay_graph_nx[v1][v2]['utilization'] = utilization
