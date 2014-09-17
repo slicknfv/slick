@@ -32,6 +32,7 @@ class SFlowNetworkLoad(NetworkLoad):
         self._link_to_sflowid = { }
         # "http://localhost:8008/dump/ALL/ifinoctets;ifoutoctets;ifindex;ifinutilization;ifoperstatus/json"
         self.collector_query = None
+	self.prev_ifindices = {}
 
     def _get_server_name(self, server_name , port ):
         sflow_rt_url = ""
@@ -49,6 +50,9 @@ class SFlowNetworkLoad(NetworkLoad):
         Returns: A map between:
         ifindices -> (incoming, outgoing) bandwidth in mbps.
         on each interface in mbps."""
+	# Please note see the mininet script where we set this interval for the sflow switches
+	# there its 5 and we collect it after 5 seconds so it should be fine.
+	collection_interval = 5 #seconds
         try:
             #"/dump/ALL/ifinoctets;ifoutoctets;ifindex;ifoperstatus/json"
             r = requests.get(self._sflow_rt_url + "/dump/ALL/ifinoctets;ifoutoctets/json")
@@ -68,8 +72,10 @@ class SFlowNetworkLoad(NetworkLoad):
             for interface in ifindices:
                 data_source = None
                 metric_name = None
-                in_bytes_p_sec = 0
-                out_bytes_p_sec = 0
+                in_bytes = 0
+                out_bytes = 0
+		in_bytes_delta = 0
+		out_bytes_delta = 0
                 for result_dict in dump_result:
                     if "dataSource" in result_dict:
                         data_source = result_dict["dataSource"]
@@ -79,17 +85,26 @@ class SFlowNetworkLoad(NetworkLoad):
                                 if metric_name == 'ifinoctets':
                                     if 'metricValue' in result_dict:
                                         metric_value = result_dict['metricValue']
-                                        in_bytes_p_sec = int(metric_value)
+                                        in_bytes = int(metric_value)
                                 if metric_name == "ifoutoctets":
                                     if 'metricValue' in result_dict:
                                         metric_value = result_dict['metricValue']
-                                        out_bytes_p_sec = int(metric_value)
-                            #print data_source, metric_name, in_bytes_p_sec, out_bytes_p_sec
+                                        out_bytes = int(metric_value)
+                            #print data_source, metric_name, in_bytes, out_bytes
                         else:
                             continue
                 # http://www.cisco.com/en/US/tech/tk648/tk362/technologies_tech_note09186a008009496e.shtml
-                ifindices[interface] = (float(in_bytes_p_sec*8)/(1024*1024), float(out_bytes_p_sec*8)/(1024*1024))
-                #ifindices[interface] = (float(in_bytes_p_sec), float(out_bytes_p_sec))
+		if interface in self.prev_ifindices:
+		    in_bytes_delta = in_bytes - self.prev_ifindices[interface][0]
+		    out_bytes_delta = out_bytes - self.prev_ifindices[interface][1]
+		    print "in_delta, out_delta",in_bytes_delta , out_bytes_delta, in_bytes, '-', self.prev_ifindices[interface][0], out_bytes, '-',self.prev_ifindices[interface][1]
+		    self.prev_ifindices[interface] = (in_bytes, out_bytes) 
+		else:
+		    # Initialize the prev interfaces
+		    self.prev_ifindices[interface] = (0, 0)
+                #ifindices[interface] = ((float(in_bytes_delta*8)/(1024*1024))/collection_interval, (float(out_bytes_delta*8)/(1024*1024))/collection_interval)
+                ifindices[interface] = ((float(in_bytes*8)/(1024))/collection_interval, (float(out_bytes*8)/(1024))/collection_interval)
+                #ifindices[interface] = (float(in_bytes), float(out_bytes))
             return ifindices
         else:
             return None
@@ -226,7 +241,7 @@ class SFlowNetworkLoad(NetworkLoad):
     def _get_link_capacity(self, link):
         # This value depends on the mininet parameters.
         # On custom topology it will not be fixed so please be careful
-        MAX_LINK_BANDWIDTH = 1 # Mbps
+        MAX_LINK_BANDWIDTH = 1024 # Kbps
         return MAX_LINK_BANDWIDTH
 
     def get_congested_links(self):
@@ -246,9 +261,11 @@ class SFlowNetworkLoad(NetworkLoad):
         # link -> %_utilization
         link_utils = {}
         link_util = self._collect_link_utilization()
+	print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",link_util
         for link, util in link_util.iteritems():
             link_capacity = self._get_link_capacity(link)
             link_usage = (float(util)/link_capacity)*100
+	    #link_usage = float(util)
             link_utils[link] = link_usage
         return link_utils
 
