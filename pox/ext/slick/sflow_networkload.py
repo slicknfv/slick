@@ -97,7 +97,7 @@ class SFlowNetworkLoad(NetworkLoad):
 		if interface in self.prev_ifindices:
 		    in_bytes_delta = in_bytes - self.prev_ifindices[interface][0]
 		    out_bytes_delta = out_bytes - self.prev_ifindices[interface][1]
-		    print "in_delta, out_delta",in_bytes_delta , out_bytes_delta, in_bytes, '-', self.prev_ifindices[interface][0], out_bytes, '-',self.prev_ifindices[interface][1]
+		    #print "in_delta, out_delta",in_bytes_delta , out_bytes_delta, in_bytes, '-', self.prev_ifindices[interface][0], out_bytes, '-',self.prev_ifindices[interface][1]
 		    self.prev_ifindices[interface] = (in_bytes, out_bytes) 
 		else:
 		    # Initialize the prev interfaces
@@ -231,7 +231,10 @@ class SFlowNetworkLoad(NetworkLoad):
                 # (dpid1=3, port1=3) -> (dpid2=2, port2=1)
                 # intf1 -> intf2
                 # Find max(out_bytes_p_sec_intf1, in_bytes_p_sec_intf2)
-                link_bandwidth = max(if_utilization_mbps[sflow_ifindex1][1], if_utilization_mbps[sflow_ifindex2][0])
+                ##link_bandwidth = max(if_utilization_mbps[sflow_ifindex1][1], if_utilization_mbps[sflow_ifindex2][0])
+                link_bandwidth = if_utilization_mbps[sflow_ifindex1][1]+ if_utilization_mbps[sflow_ifindex1][0] # Incoming and outgoing bps
+                link_bandwidth2 = if_utilization_mbps[sflow_ifindex2][1]+ if_utilization_mbps[sflow_ifindex2][0]
+		print "link_bw, link_bw1",link_bandwidth, link_bandwidth2
                 link_util[link] = link_bandwidth # , sflow_ifindex1, sflow_ifindex2
         switch_names = self.controller.network_model.get_all_forwarding_device_names()
         if len(links) != len(link_util):
@@ -264,8 +267,8 @@ class SFlowNetworkLoad(NetworkLoad):
 	print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",link_util
         for link, util in link_util.iteritems():
             link_capacity = self._get_link_capacity(link)
-            link_usage = (float(util)/link_capacity)*100
-	    #link_usage = float(util)
+            #link_usage = (float(util)/link_capacity)*100
+	    link_usage = float(util)
             link_utils[link] = link_usage
         return link_utils
 
