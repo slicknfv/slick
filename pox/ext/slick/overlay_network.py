@@ -16,6 +16,7 @@ import networkx as nx
 from pox.lib.revent import EventHalt
 from pox.lib.recoco import Timer # For timer calls.
 
+import helper
 log = core.getLogger()
 
 # Modifying the already available utility function from here:
@@ -118,9 +119,11 @@ class OverlayNetwork(object):
         # Utilization of links 
         self.phy_link_utilizations = { }
         self.max_phy_link_utilizations = { }
+	self.avg_link_utilizations =  defaultdict(list)
+        self.link_utilizations = { }
         # Network state callback
         Timer(5, self.update_overlay_graph_link_weights, recurring = True)
-        Timer(5, self.update_physical_network_utilization, recurring = True)
+        Timer(1, self.update_physical_network_utilization, recurring = True)
 
 
     def _handle_host_tracker_HostEvent(self, event):
@@ -551,5 +554,17 @@ class OverlayNetwork(object):
                 self.max_phy_link_utilizations[link] = utilization
             elif utilization > self.max_phy_link_utilizations[link]:
                 self.max_phy_link_utilizations[link] = utilization
-        print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", self.max_phy_link_utilizations
-	self.write_max_utilization("max_link_utilizations.txt")
+        for link, utilization in self.phy_link_utilizations.iteritems():
+            if link not in self.max_phy_link_utilizations:
+		self.avg_link_utilizations[link] = [utilization]
+	    else:
+		if (len(self.avg_link_utilizations[link]) <= 20):
+		    self.avg_link_utilizations[link].append(utilization)
+		else:
+		    del self.avg_link_utilizations[link][0]
+		    self.avg_link_utilizations[link].append(utilization)
+                    self.link_utilizations[link] = helper.avg(self.avg_link_utilizations[link])
+		    #assert len(avg_link_utilizations[link]) == 10
+	#print 10*"AVG:",self.link_utilizations
+        #print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", self.max_phy_link_utilizations
+        #self.write_max_utilization("max_link_utilizations.txt")

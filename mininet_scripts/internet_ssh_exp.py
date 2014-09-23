@@ -23,7 +23,7 @@ from mininet.link import TCLink
 
 from mininet.topo import Topo
 from topologies.topolib import TreeNet, TreeTopo
-from mininet.util import quietRun
+from mininet.util import quietRun, dumpNetConnections
 from mininet.node import OVSController, Controller, RemoteController
 from mininet.node import Node, OVSKernelSwitch,UserSwitch
 
@@ -312,14 +312,34 @@ if __name__ == '__main__':
     # somewher else since it is just for the NAT.
     print "Using the topo:", topo
     net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=host, link=link)
-
+    #for link in topo.links():
+    #    print link.intfName1
+    #    print link.intfName2
+    link_interfaces = [ ]
+    switch_names = [ ]
+    f = open("interfaces.txt",'w')
+    for switch in net.switches:
+	switch_names.append(switch.name)
+    for link in topo.links():
+        if link[0] in switch_names and link[1] in switch_names:
+	    print link
+	    s1 = net.getNodeByName(link[0])
+	    s2 = net.getNodeByName(link[1])
+ 	    links = s1.connectionsTo(s2)
+            for l in links:
+		print l[0], l[1]
+		print type(l[0]), type(l[1])
+                link_interfaces.append((l[0].name,l[1].name))
+                f.write(l[0].name + ','+ l[1].name + '\n')
+                pass
+            pass
+    f.close()
     #net = Mininet(switch=OVSKernelSwitch, topo=topo, host=CPULimitedHost, link=TCLink)
     #net.start( )
     #time.sleep(5)
     #CLI( net )
     #net.stop( )
     #sys.exit(1)
-    switch_names = [ ]
     if gateway_switch:
         for switch in net.switches:
             switch_names.append(switch.name)

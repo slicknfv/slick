@@ -52,7 +52,7 @@ class SFlowNetworkLoad(NetworkLoad):
         on each interface in mbps."""
 	# Please note see the mininet script where we set this interval for the sflow switches
 	# there its 5 and we collect it after 5 seconds so it should be fine.
-	collection_interval = 5 #seconds
+	collection_interval = 1 #seconds
         try:
             #"/dump/ALL/ifinoctets;ifoutoctets;ifindex;ifoperstatus/json"
             r = requests.get(self._sflow_rt_url + "/dump/ALL/ifinoctets;ifoutoctets/json")
@@ -181,7 +181,7 @@ class SFlowNetworkLoad(NetworkLoad):
                 #    overloaded_middleboxes.append(mb_mac)
                 mb_capacity = self._get_mb_capacity(mb_mac)
                 mb_usage = (float(mb_intake)/mb_capacity)*100
-                print mb_mac, mb_usage
+                #print mb_mac, mb_usage
                 if (mb_usage > MACHINE_USAGE_THRESHOLD):
                     overloaded_middleboxes.append(mb_mac)
         #for mb in overloaded_middleboxes:
@@ -234,8 +234,8 @@ class SFlowNetworkLoad(NetworkLoad):
                 ##link_bandwidth = max(if_utilization_mbps[sflow_ifindex1][1], if_utilization_mbps[sflow_ifindex2][0])
                 link_bandwidth = if_utilization_mbps[sflow_ifindex1][1]+ if_utilization_mbps[sflow_ifindex1][0] # Incoming and outgoing bps
                 link_bandwidth2 = if_utilization_mbps[sflow_ifindex2][1]+ if_utilization_mbps[sflow_ifindex2][0]
-		print "link_bw, link_bw1",link_bandwidth, link_bandwidth2
-                link_util[link] = link_bandwidth # , sflow_ifindex1, sflow_ifindex2
+		#print "link_bw, link_bw1",link_bandwidth, link_bandwidth2
+                link_util[link] = min(link_bandwidth, link_bandwidth2) # , sflow_ifindex1, sflow_ifindex2
         switch_names = self.controller.network_model.get_all_forwarding_device_names()
         if len(links) != len(link_util):
             log.warn("Not all links' utilization was collected.")
@@ -264,7 +264,7 @@ class SFlowNetworkLoad(NetworkLoad):
         # link -> %_utilization
         link_utils = {}
         link_util = self._collect_link_utilization()
-	print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",link_util
+	#print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",link_util
         for link, util in link_util.iteritems():
             link_capacity = self._get_link_capacity(link)
             #link_usage = (float(util)/link_capacity)*100
