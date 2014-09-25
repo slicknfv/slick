@@ -125,6 +125,8 @@ def connectToInternet( network, switch='s1', rootInterface='eth1', rootip='10.25
  
     # Create link between root NS and switch
     link = network.addLink( root, switch )
+    # This statement also adds a route entry in the root context.
+    # 192.168.100.0   0.0.0.0         255.255.255.0   U     0      0        0 root-eth0
     link.intf1.setIP( rootip, prefixLen )
  
     # Start network that now includes link to root namespace
@@ -311,7 +313,8 @@ if __name__ == '__main__':
     # if we also start up another controller.  We should have this listen
     # somewher else since it is just for the NAT.
     print "Using the topo:", topo
-    net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=host, link=link)
+    #net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=host, link=link)
+    net = Mininet(controller = lambda name: RemoteController( name, ip=slick_controller, port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=host, link=link)
     #for link in topo.links():
     #    print link.intfName1
     #    print link.intfName2
@@ -356,7 +359,7 @@ if __name__ == '__main__':
                                       gateway_switch,
                                       options.rootInterface,
                                       '192.168.100.1',
-                                      '192.168.0.0/16')
+                                      '192.168.100.0/24') # Need this change so that 192.168.56.X traffic can be sent to controller.
 
     else:
         # Pick a network that is different from your 
@@ -365,7 +368,7 @@ if __name__ == '__main__':
                                       's1', # This assumes that the root switch of a topology is s1
                                       options.rootInterface,
                                       '192.168.100.1',
-                                      '192.168.0.0/16')
+                                      '192.168.100.0/24')
 
     setup_sflow(net, switch_names)
     #demand_matrix.generate_binary_demand_matrix(net.hosts)
