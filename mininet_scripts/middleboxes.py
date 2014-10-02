@@ -49,7 +49,7 @@ def load_shims(network, slick_controller,  mblist):
 	mb.cmd(cmd)
         # Wait for n seconds to bring up one element instance.
         print "Waiting for shim layer to be started."
-        time.sleep(0.25)
+        time.sleep(1)
 
 ### Start ping between hosts
 def startpings( host, target, wait_time, attach_str):
@@ -260,7 +260,7 @@ def generate_traffic(network, hosts, middleboxes, traffic_pattern, kill_wait_sec
                 print output_lines
     if traffic_pattern == patterns.TCP_SINGLE_IP_OUTSIDE_NETWORK:
         hosts = network.hosts
-        exp_time_duration = 60 # seconds
+        exp_time_duration = 35 # seconds
         time_duration = exp_time_duration
         input_file = "traffic_data/ns_all_to_one"
         output_dir = "traffic_data/"
@@ -374,7 +374,7 @@ def start_iperfTrafficGen(input_file, output_dir, time_duration, hosts, net):
             client = host_list[src_ip]
 	    print "Starting client... on port", str(port)
             #client.popen('iperf -u -b 1073741824 -c %s -p %s -t %d > client_%s.txt' 
-            client.popen('iperf -c %s -u -b 10240 -p %s -t %d > client_%s.txt' 
+            client.popen('iperf -c %s -u -b 1024 -p %s -t %d > client_%s.txt' 
                 % (dst_ip, port, time_duration, port ), shell=True)
 	    port += 1
 
@@ -418,25 +418,75 @@ def get_bandwidth(input_file, pat_iface):
             
             try:
                 #rate[ifname].append(float(row[column]) * 8.0 / (1 << 20))
-                rate[ifname].append(float(row[column]) * 8.0 / (1024))
+                rate[ifname].append(float(row[column])* 8.0/ (1024))
             except:
                 break
     #print rate
     #print pat_iface
     vals = []
-    vals1 =  [ ]
+    vals1 =  {}
     for k in rate.keys():
         if pat_iface.match(k): 
 	    #print rate[k]
             avg_rate = avg(rate[k][10:-10])
 	    print k, avg_rate
 	    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-            vals1.append((k,avg_rate))
+            vals1[k] = avg_rate
 	    vals.append(avg_rate)
-            
-    print vals1
-    print fsum(vals)
-    return fsum(vals)
+    link_rates = [ ]         
+    f = open('interfaces.txt', 'r')
+    for line in f.readlines():
+        interfaces = line.split(',')
+        if interfaces[0] in vals1.keys():
+            print interfaces[0],',',interfaces[1],vals1[interfaces[0]]
+	    link_rates.append(interfaces[0])
+    #print vals1
+    #return fsum(vals)
+    return link_rates
 
-sw = 's[1-9]-eth*'
-#get_bandwidth("traffic_data/rate_back.txt", sw)
+def gather_stats(files, regex, duration):
+  start = 5
+  end = min(duration, max(30, duration - 5))
+  pat_iface = re.compile(regex)
+  totals = []
+  for f in files:
+    data = read_list(f)[:-1]
+    rate = {}
+    column = 4
+    for row in data:
+      try:
+        ifname = row[1]
+      except:
+        break
+      if ifname not in ['eth0', 'lo', 'eth1']:
+        if not rate.has_key(ifname):
+          rate[ifname] = []
+        try:
+          rate[ifname].append(float(row[column]) * 8.0 / (1 << 10))
+        except:
+          break
+    total = None
+    for k in sorted(rate.keys()):
+      if pat_iface.match(k):
+        if total is None:
+          total = [0] * len(rate[k])
+	print k
+        total = [i + j for i,j in zip(rate[k], total)]
+        print total
+    end = min(end, len(total))
+    totals.append(total)
+  print 'read [%d:%d] seconds' % (start, end)
+  all_rates = []
+  for total in totals:
+    all_rates += total[start:end]
+  print all_rates
+  return sorted(all_rates)
+
+
+sw = 's[1-9][0-9]-eth*|s[1-9]-eth*'
+#link_rates1 = get_bandwidth("traffic_data/nopart_rate_back_8h.txt", sw)
+#link_rates2 = get_bandwidth("traffic_data/part_rate_back_8h.txt", sw)
+#print link_rates1, link_rates2
+#plot_graphs.plot_two_cdfs("icmp_log.eps", all_latencies)
+#plot_graphs.plot_two_cdfs("test_cdf.eps", link_rates1, link_rates2)
+#gather_stats(["traffic_data/rate_back.txt"], sw, 30)

@@ -27,7 +27,7 @@ def setup_switch_sflow_agents(switches, controller=None):
     # set the bridge name based on the switch.
 
     # Number of seconds to get a new sample for dump.
-    polling_freq = 5
+    polling_freq = 1
     if not controller:
         print "WARNING: No controller and port specified, using 127.0.0.1:6343"
         controller = "127.0.0.1:6343"

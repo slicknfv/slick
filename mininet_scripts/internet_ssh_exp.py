@@ -23,7 +23,7 @@ from mininet.link import TCLink
 
 from mininet.topo import Topo
 from topologies.topolib import TreeNet, TreeTopo
-from mininet.util import quietRun
+from mininet.util import quietRun, dumpNetConnections
 from mininet.node import OVSController, Controller, RemoteController
 from mininet.node import Node, OVSKernelSwitch,UserSwitch
 
@@ -125,6 +125,8 @@ def connectToInternet( network, switch='s1', rootInterface='eth1', rootip='10.25
  
     # Create link between root NS and switch
     link = network.addLink( root, switch )
+    # This statement also adds a route entry in the root context.
+    # 192.168.100.0   0.0.0.0         255.255.255.0   U     0      0        0 root-eth0
     link.intf1.setIP( rootip, prefixLen )
  
     # Start network that now includes link to root namespace
@@ -311,15 +313,36 @@ if __name__ == '__main__':
     # if we also start up another controller.  We should have this listen
     # somewher else since it is just for the NAT.
     print "Using the topo:", topo
-    net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=host, link=link)
-
+    #net = Mininet(controller = lambda name: RemoteController( name, ip='127.0.0.1', port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=host, link=link)
+    net = Mininet(controller = lambda name: RemoteController( name, ip=slick_controller, port=6633 ) , switch=OVSKernelSwitch, topo=topo, listenPort=6634, host=host, link=link)
+    #for link in topo.links():
+    #    print link.intfName1
+    #    print link.intfName2
+    link_interfaces = [ ]
+    switch_names = [ ]
+    f = open("interfaces.txt",'w')
+    for switch in net.switches:
+	switch_names.append(switch.name)
+    for link in topo.links():
+        if link[0] in switch_names and link[1] in switch_names:
+	    print link
+	    s1 = net.getNodeByName(link[0])
+	    s2 = net.getNodeByName(link[1])
+ 	    links = s1.connectionsTo(s2)
+            for l in links:
+		print l[0], l[1]
+		print type(l[0]), type(l[1])
+                link_interfaces.append((l[0].name,l[1].name))
+                f.write(l[0].name + ','+ l[1].name + '\n')
+                pass
+            pass
+    f.close()
     #net = Mininet(switch=OVSKernelSwitch, topo=topo, host=CPULimitedHost, link=TCLink)
     #net.start( )
     #time.sleep(5)
     #CLI( net )
     #net.stop( )
     #sys.exit(1)
-    switch_names = [ ]
     if gateway_switch:
         for switch in net.switches:
             switch_names.append(switch.name)
@@ -336,7 +359,7 @@ if __name__ == '__main__':
                                       gateway_switch,
                                       options.rootInterface,
                                       '192.168.100.1',
-                                      '192.168.0.0/16')
+                                      '192.168.100.0/24') # Need this change so that 192.168.56.X traffic can be sent to controller.
 
     else:
         # Pick a network that is different from your 
@@ -345,7 +368,7 @@ if __name__ == '__main__':
                                       's1', # This assumes that the root switch of a topology is s1
                                       options.rootInterface,
                                       '192.168.100.1',
-                                      '192.168.0.0/16')
+                                      '192.168.100.0/24')
 
     setup_sflow(net, switch_names)
     #demand_matrix.generate_binary_demand_matrix(net.hosts)
