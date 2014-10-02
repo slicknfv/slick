@@ -49,7 +49,7 @@ def load_shims(network, slick_controller,  mblist):
 	mb.cmd(cmd)
         # Wait for n seconds to bring up one element instance.
         print "Waiting for shim layer to be started."
-        time.sleep(0.25)
+        time.sleep(1)
 
 ### Start ping between hosts
 def startpings( host, target, wait_time, attach_str):
