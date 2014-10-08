@@ -1,0 +1,6 @@
+rm -f client_50*
+rm -f server_50*
+rm -f traffic_data/rate.txt
+rm -f traffic_data/rate_back.txt
+touch traffic_data/rate_back.txt
+rm -f /tmp/dns_log*
