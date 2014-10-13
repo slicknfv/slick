@@ -115,6 +115,10 @@ def parse_cpu_usage(fname, nprocessors=8):
         ret.append(total[0:3] + total[4:])
     return ret
 
+def pc90(lst):
+    l = len(lst)
+    return sorted(lst)[ int(0.90 * l) ]
+
 def pc95(lst):
     l = len(lst)
     return sorted(lst)[ int(0.95 * l) ]
@@ -122,6 +126,10 @@ def pc95(lst):
 def pc99(lst):
     l = len(lst)
     return sorted(lst)[ int(0.99 * l) ]
+
+def pc98(lst):
+    l = len(lst)
+    return sorted(lst)[ int(0.98 * l) ]
 
 def coeff_variation(lst):
     return stdev(lst) / avg(lst)

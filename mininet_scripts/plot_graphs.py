@@ -18,7 +18,7 @@ def plot_cdf(filename, data_list):
     
 #plot_cdf("test_cdf.eps", [1,2,3,4,56])
 
-def plot_two_cdfs(filename, data_list1, data_list2):
+def plot_two_cdfs(filename, data_list1, data_list2, x_label="No Label", y_label="No Label",title="No Graph Title" ):
     """Given the data list plot a cdf"""
     fig = plt.figure()
 
@@ -34,13 +34,56 @@ def plot_two_cdfs(filename, data_list1, data_list2):
     p1 = plt.plot(x1, y1, 'b', label="No Partitioning")
     p2 =plt.plot(x2, y2, 'r', label = "Partitioning")
     plt.legend(loc="upper left",shadow=True, fancybox=True)
-    plt.xlabel('Interface Bandwidth(Kbps)')
-    plt.ylabel('Clients')
-    plt.title('Tree Topology')
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
     plt.show()
     plt.savefig(filename)
 
 
+def plot_bar_graphs(dict1, dict2):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    assert len(dict1) == len(dict2)
+
+    list1 =  [ ]
+    list2 =  [ ]
+    # Ordering the lists, since we want to compare smae links.
+    for k,val in dict1:
+        print k
+        if k in dict2:
+            list1.append(val)
+            list2.append(dict2[k])
+    assert len(list1) == len(list2)
+    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",list1, list2
+    #assert len(dict1) == len(list1)
+    #N = len(dict1)
+    N = len(list1)
+    ind = np.arange(N)  
+    width = 0.35
+    ## the bars
+    rects1 = ax.bar(ind, list1, width, color='black')#,
+                #yerr=menStd,
+                #error_kw=dict(elinewidth=2,ecolor='red'))
+
+    rects2 = ax.bar(ind+width, list2, width, color='red')#,
+                    #yerr=womenStd,
+                    #error_kw=dict(elinewidth=2,ecolor='black'))
+
+    ax.set_xlim(-width,len(ind)+width)
+    ax.set_ylim(0,450)
+    ax.set_ylabel('Link Utilization(Kbps)')
+    ax.set_title('Links')
+    xTickMarks = ['Link'+str(i) for i in range(1,N)]
+    ax.set_xticks(ind+width)
+    xtickNames = ax.set_xticklabels(xTickMarks)
+    plt.setp(xtickNames, rotation=45, fontsize=10)
+    
+    ## add a legend
+    #ax.legend( (rects1[0], rects2[0]), ('Men', 'Women') )
+    ax.legend( (rects1[0], rects2[0]), ('No Partition', 'Partition') )
+    
+    plt.show()
 
 
 # -d 4, -f 2, tree, 16 hosts, 1Mbps and 1msec. delay

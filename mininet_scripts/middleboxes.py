@@ -370,10 +370,10 @@ def start_iperfTrafficGen(input_file, output_dir, time_duration, hosts, net):
             client.popen('iperf -u -c %s -p %s -t %d > client.txt' 
                     % (server.IP(), port, time_duration ), shell=True)
         else: # The case when server is hosted outside the network
-	    print "Starting server... on port", str(port)
+	    print "Starting server on IP and on port:",str(dst_ip), str(port)
             Popen('iperf -u -s -p %s > server_%s.txt' % (port, port), shell = True)
             client = host_list[src_ip]
-	    print "Starting client... on port", str(port)
+	    print "Starting client on IP and on port", str(src_ip), str(port), client
             #client.popen('iperf -u -b 1073741824 -c %s -p %s -t %d > client_%s.txt' 
             client.popen('iperf -c %s -u -b 1024 -p %s -t %d > client_%s.txt' 
                 % (dst_ip, port, time_duration, port ), shell=True)
@@ -429,18 +429,20 @@ def get_bandwidth(input_file, pat_iface):
     for k in rate.keys():
         if pat_iface.match(k): 
 	    #print rate[k]
-            avg_rate = avg(rate[k][10:-10])
+            #avg_rate = avg(rate[k][10:-10])
+            avg_rate = pc99(rate[k][10:-10])
 	    print k, avg_rate
 	    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
             vals1[k] = avg_rate
 	    vals.append(avg_rate)
-    link_rates = [ ]         
+    link_rates = { }
     f = open('interfaces.txt', 'r')
     for line in f.readlines():
         interfaces = line.split(',')
         if interfaces[0] in vals1.keys():
             print interfaces[0],',',interfaces[1],vals1[interfaces[0]]
-	    link_rates.append(vals1[interfaces[0]])
+	    #link_rates.append(vals1[interfaces[0]])
+	    link_rates[(interfaces[0], interfaces[1])] = vals1[interfaces[0]]
     #print vals1
     #return fsum(vals)
     return link_rates
@@ -486,13 +488,16 @@ def gather_stats(files, regex, duration):
 
 sw = 's[1-9][0-9]-eth*|s[1-9]-eth*'
 #link_rates1 = get_bandwidth("traffic_data/nopart_rate_5d2f_tree.txt", sw)
+#link_rates1 = get_bandwidth("../measurement/bw_util/nopart_rate_5d2f_tree.txt", sw).values()
 #link_rates1 = get_bandwidth("../measurement/bw_util/nopart_rate_5d2f_tree.txt", sw)
 #print "No Partition Link Rates: ",link_rates1
 #print link_rates1
 #link_rates2 = get_bandwidth("traffic_data/part_rate_5d2f_tree.txt", sw)
+#link_rates2 = get_bandwidth("../measurement/bw_util/part_rate_5d2f_tree.txt", sw).values()
 #link_rates2 = get_bandwidth("../measurement/bw_util/part_rate_5d2f_tree.txt", sw)
 #print "Partition Link Rates: ",link_rates2
 
 #plot_graphs.plot_two_cdfs("icmp_log.eps", all_latencies)
-#plot_graphs.plot_two_cdfs("test_cdf.eps", link_rates1, link_rates2)
+#plot_graphs.plot_two_cdfs("test_cdf.eps", link_rates1, link_rates2, "Link Utilization(Kbps)", "Links", "Tree Topology Bandwidth Utilization" )
+#plot_graphs.plot_bar_graphs(link_rates1, link_rates2)
 #gather_stats(["traffic_data/rate_back.txt"], sw, 30)

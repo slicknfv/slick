@@ -29,7 +29,7 @@ from mininet.node import Node, OVSKernelSwitch,UserSwitch
 
 from optparse import OptionParser
 
-from topologies.dctopo import FatTreeTopo
+from topologies.DCTopo import FatTreeTopo
 from topologies.jellyfish import JellyfishTopo
 from topologies.DCell import DCellTopo
 
