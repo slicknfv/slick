@@ -41,7 +41,7 @@ def plot_two_cdfs(filename, data_list1, data_list2, x_label="No Label", y_label=
     plt.savefig(filename)
 
 
-def plot_bar_graphs(dict1, dict2):
+def plot_bar_graphs(dict1, dict2, x_label="Links", y_label="Link Utilization(Kbps)",title="FatTree Network Link Utilization" ):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     assert len(dict1) == len(dict2)
@@ -49,13 +49,12 @@ def plot_bar_graphs(dict1, dict2):
     list1 =  [ ]
     list2 =  [ ]
     # Ordering the lists, since we want to compare smae links.
-    for k,val in dict1:
+    for k, val in dict1.iteritems():
         print k
         if k in dict2:
             list1.append(val)
             list2.append(dict2[k])
     assert len(list1) == len(list2)
-    print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",list1, list2
     #assert len(dict1) == len(list1)
     #N = len(dict1)
     N = len(list1)
@@ -71,10 +70,11 @@ def plot_bar_graphs(dict1, dict2):
                     #error_kw=dict(elinewidth=2,ecolor='black'))
 
     ax.set_xlim(-width,len(ind)+width)
-    ax.set_ylim(0,450)
-    ax.set_ylabel('Link Utilization(Kbps)')
-    ax.set_title('Links')
-    xTickMarks = ['Link'+str(i) for i in range(1,N)]
+    ax.set_ylim(0,3000)
+    ax.set_ylabel(y_label)
+    ax.set_xlabel(x_label)
+    ax.set_title(title)
+    xTickMarks = ['Link'+str(i) for i in range(0,N)]
     ax.set_xticks(ind+width)
     xtickNames = ax.set_xticklabels(xTickMarks)
     plt.setp(xtickNames, rotation=45, fontsize=10)

@@ -485,19 +485,30 @@ def gather_stats(files, regex, duration):
   print all_rates
   return sorted(all_rates)
 
-
+#Regular expression for switches
 sw = 's[1-9][0-9]-eth*|s[1-9]-eth*'
+#Regex for FatTree switches`
+#sw = '[0-3]h[0-1]h1'
 #link_rates1 = get_bandwidth("traffic_data/nopart_rate_5d2f_tree.txt", sw)
 #link_rates1 = get_bandwidth("../measurement/bw_util/nopart_rate_5d2f_tree.txt", sw).values()
+#link_rates1 = get_bandwidth("../measurement/bw_util/nopart_rate_z5_fattree.txt", sw).values()
+#link_rates1 = get_bandwidth("../measurement/bw_util/nopart_rate_y4_dcell.txt", sw).values()
 #link_rates1 = get_bandwidth("../measurement/bw_util/nopart_rate_5d2f_tree.txt", sw)
+#link_rates1 = get_bandwidth("../measurement/bw_util/nopart_rate_z5_fattree.txt", sw)
+#link_rates1 = get_bandwidth("../measurement/bw_util/nopart_rate_y4_dcell.txt", sw)
 #print "No Partition Link Rates: ",link_rates1
 #print link_rates1
 #link_rates2 = get_bandwidth("traffic_data/part_rate_5d2f_tree.txt", sw)
 #link_rates2 = get_bandwidth("../measurement/bw_util/part_rate_5d2f_tree.txt", sw).values()
+#link_rates2 = get_bandwidth("../measurement/bw_util/part_rate_z5_fattree.txt", sw).values()
+#link_rates2 = get_bandwidth("../measurement/bw_util/part_rate_y4_dcell.txt", sw).values()
 #link_rates2 = get_bandwidth("../measurement/bw_util/part_rate_5d2f_tree.txt", sw)
+#link_rates2 = get_bandwidth("../measurement/bw_util/part_rate_z5_fattree.txt", sw)
+#link_rates2 = get_bandwidth("../measurement/bw_util/part_rate_y4_dcell.txt", sw)
 #print "Partition Link Rates: ",link_rates2
 
 #plot_graphs.plot_two_cdfs("icmp_log.eps", all_latencies)
-#plot_graphs.plot_two_cdfs("test_cdf.eps", link_rates1, link_rates2, "Link Utilization(Kbps)", "Links", "Tree Topology Bandwidth Utilization" )
-#plot_graphs.plot_bar_graphs(link_rates1, link_rates2)
+#plot_graphs.plot_two_cdfs("test_cdf.eps", link_rates1, link_rates2, "Link Utilization(Kbps)", "Links", "DCell Topology Utilization" )
+#plot_graphs.plot_bar_graphs(link_rates1, link_rates2, x_label="Links", y_label="Link Utilization(Kbps)",title="DCell Network Link Utilization" )
+#plot_graphs.plot_bar_graphs(link_rates1, link_rates2, x_label="Links", y_label="Link Utilization(Kbps)",title="Tree Network Link Utilization" )
 #gather_stats(["traffic_data/rate_back.txt"], sw, 30)
