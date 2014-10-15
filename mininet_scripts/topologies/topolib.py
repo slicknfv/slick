@@ -59,9 +59,9 @@ class TreeTopoOld( Topo ):
 
 
 class TreeTopo( Topo ):
-    "Topology for a tree network with a given depth and fanout.
+    """Topology for a tree network with a given depth and fanout.
      And each switch has atleast one host connected with it. Leaves
-     have three hosts connected with them."
+     have three hosts connected with them."""
 
     def __init__( self, depth=1, fanout=2, bw=1000, delay='0ms'):
         super( TreeTopo, self ).__init__()
@@ -93,12 +93,9 @@ class TreeTopo( Topo ):
 
     def addHosts(self):
     	for switch in self.switches():
-	    print switch
             host = self.addHost( 'h%s' % self.hostNum )
             self.addLink( switch, host, bw=self.bw, delay=self.delay)
             self.hostNum += 1
-            print self.node_info[switch]
-	    #print host, type(host)
 
 
 def TreeNet( depth=1, fanout=2, **kwargs ):
