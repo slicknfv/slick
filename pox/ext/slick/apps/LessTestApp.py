@@ -11,8 +11,9 @@ class LessTestApp(Application):
         # Start the Logger
         parameters = [{"file_name":"/tmp/less_elem_log", "drop_count":3}]
         flow = self.make_wildcard_flow()
-        flow['tp_dst'] = 53
+        #flow['tp_dst'] = 53
         flow['nw_proto'] = 17
+        flow['dl_type'] = 0x800
         ed = self.apply_elem( flow, ["Less"], parameters) 
 
         if(self.check_elems_installed(ed)):
