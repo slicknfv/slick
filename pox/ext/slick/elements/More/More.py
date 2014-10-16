@@ -40,10 +40,11 @@ class More(Element):
                 #for index in range(0, outgoing_packets):
                 flow = self.extract_flow( buf )
                 timestamp = datetime.datetime.now()
-                if index >= len(packets):
+                #if index >= len(packe):
+                if index >= num_incoming_packets:
                     self.file_handle.write( str(timestamp) + ' INFLATED ' + str(flow) + '\n' )
                 else:
-                    self.file_handle.write( str(timestamp) + ' ' + str(flow) + '\n' )
+                    self.file_handle.write( str(timestamp) + ' ORIGINAL '+ str(len(packets)) + str(flow) + '\n' )
             return packets
         elif self.inflation_rate >= 1 and self.inflation_rate < 2:
             # For now inflate traffic in increments of 10%
@@ -56,7 +57,7 @@ class More(Element):
             for buf in packets:
                 flow = self.extract_flow( buf )
                 timestamp = datetime.datetime.now()
-                self.file_handle.write( str(timestamp) + ' ' + str(flow) + '\n' )
+                self.file_handle.write( str(timestamp) + ' ORIGINAL ' + str(flow) + '\n' )
                 last_packet = buf
 
             if self.pkt_count > starting_pkt:
