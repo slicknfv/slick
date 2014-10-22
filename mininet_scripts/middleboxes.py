@@ -512,3 +512,11 @@ sw = 's[1-9][0-9]-eth*|s[1-9]-eth*'
 #plot_graphs.plot_bar_graphs(link_rates1, link_rates2, x_label="Links", y_label="Link Utilization(Kbps)",title="DCell Network Link Utilization" )
 #plot_graphs.plot_bar_graphs(link_rates1, link_rates2, x_label="Links", y_label="Link Utilization(Kbps)",title="Tree Network Link Utilization" )
 #gather_stats(["traffic_data/rate_back.txt"], sw, 30)
+
+
+# plot the bandwidth utilization with LEG.
+#link_rates1 = get_bandwidth("../measurement/leg/rate_treefull_d4f2_1More_Random.txt", sw).values()
+#link_rates2 = get_bandwidth("../measurement/leg/rate_treefull_d4f2_1More.txt", sw).values()
+link_rates1 = get_bandwidth("../measurement/leg/rate_treefull_d4f2_1Less_Random.txt", sw).values()
+link_rates2 = get_bandwidth("../measurement/leg/rate_treefull_d4f2_1Less.txt", sw).values()
+plot_graphs.plot_two_cdfs("test_cdf.eps", link_rates1, link_rates2, "Link Utilization(Kbps)", "Links", "Tree Topology Utilization(Less Element)" )
