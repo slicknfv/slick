@@ -86,8 +86,8 @@ class MSMessageProcessor(EventMixin):
                 #self.cntxt.fmap.update_element_machine(machine_ip,machine_mac,None) # Simply add the record of the shim.
                 self.cntxt.register_machine(machine_ip, machine_mac)
                 log.debug("Registering element machine: " + str(machine_mac))
-                print "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
-                print self.cntxt.elem_to_mac._mac_to_elems
+		#print "REGISTERING"*100
+                #print self.cntxt.elem_to_mac._mac_to_elems
                 # Raising the event
                 self.raiseEvent(ElementMachineUp, machine_mac, machine_ip)
                 reply["dummy"]="connected"

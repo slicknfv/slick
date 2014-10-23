@@ -81,20 +81,26 @@ PATH_SETUP_TIME = 4
 
 slick_controller_interface = core.slick_controller.controller_interface
 
+def dump ():
+  sws = switches.values()
+  for i in sws:
+    print i,
+  print
+  for i in sws:
+    print i,
+    for j in sws:
+      a = path_map[i][j][0]
+      #a = adjacency[i][j]
+      if a is None: a = "*"
+      print a,
+    print
+
 def _calc_paths ():
   """
   Essentially Floyd-Warshall algorithm
   """
 
-  def dump ():
-    for i in sws:
-      for j in sws:
-        a = path_map[i][j][0]
-        #a = adjacency[i][j]
-        if a is None: a = "*"
-        print a,
-      print
-
+  print "Recalculating the path."
   sws = switches.values()
   path_map.clear()
   for k in sws:
@@ -118,6 +124,7 @@ def _calc_paths ():
 
   #print "--------------------"
   #dump()
+  #print "--------------------"
 
 
 def _get_raw_path (src, dst):
@@ -129,6 +136,8 @@ def _get_raw_path (src, dst):
     # We're here!
     return []
   if path_map[src][dst][0] is None:
+    print "Src, Dst:",src, dst, "Vals:",path_map[src][dst]
+    print "NONE"*100
     return None
   intermediate = path_map[src][dst][1]
   if intermediate is None:
@@ -389,9 +398,10 @@ class Switch (EventMixin):
     """
     print "MB_LOCATIONS,",mb_locations, "ELEMENT_DESCS:",element_descs
     src = (self, event.port)
-    dst = (dst_sw, last_port)
+    dst = (dst_sw, last_port) 
     #pathlets = slick_controller_interface.get_path(src, mb_locations, dst)
     pathlets = slick_controller_interface.get_path(src, mb_locations, dst)
+    #dump()
     #print "FORWARD:",pathlets
     mb_locations_forward = [src] + mb_locations + [dst]
     print mb_locations_forward

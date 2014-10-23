@@ -56,7 +56,8 @@ class PhysicalNetwork(object):
 
     def get_num_partitions(self, policy_id=0):
         if self.nt.TREE:
-            return 2
+            #return 2
+            return 1
             #self.controller.get_number_of_gateways()
         else:
             raise Exception("Please specifiy the desired number of vertical partitions for the network type.")
@@ -72,23 +73,34 @@ class PhysicalNetwork(object):
         #http://metis.readthedocs.org/en/latest/
         # We are using off the shelf software to partition the network.
         num_partitions = self.get_num_partitions( )
-        # For now using the default partitioning algorithm.
-        # Should experiment with different types and different partitioning algorithms.
-        # Or ir does not matter whatever partition algorithm we use.
-        (objective_function, partitions) = metis.part_graph(self.partitioned_graph, nparts = num_partitions)
-        # For debugging
-        print "Objective Function:", objective_function
-        print "Partitions:", partitions
-        # Add more colors to this array if get_num_partitions is > 4
-        colors = ['red','blue','green','orange']
-        node_ids = [ ]
-        for node in self.partitioned_graph.nodes():
-            node_ids.append(node)
-        for i, p in enumerate(partitions):
-            # Please note p starts from zero, one, two etc.
-            #self.partitioned_graph.node[i+1] = {'color': colors[p], 'part_number': p}
-            node_id = node_ids[i]
-            self.partitioned_graph.node[node_id] = {'color': colors[p], 'part_number': p}
+	if num_partitions > 1:
+            # For now using the default partitioning algorithm.
+            # Should experiment with different types and different partitioning algorithms.
+            # Or ir does not matter whatever partition algorithm we use.
+            (objective_function, partitions) = metis.part_graph(self.partitioned_graph, nparts = num_partitions)
+            # For debugging
+            #print "Objective Function:"*100, objective_function
+            print "Partitions:", partitions
+            # Add more colors to this array if get_num_partitions is > 4
+            colors = ['red','blue','green','orange']
+            node_ids = [ ]
+            for node in self.partitioned_graph.nodes():
+                node_ids.append(node)
+            for i, p in enumerate(partitions):
+                # Please note p starts from zero, one, two etc.
+                #self.partitioned_graph.node[i+1] = {'color': colors[p], 'part_number': p}
+                node_id = node_ids[i]
+                self.partitioned_graph.node[node_id] = {'color': colors[p], 'part_number': p}
+	else:
+            (objective_function, partitions) = metis.part_graph(self.partitioned_graph, nparts = 2)
+            colors = ['red','blue','green','orange']
+            node_ids = [ ]
+            for node in self.partitioned_graph.nodes():
+                node_ids.append(node)
+            for i, p in enumerate(partitions):
+		p = 0
+                node_id = node_ids[i]
+                self.partitioned_graph.node[node_id] = {'color': colors[p], 'part_number': p}
         nx.write_dot(self.partitioned_graph, 'slick_parts.dot')
 
     def get_partition_number(self, src_switch_mac):
