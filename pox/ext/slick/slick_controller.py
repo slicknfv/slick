@@ -265,7 +265,8 @@ class slick_controller (object):
         # Return list of all machines.
         all_machines = self.network_model.overlay_net.get_all_machines()
         registered_machines = self.get_all_registered_machines()
-        if  not len(registered_machines):
+        #if  not len(registered_machines):
+        if len(registered_machines) <= 14: # Don't start until enough machines are present.
             log.warn("No middlebox is registered.")
             # Need to update the graph for placement.
             self.network_model.physical_net.update_topo_graph()
@@ -312,7 +313,7 @@ class slick_controller (object):
             return [-1]
         else:
             for index, elem_name in enumerate(element_names):
-                log.debug("Placement module returned MAC Address %s for element_name %s" % (mac_addrs[index], elem_name))
+                log.debug("Placement module returned MAC Address %s for element_name %s" % (mac_to_str(mac_addrs[index]), elem_name))
 
         # TODO when we support element composition (an array of element_name's
         #      as input), the placement module will return an array of mac

@@ -245,7 +245,7 @@ class Discovery (EventMixin):
 
   _flow_priority = 65000     # Priority of LLDP-catching flow (if any)
   _link_timeout = 10         # How long until we consider a link dead
-  _timeout_check_period = 5  # How often to check for timeouts
+  _timeout_check_period = 500  # How often to check for timeouts
 
   _eventMixin_events = set([
     LinkEvent,

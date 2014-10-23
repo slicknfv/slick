@@ -25,6 +25,7 @@ from tm import TrafficMatrix
 from slick.placement.Placement import Placement
 
 from pox.core import core
+from slick.utils.packet_utils import *
 import networkx as nx
 import metis # required for graph partitioning
 log = core.getLogger()
@@ -45,6 +46,9 @@ class NetworkAwarePlacement(Placement):
         self.consolidate = Consolidate(network_model)
         traffic_matrix_dir = "/home/mininet/Abilene/2004/Measured/"
         traffic_matrix_file = "/home/mininet/Abilene/2004/Measured/tm.2004-04-11.23-40-00.dat"
+    	traffic_matrix_file = "/home/mininet/treef2d3tm.txt"
+    	traffic_matrix_file = "/home/mininet/treef2d4tm.txt"
+    	#traffic_matrix_file = "/home/mininet/treef2d5tm.txt"
         self.tm = TrafficMatrix(None, traffic_matrix_file)
 
     def get_placement (self, flowspace_desc, elements_to_install): # 0
@@ -56,11 +60,12 @@ class NetworkAwarePlacement(Placement):
                 - return None if no placement is possible
         """
         rv = [ ]
+	# Comment following line to avoid creating network partitions.
         # Create appropriate number of partitions of the graph.
         self.network_model.physical_net.create_partitions()
         #if self.is_first_flowspace_placement():
         consolidated_chain, virtual_locs_to_place = self._consolidate_using_leg(elements_to_install)
-        print "SIGN"*100, consolidated_chain, virtual_locs_to_place
+        #print "SIGN"*100, consolidated_chain, virtual_locs_to_place
         #else:
         #    consolidated_chain, virtual_locs_to_place = self._consolidate_using_leg_n_existing_chains(elements_to_install)
         rv = self._place_consolidated_chain(flowspace_desc, elements_to_install, consolidated_chain, virtual_locs_to_place)
@@ -103,7 +108,7 @@ class NetworkAwarePlacement(Placement):
         # Read the matrix from the data set of Internet. 
         rv = [ ]
         machines = None
-        traffic_matrix = self.tm.get_traffic_matrix(flowspace_desc)
+        traffic_matrix = self.tm.get_traffic_matrix_new(flowspace_desc)
         sources, destinations = self.tm.get_sources_and_destinations(traffic_matrix)
         print consolidated_chain, virtual_locs_to_place
         log.debug("Source Switches: "+ str(sources))
@@ -120,7 +125,12 @@ class NetworkAwarePlacement(Placement):
             if position_to_place_consolidated_element == 'ANY':#((position_to_place_consolidated_element != len(consolidated_chain)-1) and (position_to_place_consolidated_element != 0)):
                 machines = self._place_element_anywhere(flowspace_desc, consolidated_element)
             print consolidated_element
-            print "APPENDING machines to the list:", machines
+	    for machine in machines:
+                if machine:
+                    switch_mac = self.network_model.overlay_net.get_connected_switch(machine)
+                    print "Adding instance to machine:", mac_to_str(machine)
+                    print "Adding machine to switch:", mac_to_str(switch_mac)
+        	    log.debug("Adding instance to machine: " + mac_to_str(machine) + " on switch: " + mac_to_str(switch_mac))
             if machines:
                 rv = rv + machines
         return rv
@@ -139,7 +149,7 @@ class NetworkAwarePlacement(Placement):
             machine = self._get_machine(nodes, element_name, partition_number)
             # This is not mistake(since its a consolidated element) we need to run it once.
             break;
-        print "PLACING element near nodes:",  consolidated_element, " in partition: ", partition_number
+        print "PLACING element near nodes:",  consolidated_element, nodes, " in partition: ", partition_number
         for elem_name in consolidated_element:
             machine_macs.append(machine)
         return machine_macs
@@ -203,7 +213,7 @@ class NetworkAwarePlacement(Placement):
         partition_nodes = self.network_model.physical_net.get_partition_nodes(partition_number)
         for machine in machines:
             switch_mac = self.network_model.overlay_net.get_connected_switch(machine)
-            print switch_mac, partition_nodes
+            #print switch_mac, partition_nodes
             if switch_mac in partition_nodes:
                 partition_machines.append(machine)
         print "PARTITION MACHINES:",partition_machines
@@ -288,14 +298,14 @@ class NetworkAwarePlacement(Placement):
                 # This betweenness should be found within a single partition
                 selected_machine_mac = self._get_betweenness_centrality(partition_number, machines)
             if (placement_pref == "near"): # For example in case of proxy we need it near the machines.
-                selected_machine_mac = self._get_closeness_centrality(partition_number, machines)
+                selected_machine_mac = self._get_closeness_centrality(placement_pref, partition_number, machines)
             if (placement_pref == "far"):
-                selected_machine_mac = self._get_closeness_centrality(partition_number, machines)
+                selected_machine_mac = self._get_closeness_centrality(placement_pref, partition_number, machines)
         if nodes:
-            selected_machine_mac = self._get_closeness_centrality(partition_number, machines)
+            selected_machine_mac = self._get_closeness_centrality(placement_pref, partition_number, machines)
         return selected_machine_mac
 
-    def _get_closeness_centrality(self, partition_number, machines): # 6
+    def _get_closeness_centrality(self, placement_pref, partition_number, machines): # 6
         # 1- Get machine to switch mapping.
         central_machine_mac = None
         switch_list = [ ]
@@ -314,7 +324,15 @@ class NetworkAwarePlacement(Placement):
         # A dict of centralities node-> centrality
         node_cents = nx.closeness_centrality(partition_subgraph, normalized = True)
         print node_cents
-        sorted_centralities = sorted(node_cents.iteritems(), key=operator.itemgetter(1), reverse=True)
+        if placement_pref == "far":
+	    print 10*"FFFFFFFFFFFFFFFFFFFFFFFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+            sorted_centralities = sorted(node_cents.iteritems(), key=operator.itemgetter(1), reverse=True) # Beacaue of G (More)
+        elif placement_pref == "near":
+	    print 10*"NNNNNNNNNNEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR"
+            sorted_centralities = sorted(node_cents.iteritems(), key=operator.itemgetter(1), reverse=False) # Because of L(Less) 
+	else:
+	    print 100*"SPORK"
+            sorted_centralities = sorted(node_cents.iteritems(), key=operator.itemgetter(1), reverse=True) 
         print sorted_centralities
         log.debug("Sorted Centralities: " + str(sorted_centralities))
         central_machine_mac = self._select_not_used_machine(sorted_centralities, machines)
