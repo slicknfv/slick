@@ -42,6 +42,7 @@ from pox.lib.util import dpid_to_str
 import time
 
 import copy
+import os
 import networkx as nx
 
 log = core.getLogger()
@@ -395,7 +396,12 @@ class Switch (EventMixin):
   def install_path_improved (self, dst_sw, last_port, match, event, mb_locations, element_descs):
     """
     Attempts to install a path between this switch and some destination
-    """
+    """ 
+    filename = "path_lengths.txt"
+    if os.path.isfile(filename):
+        file_handle = open(filename, 'a')
+    else:
+        file_handle = open(filename, 'w')
     print "MB_LOCATIONS,",mb_locations, "ELEMENT_DESCS:",element_descs
     src = (self, event.port)
     dst = (dst_sw, last_port) 
@@ -406,6 +412,8 @@ class Switch (EventMixin):
     mb_locations_forward = [src] + mb_locations + [dst]
     print mb_locations_forward
     print element_descs
+    total_fwd_path_length = 0
+    total_bwd_path_length = 0
 
     for index in range(0, len(pathlets)):
       # Place we saw this ethaddr   -> loc = (self, event.port) 
@@ -418,6 +426,7 @@ class Switch (EventMixin):
         return self._send_dest_unreachable(event, match, switch1, switch2, switch1_port, switch2_port)
       log.debug("Installing forward paths for %s -> %s (%i hops)",
           switch1, switch2, len(p))
+      total_fwd_path_length += len(p)
       self._install_path(p, match, event.ofp)
       # Now reverse it and install it backwards
       # (we'll just assume that will work)
@@ -449,7 +458,11 @@ class Switch (EventMixin):
         return self._send_dest_unreachable(event, match.flip(), switch1, switch2, switch1_port, switch2_port)
       log.debug("Installing backward paths for %s -> %s (%i hops)",
           switch1, switch2, len(p))
+      total_bwd_path_length += len(p)
       self._install_path(p, match.flip())
+    log_string = str(total_fwd_path_length) + "," + str(total_bwd_path_length ) + "\n"
+    file_handle.write(log_string)
+    file_handle.close()
 
   def install_path (self, dst_sw, last_port, match, event, mb_locations):
     """
