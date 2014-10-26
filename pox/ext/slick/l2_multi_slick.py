@@ -81,6 +81,54 @@ PATH_SETUP_TIME = 4
 
 
 slick_controller_interface = core.slick_controller.controller_interface
+flow_matrices = [ ]
+
+def dump_tm (flow_matrix):
+  sws = switches.values()
+  for i in sws:
+    print i,
+  print
+  for i in sws:
+    print i,
+    for j in sws:
+      a = flow_matrix.flow_tm[i.dpid][j.dpid]# path_map[i][j][0]
+      #a = adjacency[i][j]
+      if a is None: a = "*"
+      print a,
+    print
+
+def dump_flow_tms():
+  for flow_matrix in flow_matrices:
+    print flow_matrix.flow
+    dump_tm(flow_matrix)
+    print "*"*100
+
+class FlowMatrix():
+  def __init__(self, flow_match):
+    self.flow = flow_match
+    # table to keep the matrix
+    self.flow_tm = defaultdict(lambda:defaultdict(lambda:None))
+
+def get_src_dst(flow_match, src, dst):
+  pass
+
+def _update_tm(match, src_switch, dst_switch):
+  match_copy = copy.copy(match)
+  flow_match = slick_controller_interface.get_generic_flow(match_copy)
+  #print flow_match, flow_matrices
+  for flow_matrix in flow_matrices:
+    if flow_match == flow_matrix.flow:
+      if flow_matrix.flow_tm[src_switch][dst_switch]:
+        flow_matrix.flow_tm[src_switch][dst_switch] += 1
+        dump_flow_tms()
+        return
+      else:
+        flow_matrix.flow_tm[src_switch][dst_switch] = 1
+        dump_flow_tms()
+	return
+  if flow_match:
+    flow_matrices.append(FlowMatrix(flow_match))
+    flow_matrices[-1].flow_tm[src_switch][dst_switch] = 1
 
 def dump ():
   sws = switches.values()
@@ -530,6 +578,7 @@ class Switch (EventMixin):
       p = [(sw,out_port,in_port) for sw,in_port,out_port in p]
       self._install_path(p, match.flip())
 
+
   def _handle_PacketIn (self, event):
     def flood ():
       """ Floods the packet """
@@ -575,6 +624,7 @@ class Switch (EventMixin):
         dst_port = dest_tuple[1]
     #element_descriptors = slick_controller_interface.get_steering(mac_map.get(packet.src), mac_map.get(packet.dst), flow_match)
     element_descriptors = slick_controller_interface.get_steering((src_switch,src_port), (dst_switch,dst_port), flow_match)
+    _update_tm(flow_match, src_switch, dst_switch)
     #bidirection = slick_controller_interface.is_bidirectional_flow()
     # Order of this list is important.
     # This is the same order in which we want the packets to traverse.
