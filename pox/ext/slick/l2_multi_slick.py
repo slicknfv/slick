@@ -108,27 +108,58 @@ class FlowMatrix():
     self.flow = flow_match
     # table to keep the matrix
     self.flow_tm = defaultdict(lambda:defaultdict(lambda:None))
+    self.flowspace_desc = slick_controller_interface.get_flowspace_desc(flow_match)
 
-def get_src_dst(flow_match, src, dst):
-  pass
+def get_tm_entry(flow_id, src_switch, dst_switch):
+  assert flow_id != None
+  assert src_switch != None
+  assert dst_switch != None
+  for flow_matrix in flow_matrices:
+    if flow_id == flow_matrix.flowspace_desc:
+      if flow_matrix.flow_tm[src_switch][dst_switch]:
+        return flow_matrix.flow_tm[src_switch][dst_switch]
+  
+def is_traffic_present():
+  """Return True if there is traffic for any flow"""
+  for flow_matrix in flow_matrices:
+    if len(flow_matrix.flow_tm):
+      #print "1111"*1000
+      return True
+  return False
+
 
 def _update_tm(match, src_switch, dst_switch):
   match_copy = copy.copy(match)
   flow_match = slick_controller_interface.get_generic_flow(match_copy)
   #print flow_match, flow_matrices
+  raw_shortest_path = _get_raw_path(src_switch, dst_switch)
+  print src_switch, dst_switch, raw_shortest_path
+  if not raw_shortest_path:
+    return
+  shortest_path = [src_switch] + raw_shortest_path + [dst_switch] 
   for flow_matrix in flow_matrices:
     if flow_match == flow_matrix.flow:
-      if flow_matrix.flow_tm[src_switch][dst_switch]:
-        flow_matrix.flow_tm[src_switch][dst_switch] += 1
-        dump_flow_tms()
-        return
-      else:
-        flow_matrix.flow_tm[src_switch][dst_switch] = 1
-        dump_flow_tms()
-	return
+      for index, node in enumerate(shortest_path):
+	if index < len(shortest_path)-1:
+	  sw1, sw2 = shortest_path[index].dpid, shortest_path[index+1].dpid
+          if flow_matrix.flow_tm[sw1][sw2]:
+             # get the list of switches
+            flow_matrix.flow_tm[sw1][sw2] += 1
+	    print "A"
+            dump_flow_tms()
+          else:
+            flow_matrix.flow_tm[sw1][sw2] = 1
+	    print "B"
+            dump_flow_tms()
+      return
   if flow_match:
     flow_matrices.append(FlowMatrix(flow_match))
-    flow_matrices[-1].flow_tm[src_switch][dst_switch] = 1
+    for index, node in enumerate(shortest_path):
+      if index < len(shortest_path)-1:
+	sw1, sw2 = shortest_path[index].dpid, shortest_path[index+1].dpid
+        flow_matrices[-1].flow_tm[sw1][sw2] = 1
+	print "C"
+        dump_flow_tms()
 
 def dump ():
   sws = switches.values()
@@ -185,7 +216,7 @@ def _get_raw_path (src, dst):
     # We're here!
     return []
   if path_map[src][dst][0] is None:
-    print "Src, Dst:",src, dst, "Vals:",path_map[src][dst]
+    print "Src, Dst:",src, dst, type(src), type(dst), "Vals:",path_map[src][dst]
     print "NONE"*100
     return None
   intermediate = path_map[src][dst][1]
@@ -624,7 +655,9 @@ class Switch (EventMixin):
         dst_port = dest_tuple[1]
     #element_descriptors = slick_controller_interface.get_steering(mac_map.get(packet.src), mac_map.get(packet.dst), flow_match)
     element_descriptors = slick_controller_interface.get_steering((src_switch,src_port), (dst_switch,dst_port), flow_match)
-    _update_tm(flow_match, src_switch, dst_switch)
+    #_update_tm(flow_match, src_switch, dst_switch)
+    if source_tuple and dest_tuple:
+      _update_tm(flow_match, source_tuple[0], dest_tuple[0])
     #bidirection = slick_controller_interface.is_bidirectional_flow()
     # Order of this list is important.
     # This is the same order in which we want the packets to traverse.

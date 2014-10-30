@@ -47,11 +47,13 @@ from slick.placement.RoundRobinPlacement import RoundRobinPlacement
 from slick.placement.IncrementalKPlacement import IncrementalKPlacement
 from slick.placement.KPlacement import KPlacement
 from slick.placement.NetworkAwarePlacement import NetworkAwarePlacement
+from slick.placement.WeightedPlacement import WeightedPlacement
 from slick.NetworkModel import NetworkModel
 from slick.NetworkModel import ElementInstance
 from place_n_steer import PlacenSteer
 import slick_exceptions
 import queryengine
+
 
 log = core.getLogger()
 
@@ -83,6 +85,9 @@ class slick_controller (object):
 	elif placement == "NetworkAwarePlacement":
             log.debug("Starting %s placement algorithm." % (placement))
             self.placement_module = NetworkAwarePlacement( self.network_model )
+	elif placement == "WeightedPlacement":
+            log.debug("Starting %s placement algorithm." % (placement))
+            self.placement_module = WeightedPlacement( self.network_model )
 	else:
             log.debug("Starting Random placement algorithm.")
             self.placement_module = RandomPlacement( self.network_model )
@@ -218,7 +223,12 @@ class slick_controller (object):
     """
     def get_all_registered_machines(self):
         return self.mac_to_ip.get_all_macs()
-
+   
+    def is_there_traffic(self):
+	"""Return True if we have traffic started coming in corresponding to any policy."""
+	from slick.l2_multi_slick import is_traffic_present
+	print "FRASIER"*100
+	return is_traffic_present()
 
     # Slick API Functions
 
@@ -266,7 +276,8 @@ class slick_controller (object):
         all_machines = self.network_model.overlay_net.get_all_machines()
         registered_machines = self.get_all_registered_machines()
         #if  not len(registered_machines):
-        if len(registered_machines) <= 14: # Don't start until enough machines are present.
+        #if len(registered_machines) <= 14: # Don't start until enough machines are present.
+        if (not len(registered_machines)): # Don't start until enough machines are present.
             log.warn("No middlebox is registered.")
             # Need to update the graph for placement.
             self.network_model.physical_net.update_topo_graph()
@@ -274,6 +285,17 @@ class slick_controller (object):
             # Wait until all shims are up.
             if len(registered_machines) < len(all_machines):
                 return [-4]
+        # Get unique flowspace id
+	# It servers two puposes.
+	# 1- Gets a unique flowspace descriptor for for the given flowspace
+	# Registers the flow with controller so that we can start building the traffic matrix
+	# in slick controller even though no element instance is present in the network.
+        flowspace_desc = self.flow_to_elems.get_unique_flowspace_desc(flow)
+	print flowspace_desc
+	if not self.is_there_traffic():
+            log.warn("No incoming traffic.")
+	    return [-5]
+	
 
         ##
         # STEP 0: check that this application actually owns this element
@@ -285,8 +307,6 @@ class slick_controller (object):
         if(self.elem_to_app.contains_app(app_desc)):# We have the application installed
             log.debug("Creating another element for application: %d", app_desc)
 
-        # Get unique flowspace id
-        flowspace_desc = self.flow_to_elems.get_unique_flowspace_desc(flow)
 
         ##
         # STEP 1: Find the middlebox where this function should be installed.
@@ -684,6 +704,16 @@ class POXInterface():
         else:
             return None # so we know there is no match.
         return matching_flow
+
+    def get_flowspace(self,flow_id):
+	flowspace = self.controller.flow_to_elems.get_flowspace(flow_id)
+	if flowspace:
+	    return flowspace
+	else:
+	    raise Exception("No flowspace found for given flow identifier.")
+
+    def get_flowspace_desc (self, flowspace):
+	return self.controller.flow_to_elems.get_unique_flowspace_desc(flowspace)
 
 ##############################
 # POX Launch the application.

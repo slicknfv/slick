@@ -215,6 +215,9 @@ class FlowToElementsMapping():
     #        return False
 
     def get_unique_flowspace_desc(self, flow):
+	print type(flow)
+	if type(flow) == self.FlowTuple:
+	    return self.flow_to_id[flow]
         src_mac =None
         dst_mac = None
         if(flow['dl_src'] != None):
@@ -236,6 +239,12 @@ class FlowToElementsMapping():
             self.flowspace_id += 1
             self.flow_to_id[f] = self.flowspace_id
         return self.flow_to_id[f]
+
+    def get_flowspace(self, flowspace_desc):
+	# Given flowspae id return the flowspace tuple.
+	for flowspace, fd in self.flow_to_id.iteritems():
+	    if flowspace_desc == fd:
+	        return flowspace
     """
      These three functions: 
         add_flow,del_flow,modify_flow 
@@ -459,6 +468,14 @@ class FlowToElementsMapping():
         #print ft
         #print self.flow_to_element_mapping
         for item in self.flow_to_element_mapping.keys():
+            if(_flowtuple_equals(item, ft)):
+                return item
+	# If flow is not present in the flow to element mapping check if we have flwospace
+	# present in the flow_to_id mapping.
+	# flow registrqtion has two steps.
+	# Step 1: flow is registered from the application and assigned an ID.
+	# Step 2: After an element has successfully been created a new flow instance
+	for item in self.flow_to_id.keys():
             if(_flowtuple_equals(item, ft)):
                 return item
         return None
