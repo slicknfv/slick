@@ -1,6 +1,0 @@
-click-mininet:
-    This project is copied from here:
-    https://github.com/basus/click-mininet
-    We have made some modifications to be able to run test.py and sandbox.py.
-
-
