@@ -1,2 +1,0 @@
-{u'type': u'trigger', u'fd': 18}
-{u'type': u'trigger', u'fd': 18}
