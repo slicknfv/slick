@@ -1,3 +1,0 @@
-function.py  has the program that runs on the "middlebox machine"
-program.py is the program that we write to implement a policy
-func_spec is the machine spec for the DNS DPI box.
